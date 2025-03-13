@@ -4,7 +4,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'jacoco'
-    id "org.sonarqube" version "4.4.1.3373"
+    id "org.sonarqube" version "6.0.1.5171"
 }
 
 group 'ch.uzh.ifi.hasel'
@@ -55,9 +55,9 @@ bootJar {
 
 sonar {
     properties {
-        property "sonar.projectKey", "TODO"
-        property "sonar.organization", "TODO"
-        property "sonar.host.url", "TODO"
+        property "sonar.projectKey", "Lunoastro_sopra-f25-group-07-server"
+        property "sonar.organization", "lunoastro"
+        property "sonar.host.url", "https://sonarcloud.io"
     }
 }
 
