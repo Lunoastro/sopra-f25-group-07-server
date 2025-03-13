@@ -29,22 +29,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-#  deploy:
-#    name: Deploying to Google Cloud
-#    runs-on: ubuntu-latest
-    # needs: test
+  deploy:
+    name: Deploying to Google Cloud
+    runs-on: ubuntu-latest
+    needs: test
 
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v2
-#
-#      - name: Deploy to App Engine
-#        id: deploy
-#        uses: google-github-actions/deploy-appengine@v0.2.0
-#        with:
-#          deliverables: app.yaml
-#          version: v1
-#          credentials: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
-#
- #     - name: Test
-#        run: curl "${{ steps.deploy.outputs.url }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Deploy to App Engine
+        id: deploy
+        uses: google-github-actions/deploy-appengine@v0.2.0
+        with:
+          deliverables: app.yaml
+          version: v1
+          credentials: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
+
+      - name: Test
+        run: curl "${{ steps.deploy.outputs.url }}"
