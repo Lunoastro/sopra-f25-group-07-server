@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs24.entity;
 
+import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 
 import javax.persistence.*;
@@ -46,6 +47,16 @@ public class User implements Serializable {
 
   @Column(nullable = false)
   private String password;
+
+  @Column(nullable = false)
+  private int XP;
+
+  @Column(nullable = false)
+  private int level;
+
+  @Column(nullable = false)
+  private ColorID color;
+
 
   public Long getId() {
     return id;
@@ -110,6 +121,31 @@ public class User implements Serializable {
 
   public void setPassword(String password) {
     this.password = password; 
+  }
+
+  public int getXP() {
+    return XP;
+  }
+
+  public void setXP(int XP) {
+    this.XP = XP;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
+  }
+
+  public ColorID getColor() {
+    return color;
+  }
+
+  public void setColor(ColorID color) {
+    this.color = color;
+
   }
 
 }
