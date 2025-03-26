@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs24.service;
 
+import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
@@ -44,6 +45,10 @@ public class UserServiceIntegrationTest {
     testUser.setUsername("testUsername");
     testUser.setPassword("12345");
 
+    testUser.setXP(0); //later on this will be done in the service
+    testUser.setLevel(1);
+    testUser.setColor(ColorID.C1);
+
     // when
     User createdUser = userService.createUser(testUser);
 
@@ -54,6 +59,9 @@ public class UserServiceIntegrationTest {
     assertEquals(testUser.getPassword(), createdUser.getPassword());
     assertNotNull(createdUser.getToken());
     assertEquals(UserStatus.ONLINE, createdUser.getStatus());
+    assertEquals(testUser.getXP(), createdUser.getXP());
+    assertEquals(testUser.getLevel(), createdUser.getLevel());
+    assertEquals(testUser.getColor(), createdUser.getColor());
   }
 
   @Test
@@ -64,6 +72,11 @@ public class UserServiceIntegrationTest {
     testUser.setName("user_testUsername");
     testUser.setUsername("testUsername");
     testUser.setPassword("12345");
+
+    testUser.setXP(0); //later on this will be done in the service
+    testUser.setLevel(1);
+    testUser.setColor(ColorID.C1);
+
     User createdUser = userService.createUser(testUser);
 
     // attempt to create second user with same username
@@ -73,6 +86,10 @@ public class UserServiceIntegrationTest {
     testUser2.setName("user_testUsername2");
     testUser2.setUsername("testUsername");
     testUser.setPassword("12345");
+
+    testUser.setXP(0); //later on this will be done in the service
+    testUser.setLevel(1);
+    testUser.setColor(ColorID.C1);
 
     // check that an error is thrown
     assertThrows(ResponseStatusException.class, () -> userService.createUser(testUser2));

@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs24.repository;
 
+import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ public class UserRepositoryIntegrationTest {
     user.setToken("1");
     user.setCreationDate(now);
     user.setBirthDate(null);
+    user.setXP(0);  // Default XP value
+    user.setLevel(1);  // Default level
+    user.setColor(ColorID.C1);
 
     entityManager.persist(user);
     entityManager.flush();
@@ -49,5 +53,8 @@ public class UserRepositoryIntegrationTest {
     assertEquals(found.getStatus(), user.getStatus());
     assertEquals(found.getCreationDate(), user.getCreationDate());
     assertEquals(found.getBirthDate(), user.getBirthDate());
+    assertEquals(found.getXP(), user.getXP());
+    assertEquals(found.getLevel(), user.getLevel());
+    assertEquals(found.getColor(), user.getColor());
   }
 }
