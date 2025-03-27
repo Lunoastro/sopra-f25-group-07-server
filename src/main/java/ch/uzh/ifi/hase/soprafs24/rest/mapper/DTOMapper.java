@@ -64,7 +64,6 @@ public interface DTOMapper {
   Team convertTeamPutDTOtoEntity(TeamPutDTO teamPutDTO);
 
   @Mapping(source = "teamId", target = "teamId")
-  @Mapping(source = "userId", target = "userId")
   Team convertTeamDeleteDTOtoEntity(TeamDeleteDTO teamDeleteDTO);
 
 
