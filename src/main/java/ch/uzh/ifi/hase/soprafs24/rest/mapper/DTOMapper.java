@@ -1,9 +1,14 @@
 package ch.uzh.ifi.hase.soprafs24.rest.mapper;
 
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamDeleteDTO;
 
 import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
@@ -42,5 +47,25 @@ public interface DTOMapper {
   @Mapping(source = "id", target = "id")
   @Mapping(source = "birthDate", target = "birthDate")
   User convertUserPutDTOtoEntity(UserPutDTO userPutDTO);
+
+  @Mapping(source = "teamId", target = "teamId")
+  @Mapping(source = "teamName", target = "teamName")
+  @Mapping(source = "teamXP", target = "teamXP")
+  @Mapping(source = "teamLevel", target = "teamLevel")
+  @Mapping(source = "teamCode", target = "teamCode")
+  @Mapping(source = "teamMembers", target = "teamMembers")
+  TeamGetDTO convertEntityToTeamGetDTO(Team team);
+
+  @Mapping(source = "teamName", target = "teamName")
+  @Mapping(source = "teamCode", target = "teamCode")
+  Team convertTeamPostDTOtoEntity(TeamPostDTO teamPostDTO);
+
+  @Mapping(source = "teamName", target = "teamName")
+  Team convertTeamPutDTOtoEntity(TeamPutDTO teamPutDTO);
+
+  @Mapping(source = "teamId", target = "teamId")
+  @Mapping(source = "userId", target = "userId")
+  Team convertTeamDeleteDTOtoEntity(TeamDeleteDTO teamDeleteDTO);
+
 
 }
