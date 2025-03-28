@@ -40,10 +40,10 @@ public class User implements Serializable {
   private UserStatus status;
 
   @Column(nullable = false)
-  public Date creationDate;
+  private Date creationDate;
 
   @Column
-  public Date birthDate;
+  private Date birthDate;
 
   @Column(nullable = false)
   private String password;
@@ -54,8 +54,11 @@ public class User implements Serializable {
   @Column(nullable = false)
   private int level;
 
-  @Column(nullable = false)
+  @Column
   private ColorID color;
+
+  @Column
+  private long teamId;
 
 
   public Long getId() {
@@ -146,6 +149,14 @@ public class User implements Serializable {
   public void setColor(ColorID color) {
     this.color = color;
 
+  }
+
+  public Long getTeamId() {
+    return teamId;
+  }
+
+  public void setTeamId(Long teamId) {
+    this.teamId = teamId;
   }
 
 }
