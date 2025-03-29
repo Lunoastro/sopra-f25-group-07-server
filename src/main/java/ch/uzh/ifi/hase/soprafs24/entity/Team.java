@@ -20,7 +20,7 @@ public class Team implements Serializable {
     @GeneratedValue
     private Long teamId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String teamName;
 
     @Column(nullable = false)
