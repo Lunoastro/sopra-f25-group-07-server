@@ -1,15 +1,12 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
-import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskDeleteDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPutDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
-import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,9 +15,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 /**

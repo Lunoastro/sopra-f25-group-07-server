@@ -3,9 +3,7 @@ package ch.uzh.ifi.hase.soprafs24.service;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPutDTO;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
-import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +91,7 @@ public class TaskService {
         // store the userId of the creator
         task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());
         return taskRepository.save(task);
+        
 
     }
 

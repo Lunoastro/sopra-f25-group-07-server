@@ -5,6 +5,7 @@ import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 public class TaskPutDTO {
     
     private String taskName;
+    private Long isAssignedTo;
     private String taskDescription;
     private Date deadline;
     private ColorID taskColor;
@@ -52,5 +53,11 @@ public class TaskPutDTO {
 
     public void setActiveStatus(boolean activeStatus) {
         this.activeStatus = activeStatus;
+    }
+    public Long getIsAssignedTo() {
+        return isAssignedTo;
+    }
+    public void setIsAssignedTo(Long isAssignedTo) {
+        this.isAssignedTo = isAssignedTo;
     }
 }

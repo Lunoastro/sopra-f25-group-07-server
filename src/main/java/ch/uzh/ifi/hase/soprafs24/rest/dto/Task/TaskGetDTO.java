@@ -5,7 +5,6 @@ public class TaskGetDTO {
     private Long isAssignedTo;
     private String taskName;
     private String taskDescription;
-    private String taskCreationDate;
     private String deadline;
     private String taskColor;
     private boolean activeStatus;
@@ -38,14 +37,6 @@ public class TaskGetDTO {
 
     public void setTaskDescription(String taskDescription) {
         this.taskDescription = taskDescription;
-    }
-
-    public String getTaskCreationDate() {
-        return taskCreationDate;
-    }
-
-    public void setTaskCreationDate(String taskCreationDate) {
-        this.taskCreationDate = taskCreationDate;
     }
 
     public String getDeadline() {
