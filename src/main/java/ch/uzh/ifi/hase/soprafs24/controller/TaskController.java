@@ -1,7 +1,6 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
-import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPutDTO;
@@ -15,33 +14,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
-
-
-/**
- * User Controller
- * This class is responsible for handling all REST request that are related to
- * the user.
- * The controller will receive the request and delegate the execution to the
- * UserService and finally return the result.
- */
 @RestController
 public class TaskController {
 
   private final TaskService taskService;
-  private final TaskRepository taskRepository;
 
   
 
-  TaskController(TaskService taskService, TaskRepository taskRepository) {
+  TaskController(TaskService taskService) {
     this.taskService = taskService;
-    this.taskRepository = taskRepository;
   }
-  /*
-   * 
-   * TODO:
-   * - Ensure the creator's userId is stored with the task.
-   * 
-   */
     @GetMapping("/tasks")
     @ResponseStatus(HttpStatus.OK)
     public List<TaskGetDTO> getAllTasks(@RequestHeader("Authorization") String userToken) {
@@ -82,6 +64,8 @@ public class TaskController {
         // Convert the entity to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task);
     }
+
+
     @PutMapping("/tasks/{taskId}/edit")
     @ResponseStatus(HttpStatus.OK)
     public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String userToken) {

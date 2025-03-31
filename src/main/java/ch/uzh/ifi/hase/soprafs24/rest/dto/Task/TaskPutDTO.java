@@ -1,5 +1,9 @@
 package ch.uzh.ifi.hase.soprafs24.rest.dto.Task;
 import java.util.Date;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 
 public class TaskPutDTO {
@@ -43,7 +47,7 @@ public class TaskPutDTO {
         try {
             this.taskColor = ColorID.valueOf(taskColor);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid taskColor value: " + taskColor);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Incorrect color provided.");
         }
     }
 
