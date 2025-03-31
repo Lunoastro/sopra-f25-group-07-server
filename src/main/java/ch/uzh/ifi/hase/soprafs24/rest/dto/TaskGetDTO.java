@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.rest.dto;
 
 public class TaskGetDTO {
     private Long taskId;
+    private Long isAssignedTo;
     private String taskName;
     private String taskDescription;
     private String taskCreationDate;
@@ -15,6 +16,12 @@ public class TaskGetDTO {
 
     public void setTaskId(Long taskId) {
         this.taskId = taskId;
+    }
+    public Long getIsAssignedTo() {
+        return isAssignedTo;
+    }
+    public void setIsAssignedTo(Long isAssignedTo) {
+        this.isAssignedTo = isAssignedTo;
     }
 
     public String getTaskName() {

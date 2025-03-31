@@ -93,6 +93,7 @@ public interface DTOMapper {
    * The Mapping for TaskGetDTO
    */
   @Mapping(source = "taskId", target = "taskId")
+  @Mapping(source = "isAssignedTo", target = "isAssignedTo")
   @Mapping(source = "taskName", target = "taskName")
   @Mapping(source = "taskDescription", target = "taskDescription")
   @Mapping(source = "taskCreationDate", target = "taskCreationDate")
