@@ -65,13 +65,11 @@ public class TaskController {
 
     @PostMapping("/tasks/create")
     @ResponseStatus(HttpStatus.CREATED)
-    public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO) {
+    public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO,@RequestHeader long userId) {
         // Convert the incoming DTO to an entity
         Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(taskPostDTO);
-        // validate the task
-        taskService.validateTask(task);
-        // Create the task using the service
-        Task createdTask = taskService.createTask(task);
+        // send the task to the service for creation
+        Task createdTask = taskService.createTask(task, userId);
         // Convert the created entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(createdTask);
     }

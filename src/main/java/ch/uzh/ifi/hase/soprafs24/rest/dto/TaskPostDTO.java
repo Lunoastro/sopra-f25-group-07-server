@@ -1,12 +1,10 @@
 package ch.uzh.ifi.hase.soprafs24.rest.dto;
+import java.util.Date;
 
 public class TaskPostDTO {
     private String taskName;
     private String taskDescription;
-    private String taskCreationDate;
-    private String deadline;
-    private String taskColor;
-    private boolean activeStatus;
+    private Date deadline;
 
     public String getTaskName() {
         return taskName;
@@ -24,35 +22,11 @@ public class TaskPostDTO {
         this.taskDescription = taskDescription;
     }
 
-    public String getTaskCreationDate() {
-        return taskCreationDate;
-    }
-
-    public void setTaskCreationDate(String taskCreationDate) {
-        this.taskCreationDate = taskCreationDate;
-    }
-
-    public String getDeadline() {
+    public Date getDeadline() {
         return deadline;
     }
 
-    public void setDeadline(String deadline) {
+    public void setDeadline(Date deadline) {
         this.deadline = deadline;
-    }
-
-    public String getTaskColor() {
-        return taskColor;
-    }
-
-    public void setTaskColor(String taskColor) {
-        this.taskColor = taskColor;
-    }
-
-    public boolean isActiveStatus() {
-        return activeStatus;
-    }
-
-    public void setActiveStatus(boolean activeStatus) {
-        this.activeStatus = activeStatus;
     }
 }

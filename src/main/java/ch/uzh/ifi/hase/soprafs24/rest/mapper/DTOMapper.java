@@ -84,12 +84,10 @@ public interface DTOMapper {
   /*
    * The Mapping for TaskPostDTO 
    */
+
   @Mapping(source = "taskName", target = "taskName")
   @Mapping(source = "taskDescription", target = "taskDescription")
-  @Mapping(source = "taskCreationDate", target = "taskCreationDate")
-  @Mapping(source = "deadline", target = "deadline")
-  @Mapping(source = "taskColor", target = "taskColor")
-  @Mapping(source = "activeStatus", target = "activeStatus")
+  @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
   Task convertTaskPostDTOtoEntity(TaskPostDTO taskPostDTO);
   /*
    * The Mapping for TaskGetDTO

@@ -46,7 +46,7 @@ public class Task implements Serializable {
     private int value;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private ColorID taskColor;
 
     @Column(nullable = false)

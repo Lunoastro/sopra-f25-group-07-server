@@ -1,10 +1,11 @@
 package ch.uzh.ifi.hase.soprafs24.rest.dto;
+import java.util.Date;
 
 public class TaskPutDTO {
     
     private String taskName;
     private String taskDescription;
-    private String deadline;
+    private Date deadline;
     private String taskColor;
     private boolean activeStatus;
 
@@ -24,11 +25,11 @@ public class TaskPutDTO {
         this.taskDescription = taskDescription;
     }
 
-    public String getDeadline() {
+    public Date getDeadline() {
         return deadline;
     }
 
-    public void setDeadline(String deadline) {
+    public void setDeadline(Date deadline) {
         this.deadline = deadline;
     }
 
