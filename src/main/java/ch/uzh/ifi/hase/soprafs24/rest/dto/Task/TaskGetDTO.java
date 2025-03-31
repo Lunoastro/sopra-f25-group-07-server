@@ -1,4 +1,4 @@
-package ch.uzh.ifi.hase.soprafs24.rest.dto;
+package ch.uzh.ifi.hase.soprafs24.rest.dto.Task;
 
 public class TaskGetDTO {
     private Long taskId;

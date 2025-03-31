@@ -1,12 +1,13 @@
-package ch.uzh.ifi.hase.soprafs24.rest.dto;
+package ch.uzh.ifi.hase.soprafs24.rest.dto.Task;
 import java.util.Date;
+import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 
 public class TaskPutDTO {
     
     private String taskName;
     private String taskDescription;
     private Date deadline;
-    private String taskColor;
+    private ColorID taskColor;
     private boolean activeStatus;
 
     public String getTaskName() {
@@ -33,12 +34,16 @@ public class TaskPutDTO {
         this.deadline = deadline;
     }
 
-    public String getTaskColor() {
+    public ColorID getTaskColor() {
         return taskColor;
     }
 
     public void setTaskColor(String taskColor) {
-        this.taskColor = taskColor;
+        try {
+            this.taskColor = ColorID.valueOf(taskColor);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid taskColor value: " + taskColor);
+        }
     }
 
     public boolean isActiveStatus() {

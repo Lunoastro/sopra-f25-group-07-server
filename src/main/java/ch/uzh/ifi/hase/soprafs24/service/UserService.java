@@ -147,7 +147,12 @@ public class UserService {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "add User failed because username already exists");
     }
 }
-
+  public static String check_if_malformed_token(String userToken) {
+    if (!userToken.startsWith("Bearer ")) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Authorization header format");
+  }
+    return userToken.substring(7);
+}
   public boolean validateToken(String token) {
     User user = userRepository.findByToken(token);  // Assuming you store the token on the user object
     if (user == null) {

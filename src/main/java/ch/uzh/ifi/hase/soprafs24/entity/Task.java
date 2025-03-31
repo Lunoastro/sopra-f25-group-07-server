@@ -33,7 +33,6 @@ public class Task implements Serializable {
     private Date pausedDate;
 
     @Column(nullable = true)
-    @Temporal(TemporalType.TIMESTAMP)
     private Date unpausedDate;
 
     @Column(nullable = false)

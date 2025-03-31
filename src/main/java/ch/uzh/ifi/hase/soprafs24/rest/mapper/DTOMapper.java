@@ -3,18 +3,17 @@ package ch.uzh.ifi.hase.soprafs24.rest.mapper;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.UserGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPutDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamPutDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TeamDeleteDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TaskGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TaskPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TaskPutDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.TaskDeleteDTO;
-
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskDeleteDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamDeleteDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserPutDTO;
 
 import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
@@ -97,7 +96,7 @@ public interface DTOMapper {
   @Mapping(source = "taskName", target = "taskName")
   @Mapping(source = "taskDescription", target = "taskDescription")
   @Mapping(source = "taskCreationDate", target = "taskCreationDate")
-  @Mapping(source = "deadline", target = "deadline")
+  @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
   @Mapping(source = "taskColor", target = "taskColor")
   @Mapping(source = "activeStatus", target = "activeStatus")
   Task convertTaskGetDTOtoEntity(TaskGetDTO taskGetDTO);
@@ -106,7 +105,7 @@ public interface DTOMapper {
    */
   @Mapping(source = "taskName", target = "taskName")
   @Mapping(source = "taskDescription", target = "taskDescription")
-  @Mapping(source = "deadline", target = "deadline")
+  @Mapping(source = "deadline", target = "deadline",dateFormat = "yyyy-MM-dd")
   @Mapping(source = "taskColor", target = "taskColor")
   @Mapping(source = "activeStatus", target = "activeStatus")
   Task convertTaskPutDTOtoEntity(TaskPutDTO taskPutDTO);
