@@ -80,6 +80,21 @@ public class TaskService {
         }
     }
 
+    public void validate_creator(String userToken, Long taskId) {
+        String token = UserService.check_if_malformed_token(userToken);
+        User user = userRepository.findByToken(token);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
+        }
+        Task task = taskRepository.findByTaskId(taskId);
+        if (task == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
+        }
+        if (!task.getIsAssignedTo().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit this task");
+        }
+    }
+
     // check uniqueness of the task name
 
     public Task createTask(Task task, String userToken) {

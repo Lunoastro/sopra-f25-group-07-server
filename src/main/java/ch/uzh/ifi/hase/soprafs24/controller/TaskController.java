@@ -71,9 +71,10 @@ public class TaskController {
     public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String userToken) {
         // Validate the user token
         taskService.validate_userToken(userToken);
+        // Checks if user is the creator of the task and if task exists
+        taskService.validate_creator(userToken, taskId);
         // Retrieve the existing task
         Task existingTask = taskService.getTaskById(taskId);
-        
         // convert putDTO to entity
         Task task = DTOMapper.INSTANCE.convertTaskPutDTOtoEntity(taskPutDTO);
         Task updatedTask = taskService.updateTask(existingTask, task);
@@ -87,11 +88,8 @@ public class TaskController {
     public void deleteTask(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         // Validate the user token
         taskService.validate_userToken(userToken);
-        // Check if the task exists
-        Task existingTask = taskService.getTaskById(taskId);
-        if (existingTask == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
-        }
+        // Checks if user is the creator of the task and if task exists
+        taskService.validate_creator(userToken, taskId);
         // Delete the task using the service
         taskService.deleteTask(taskId);
     }
