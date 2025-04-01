@@ -1,0 +1,306 @@
+package ch.uzh.ifi.hase.soprafs24.controller;
+
+import ch.uzh.ifi.hase.soprafs24.entity.Team;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamPostDTO;
+import ch.uzh.ifi.hase.soprafs24.service.TeamService;
+import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import ch.uzh.ifi.hase.soprafs24.entity.User;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+public class TeamControllerTest {
+
+    @Autowired
+    private TeamController teamController;
+
+    @MockBean
+    private TeamService teamService;
+
+    @MockBean
+    private UserService userService;
+
+    private MockMvc mockMvc;
+
+    private Team team;
+    private TeamPostDTO teamPostDTO;
+    private TeamGetDTO teamGetDTO;
+
+    @BeforeEach
+    public void setup() {
+        // Setup MockMvc
+        mockMvc = MockMvcBuilders.standaloneSetup(teamController).build();
+
+        // Create mock team data
+        team = new Team();
+        team.setTeamId(1L);
+        team.setTeamName("Test Team");
+        team.setTeamCode("ABC123");
+        team.setTeamXP(0);
+        team.setTeamLevel(1);
+
+        teamPostDTO = new TeamPostDTO();
+        teamPostDTO.setTeamName("Test Team");
+
+        teamGetDTO = new TeamGetDTO();
+        teamGetDTO.setTeamId(1L);
+        teamGetDTO.setTeamName("Test Team");
+        teamGetDTO.setTeamCode("ABC123");
+        teamGetDTO.setTeamXP(0);
+        teamGetDTO.setTeamLevel(1);
+    }
+
+    @Test
+    public void POST_createTeam_validInput_teamCreated() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        when(teamService.createTeam(anyLong(), any(Team.class))).thenReturn(team);
+
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams/create")
+                .header("Authorization", authorizationHeader)
+                .contentType("application/json")
+                .content("{ \"teamName\": \"Test Team\" }"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.teamName").value("Test Team"))
+                .andExpect(jsonPath("$.teamCode").value("ABC123"))
+                .andExpect(jsonPath("$.teamLevel").value(1));
+    }
+
+    @Test
+    public void POST_failedCreateTeam_invalidInput_duplicateTeamName_teamNotCreated() throws Exception {
+    // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+    
+    // Simulate a conflict when trying to create a team with an already existing name
+        when(teamService.createTeam(anyLong(), any(Team.class)))
+            .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "add Team failed because team name already exists"));
+
+    // Create a DTO for the team creation request
+        String teamJson = "{ \"teamName\": \"Test Team\" }";
+
+    // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams/create")
+                .header("Authorization", authorizationHeader)
+                .contentType("application/json")
+                .content(teamJson))
+                .andExpect(status().isConflict()); // Expect a 409 Conflict status
+}
+
+
+    @Test
+    public void POST_joinTeam_validInput_teamJoined() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        doNothing().when(teamService).joinTeam(anyLong(), anyString());
+
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams/1/join")
+                .param("teamCode", "ABC123")
+                .header("Authorization", authorizationHeader))
+                .andExpect(status().isCreated());
+
+        // Verify that the teamService.joinTeam method was called
+        verify(teamService, times(1)).joinTeam(anyLong(), eq("ABC123"));
+    }
+
+    @Test
+    public void POST_failedJoinTeam_invalidInput_teamNotFound() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        
+        // Simulate that the team does not exist (throws a not found exception)
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team with this team code does not exist"))
+                .when(teamService).joinTeam(anyLong(), anyString());
+    
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams/999/join")  // Assuming team with ID 999 doesn't exist
+                    .param("teamCode", "NONEXISTENT")
+                    .header("Authorization", authorizationHeader))
+                .andExpect(status().isNotFound());  // Expect a 404 Not Found status
+    
+        // Verify that the teamService.joinTeam method was called
+        verify(teamService, times(1)).joinTeam(anyLong(), eq("NONEXISTENT"));
+    }
+    
+
+    @Test
+    public void GET_getTeamById_validTeamId_teamReturned() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        when(teamService.getTeamById(anyLong())).thenReturn(team);
+
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.get("/teams/1")
+                .header("Authorization", authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.teamId").value(1))
+                .andExpect(jsonPath("$.teamName").value("Test Team"));
+    }
+
+    @Test
+    public void GET_failedGetTeamById_invalidTeamId_teamNotFound() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        
+        // Simulate that the team does not exist (throws a not found exception)
+        when(teamService.getTeamById(anyLong())).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+    
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.get("/teams/999")  // Assuming team with ID 999 doesn't exist
+                    .header("Authorization", authorizationHeader))
+                .andExpect(status().isNotFound());  // Expect a 404 Not Found status
+    }
+
+    @Test
+    public void GET_getUsersByTeam_validTeamId_usersReturned() throws Exception {
+    // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        when(teamService.getUsersByTeamId(anyLong())).thenReturn(List.of(1L, 2L));
+    
+    // Mock userService.getUserById to return dummy User objects
+        User mockUser1 = new User();
+        mockUser1.setId(1L);
+        User mockUser2 = new User();
+        mockUser2.setId(2L);
+        when(userService.getUserById(1L)).thenReturn(mockUser1);
+        when(userService.getUserById(2L)).thenReturn(mockUser2);
+    
+    // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.get("/teams/1/users")
+                .header("Authorization", authorizationHeader))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(1))  // Expect the 'id' field in the first DTO to be 1
+            .andExpect(jsonPath("$[1].id").value(2));  // Expect the 'id' field in the second DTO to be 2
+    }
+
+    @Test
+    public void GET_getUsersByTeam_invalidTeamId_teamNotFound() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        when(teamService.getUsersByTeamId(anyLong())).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+    
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.get("/teams/999/users")
+                .header("Authorization", authorizationHeader))
+            .andExpect(status().isNotFound());
+    
+    }
+    
+
+    @Test
+    public void PUT_updateTeamName_validInput_teamNameUpdated() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        doNothing().when(teamService).updateTeamName(anyLong(), anyLong(), anyString());
+
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.put("/teams/1/edit")
+                .header("Authorization", authorizationHeader)
+                .contentType("application/json")
+                .content("{ \"teamName\": \"New Team Name\" }"))
+                .andExpect(status().isNoContent());
+
+        // Verify that the teamService.updateTeamName method was called
+        verify(teamService, times(1)).updateTeamName(anyLong(), anyLong(), eq("New Team Name"));
+    }
+
+    @Test
+    public void PUT_updateTeamName_invalidTeamId_teamNotFound() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"))
+                .when(teamService).updateTeamName(anyLong(), anyLong(), anyString());
+    
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.put("/teams/999/edit")
+                .header("Authorization", authorizationHeader)
+                .contentType("application/json")
+                .content("{ \"teamName\": \"New Team Name\" }"))
+            .andExpect(status().isNotFound());
+    
+        // Verify that the teamService.updateTeamName method was called
+        verify(teamService, times(1)).updateTeamName(anyLong(), anyLong(), eq("New Team Name"));
+    }
+    
+
+    @Test
+    public void DELETE_quitTeam_validInput_userQuitTeam() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        doNothing().when(teamService).quitTeam(anyLong(), anyLong());
+
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.delete("/teams/1/users/1/quit")
+                .header("Authorization", authorizationHeader))
+                .andExpect(status().isNoContent());
+
+        // Verify that the teamService.quitTeam method was called
+        verify(teamService, times(1)).quitTeam(anyLong(), eq(1L));
+    }
+
+
+    @Test
+    public void DELETE_quitTeam_invalidTeamId_teamNotFound() throws Exception {
+        // Given
+        String authorizationHeader = "Bearer valid_token";
+        when(userService.validateToken(anyString())).thenReturn(true);
+        when(userService.findIDforToken(anyString())).thenReturn(1L);
+        
+        // Ensure that the error is thrown when trying to quit a non-existent team
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"))
+                .when(teamService).quitTeam(eq(1L), anyLong()); // Allow any teamId
+    
+        // When & Then
+        mockMvc.perform(MockMvcRequestBuilders.delete("/teams/999/users/1/quit")
+                .header("Authorization", authorizationHeader))
+            .andExpect(status().isNotFound());
+    
+        // Verify the method was called with the correct userId, but any teamId
+        verify(teamService, times(1)).quitTeam(eq(1L), anyLong());
+    }
+    
+    
+}
