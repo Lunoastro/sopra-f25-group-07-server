@@ -1,4 +1,4 @@
-package ch.uzh.ifi.hase.soprafs24.rest.dto.User;
+package ch.uzh.ifi.hase.soprafs24.rest.dto.user;
 
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 

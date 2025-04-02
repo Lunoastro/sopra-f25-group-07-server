@@ -49,7 +49,7 @@ public class User implements Serializable {
   private String password;
 
   @Column(nullable = false)
-  private int XP;
+  private int xp;
 
   @Column(nullable = false)
   private int level;
@@ -127,11 +127,11 @@ public class User implements Serializable {
   }
 
   public int getXP() {
-    return XP;
+    return xp;
   }
 
-  public void setXP(int XP) {
-    this.XP = XP;
+  public void setXP(int xp) {
+    this.xp = xp;
   }
 
   public int getLevel() {

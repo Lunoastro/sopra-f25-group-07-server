@@ -246,7 +246,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         MockHttpServletRequestBuilder putRequest = put("/users/{userId}", user.getId())
                 .contentType(MediaType.APPLICATION_JSON) //this line indicates that the request body in this POST request is in JSON format.
                 .content(asJsonString(userPutDTO))
-                .header("Authorization", authHeader); //here we are putting the userPostDTO variable into JSON format (i.e. {"username":"testUsername", "password":"123"}
+                .header("Authorization", authHeader); //here we are putting the userPostDTO variable into JSON format
 
         // then
         // checking the status code
@@ -277,7 +277,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // setting the getUserById function to throw an error (in the case of not finding a user)
         MockHttpServletRequestBuilder putRequest = put("/users/{userId}", user.getId())
                 .contentType(MediaType.APPLICATION_JSON) //this line indicates that the request body in this POST request is in JSON format.
-                .content(asJsonString(userPutDTO)) //here we are putting the userPostDTO variable into JSON format (i.e. {"username":"testUsername", "password":"123"}
+                .content(asJsonString(userPutDTO)) //here we are putting the userPostDTO variable into JSON format
                 .header("Authorization", authHeader);
         // then execute the mock GET request (which we've set to throw an exception, should result in 409 (not found)
         mockMvc.perform(putRequest).andExpect(status().isNotFound());

@@ -34,7 +34,7 @@ import java.util.Date;
     user.setToken("1");
     user.setCreationDate(now);
     user.setBirthDate(null);
-    user.setXP(0);  // Default XP value
+    user.setXP(0);  // Default xp value
     user.setLevel(1);  // Default level
     user.setColor(ColorID.C1);
 

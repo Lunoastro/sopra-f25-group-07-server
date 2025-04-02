@@ -47,7 +47,7 @@ public class TaskService {
         }
     }
 
-    public void validate_ToBeEditedFields(Task task, Task taskPutDTO) {
+    public void validateToBeEditedFields(Task task, Task taskPutDTO) {
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task cannot be null");
         }
@@ -69,8 +69,8 @@ public class TaskService {
         }
     }
 
-    public void validate_userToken(String userToken) {
-        String token = UserService.check_if_malformed_token(userToken);
+    public void validateUserToken(String userToken) {
+        String token = UserService.verifyToken(userToken);
         User user = userRepository.findByToken(token);
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
@@ -80,8 +80,8 @@ public class TaskService {
         }
     }
 
-    public void validate_creator(String userToken, Long taskId) {
-        String token = UserService.check_if_malformed_token(userToken);
+    public void validateCreator(String userToken, Long taskId) {
+        String token = UserService.verifyToken(userToken);
         User user = userRepository.findByToken(token);
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
@@ -99,7 +99,7 @@ public class TaskService {
 
     public Task createTask(Task task, String userToken) {
         validateTask(task);
-        validate_userToken(userToken);
+        validateUserToken(userToken);
         log.debug("Creating a new task with name: {}", task.getTaskName());
         // set the task creation date
         task.setTaskCreationDate(new Date(new Date().getTime() + 3600 * 1000));
@@ -116,7 +116,7 @@ public class TaskService {
     }
 
     public Task updateTask(Task task, Task taskPutDTO) {
-        validate_ToBeEditedFields(task, taskPutDTO);
+        validateToBeEditedFields(task, taskPutDTO);
         return taskRepository.save(task);
     }
 

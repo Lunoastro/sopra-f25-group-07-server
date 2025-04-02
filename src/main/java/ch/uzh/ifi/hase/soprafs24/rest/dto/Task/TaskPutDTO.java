@@ -1,4 +1,4 @@
-package ch.uzh.ifi.hase.soprafs24.rest.dto.Task;
+package ch.uzh.ifi.hase.soprafs24.rest.dto.task;
 import java.util.Date;
 
 import org.springframework.http.HttpStatus;

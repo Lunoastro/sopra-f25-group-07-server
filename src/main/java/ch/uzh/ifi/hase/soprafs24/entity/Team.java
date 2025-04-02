@@ -91,21 +91,5 @@ public class Team implements Serializable {
     public void setTeamMembers(List<Long> teamMembers) {
         this.teamMembers = teamMembers;
     }
-
-    /*public List<Long> getTeamTasks() {
-        return teamTasks;
-    }
-
-    public void setTeamTasks(List<Long> teamTasks) {
-        this.teamTasks = teamTasks;
-    }
-
-    public List<TaskStatus> getTeamPendingTasks() {
-        return teamPendingTasks;
-    }
-
-    public void setTeamPendingTasks(List<TaskStatus> teamPendingTasks) {
-        this.teamPendingTasks = teamPendingTasks;
-    }*/
 }
 

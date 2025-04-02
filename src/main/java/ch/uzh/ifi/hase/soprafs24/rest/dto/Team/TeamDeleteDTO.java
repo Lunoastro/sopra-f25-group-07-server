@@ -1,4 +1,4 @@
-package ch.uzh.ifi.hase.soprafs24.rest.dto.Team;
+package ch.uzh.ifi.hase.soprafs24.rest.dto.team;
 
 public class TeamDeleteDTO {
   

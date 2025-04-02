@@ -147,7 +147,7 @@ public class UserService {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "add User failed because username already exists");
     }
 }
-  public static String check_if_malformed_token(String userToken) {
+  public static String verifyToken(String userToken) {
     if (!userToken.startsWith("Bearer ")) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Authorization header format");
   }
@@ -155,10 +155,7 @@ public class UserService {
 }
   public boolean validateToken(String token) {
     User user = userRepository.findByToken(token);  // Assuming you store the token on the user object
-    if (user == null) {
-      return false;
-    }
-    if (user.getStatus() != UserStatus.ONLINE) {
+    if (user == null && user.getStatus() != UserStatus.ONLINE) {
       return false;
     }
     return true;  // Token is valid and the user is online
