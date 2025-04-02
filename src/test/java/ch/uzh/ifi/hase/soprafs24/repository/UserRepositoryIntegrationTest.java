@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.util.Date;
 
 @DataJpaTest
-public class UserRepositoryIntegrationTest {
+ class UserRepositoryIntegrationTest {
 
   @Autowired
   private TestEntityManager entityManager;
@@ -23,7 +23,7 @@ public class UserRepositoryIntegrationTest {
   private UserRepository userRepository;
 
   @Test
-  public void findByUsername_success() {
+   void findByUsername_success() {
     // given
     User user = new User();
     Date now = new Date(new Date().getTime() + 3600 * 1000);
