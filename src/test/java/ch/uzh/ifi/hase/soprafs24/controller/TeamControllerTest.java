@@ -1,8 +1,8 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
