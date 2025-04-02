@@ -2,12 +2,12 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamPutDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;

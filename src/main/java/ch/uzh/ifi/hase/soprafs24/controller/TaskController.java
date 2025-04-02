@@ -1,9 +1,9 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Task.TaskPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPutDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import org.springframework.http.HttpStatus;
@@ -27,7 +27,7 @@ public class TaskController {
     @GetMapping("/tasks")
     @ResponseStatus(HttpStatus.OK)
     public List<TaskGetDTO> getAllTasks(@RequestHeader("Authorization") String userToken) {
-        taskService.validate_userToken(userToken);
+        taskService.validateUserToken(userToken);
         // Retrieve all tasks using the service
         List<Task> tasks = taskService.getAllTasks();
         // Convert the list of entities to a list of DTOs for the response
@@ -42,7 +42,7 @@ public class TaskController {
     @ResponseStatus(HttpStatus.CREATED)
     public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String userToken) {
         // Extract the token from the Bearer header
-        taskService.validate_userToken(userToken);
+        taskService.validateUserToken(userToken);
         // Convert the incoming DTO to an entity
         Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(taskPostDTO);
         // send the task to the service for creation
@@ -55,7 +55,7 @@ public class TaskController {
     @ResponseStatus(HttpStatus.OK)
     public TaskGetDTO getTask(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         // Validate the user token
-        taskService.validate_userToken(userToken);
+        taskService.validateUserToken(userToken);
         // Retrieve the task using the service
         Task task = taskService.getTaskById(taskId);
         if (task == null) {
@@ -70,9 +70,9 @@ public class TaskController {
     @ResponseStatus(HttpStatus.OK)
     public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String userToken) {
         // Validate the user token
-        taskService.validate_userToken(userToken);
+        taskService.validateUserToken(userToken);
         // Checks if user is the creator of the task and if task exists
-        taskService.validate_creator(userToken, taskId);
+        taskService.validateCreator(userToken, taskId);
         // Retrieve the existing task
         Task existingTask = taskService.getTaskById(taskId);
         // convert putDTO to entity
@@ -87,9 +87,9 @@ public class TaskController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTask(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         // Validate the user token
-        taskService.validate_userToken(userToken);
+        taskService.validateUserToken(userToken);
         // Checks if user is the creator of the task and if task exists
-        taskService.validate_creator(userToken, taskId);
+        taskService.validateCreator(userToken, taskId);
         // Delete the task using the service
         taskService.deleteTask(taskId);
     }

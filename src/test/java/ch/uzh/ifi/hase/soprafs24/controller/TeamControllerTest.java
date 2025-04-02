@@ -1,8 +1,8 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.Team.TeamPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-public class TeamControllerTest {
+ class TeamControllerTest {
 
     @Autowired
     private TeamController teamController;
@@ -47,7 +47,7 @@ public class TeamControllerTest {
     private TeamGetDTO teamGetDTO;
 
     @BeforeEach
-    public void setup() {
+     void setup() {
         // Setup MockMvc
         mockMvc = MockMvcBuilders.standaloneSetup(teamController).build();
 
@@ -71,7 +71,7 @@ public class TeamControllerTest {
     }
 
     @Test
-    public void POST_createTeam_validInput_teamCreated() throws Exception {
+     void POST_createTeam_validInput_teamCreated() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -90,7 +90,7 @@ public class TeamControllerTest {
     }
 
     @Test
-    public void POST_failedCreateTeam_invalidInput_duplicateTeamName_teamNotCreated() throws Exception {
+     void POST_failedCreateTeam_invalidInput_duplicateTeamName_teamNotCreated() throws Exception {
     // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -113,7 +113,7 @@ public class TeamControllerTest {
 
 
     @Test
-    public void POST_joinTeam_validInput_teamJoined() throws Exception {
+     void POST_joinTeam_validInput_teamJoined() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -131,7 +131,7 @@ public class TeamControllerTest {
     }
 
     @Test
-    public void POST_failedJoinTeam_invalidInput_teamNotFound() throws Exception {
+     void POST_failedJoinTeam_invalidInput_teamNotFound() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -153,7 +153,7 @@ public class TeamControllerTest {
     
 
     @Test
-    public void GET_getTeamById_validTeamId_teamReturned() throws Exception {
+     void GET_getTeamById_validTeamId_teamReturned() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -169,7 +169,7 @@ public class TeamControllerTest {
     }
 
     @Test
-    public void GET_failedGetTeamById_invalidTeamId_teamNotFound() throws Exception {
+     void GET_failedGetTeamById_invalidTeamId_teamNotFound() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -185,7 +185,7 @@ public class TeamControllerTest {
     }
 
     @Test
-    public void GET_getUsersByTeam_validTeamId_usersReturned() throws Exception {
+     void GET_getUsersByTeam_validTeamId_usersReturned() throws Exception {
     // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -209,7 +209,7 @@ public class TeamControllerTest {
     }
 
     @Test
-    public void GET_getUsersByTeam_invalidTeamId_teamNotFound() throws Exception {
+     void GET_getUsersByTeam_invalidTeamId_teamNotFound() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -225,7 +225,7 @@ public class TeamControllerTest {
     
 
     @Test
-    public void PUT_updateTeamName_validInput_teamNameUpdated() throws Exception {
+     void PUT_updateTeamName_validInput_teamNameUpdated() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -244,7 +244,7 @@ public class TeamControllerTest {
     }
 
     @Test
-    public void PUT_updateTeamName_invalidTeamId_teamNotFound() throws Exception {
+     void PUT_updateTeamName_invalidTeamId_teamNotFound() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -265,7 +265,7 @@ public class TeamControllerTest {
     
 
     @Test
-    public void DELETE_quitTeam_validInput_userQuitTeam() throws Exception {
+     void DELETE_quitTeam_validInput_userQuitTeam() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
@@ -283,7 +283,7 @@ public class TeamControllerTest {
 
 
     @Test
-    public void DELETE_quitTeam_invalidTeamId_teamNotFound() throws Exception {
+     void DELETE_quitTeam_invalidTeamId_teamNotFound() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);

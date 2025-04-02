@@ -2,8 +2,8 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.User.UserPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -45,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * This tests if the UserController works.
  */
 @WebMvcTest(UserController.class)
-public class UserControllerTest { //command to run all tests: ./gradlew test --tests "ch.uzh.ifi.hase.soprafs24.controller.UserControllerTest"
+ class UserControllerTest { //command to run all tests: ./gradlew test --tests "ch.uzh.ifi.hase.soprafs24.controller.UserControllerTest"
 
   @Autowired
   private MockMvc mockMvc;
@@ -58,7 +58,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
 
 
   @Test
-  public void GET_givenUsers_whenGetUsers_thenReturnJsonArray() throws Exception { //./gradlew test --tests "ch.uzh.ifi.hase.soprafs24.controller.UserControllerTest.GET_givenUsers_whenGetUsers_thenReturnJsonArray"
+   void GET_givenUsers_whenGetUsers_thenReturnJsonArray() throws Exception { //./gradlew test --tests "ch.uzh.ifi.hase.soprafs24.controller.UserControllerTest.GET_givenUsers_whenGetUsers_thenReturnJsonArray"
     // given
     User user = new User();
     user.setName("user_firstname@lastname");
@@ -89,7 +89,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
   }
 
   @Test
-  public void POST_createUser_validInput_userCreated() throws Exception {  //POST/users
+   void POST_createUser_validInput_userCreated() throws Exception {  //POST/users
     // given
     User user = new User();
     Date now = new Date(new Date().getTime() + 3600 * 1000);
@@ -131,7 +131,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
 
 
   @Test 
-  public void POST_failedCreateUser_invalidInput_duplicateUsername_userNotCreated() throws Exception {
+   void POST_failedCreateUser_invalidInput_duplicateUsername_userNotCreated() throws Exception {
       // given
       UserPostDTO userPostDTO = new UserPostDTO(); 
       userPostDTO.setName("user_testUsername");
@@ -152,7 +152,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
   }
 
   @Test
-  public void GET_retrieveUserWithId_success() throws Exception {
+   void GET_retrieveUserWithId_success() throws Exception {
       //given
       // here we create a user object because the get request should succeed, so we will need it to compare the result later
       User user = new User();
@@ -193,7 +193,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
   }
 
   @Test
-  public void GET_failedRetrieveUserWithId_UserNotFound() throws Exception {
+   void GET_failedRetrieveUserWithId_UserNotFound() throws Exception {
     // given
     User user = new User();
     user.setId(1L);
@@ -218,7 +218,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
   }
 
     @Test
-    public void PUT_updateUser_success() throws Exception {
+     void PUT_updateUser_success() throws Exception {
         //given
         // here we create a user object because the get request should succeed, so we will need it to compare the result later
         User user = new User();
@@ -246,7 +246,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
         MockHttpServletRequestBuilder putRequest = put("/users/{userId}", user.getId())
                 .contentType(MediaType.APPLICATION_JSON) //this line indicates that the request body in this POST request is in JSON format.
                 .content(asJsonString(userPutDTO))
-                .header("Authorization", authHeader); //here we are putting the userPostDTO variable into JSON format (i.e. {"username":"testUsername", "password":"123"}
+                .header("Authorization", authHeader); //here we are putting the userPostDTO variable into JSON format
 
         // then
         // checking the status code
@@ -255,7 +255,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
     }
   
     @Test
-    public void PUT_failedUpdateUser_UserNotFound() throws Exception {
+     void PUT_failedUpdateUser_UserNotFound() throws Exception {
         User user = new User();
         user.setId(1L);
 
@@ -277,7 +277,7 @@ public class UserControllerTest { //command to run all tests: ./gradlew test --t
         // setting the getUserById function to throw an error (in the case of not finding a user)
         MockHttpServletRequestBuilder putRequest = put("/users/{userId}", user.getId())
                 .contentType(MediaType.APPLICATION_JSON) //this line indicates that the request body in this POST request is in JSON format.
-                .content(asJsonString(userPutDTO)) //here we are putting the userPostDTO variable into JSON format (i.e. {"username":"testUsername", "password":"123"}
+                .content(asJsonString(userPutDTO)) //here we are putting the userPostDTO variable into JSON format
                 .header("Authorization", authHeader);
         // then execute the mock GET request (which we've set to throw an exception, should result in 409 (not found)
         mockMvc.perform(putRequest).andExpect(status().isNotFound());
