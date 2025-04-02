@@ -155,7 +155,7 @@ public class UserService {
 }
   public boolean validateToken(String token) {
     User user = userRepository.findByToken(token);  // Assuming you store the token on the user object
-    return user == null && user.getStatus() != UserStatus.ONLINE;  // Token is valid and the user is online
+    return user != null && user.getStatus() == UserStatus.ONLINE;  // Token is valid and the user is online
 }
 
   private Date adjustBirthDateByOneHour(Date birthDate) {
