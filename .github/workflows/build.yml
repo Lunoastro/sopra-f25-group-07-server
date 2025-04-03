@@ -30,18 +30,17 @@ jobs:
 
       - name: Test with Gradle
         run: ./gradlew test
-
-      - name: Stop workflow for manual dispatch
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: echo "Manual dispatch detected. Stopping workflow after build and test."
-        continue-on-error: false
+      
       - name: Cache SonarQube packages
+        if: github.event_name != 'workflow_dispatch'
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-      - name: Build and analyze
+    
+      - name: Build env for SonaQube and analyze
+        if: github.event_name != 'workflow_dispatch'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./gradlew build sonar --info
@@ -66,12 +65,3 @@ jobs:
 
       - name: Test
         run: curl "${{ steps.deploy.outputs.url }}"
-
-  skip-deploy:
-    name: Skip Deployment
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref != 'refs/heads/main' && success()
-    steps:
-      - name: Mark as successful on non-main branches
-        run: echo "Deployment skipped. Workflow completed successfully."
