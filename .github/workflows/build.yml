@@ -36,6 +36,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./gradlew build sonar --info
 
+      - name: Test with Gradle
+        run: ./gradlew test
+
   deploy:
     name: Deploy to Google Cloud
     runs-on: ubuntu-latest
@@ -56,3 +59,12 @@ jobs:
 
       - name: Test
         run: curl "${{ steps.deploy.outputs.url }}"
+
+  skip-deploy:
+    name: Skip Deployment
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref != 'refs/heads/main' && success()
+    steps:
+      - name: Mark as successful on non-main branches
+        run: echo "Deployment skipped. Workflow completed successfully."
