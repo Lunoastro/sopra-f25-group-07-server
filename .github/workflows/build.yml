@@ -40,10 +40,10 @@ jobs:
     name: Deploy to Google Cloud
     runs-on: ubuntu-latest
     needs: build
-    if: success()  # Only run if the build job is successful
+    if: github.ref == 'refs/heads/main' && success() 
     steps:
       - name: Checkout
-        uses: ctions/checkout@v2
+        uses: actions/checkout@v2
 
       - name: Deploy to App Engine
         id: deploy
