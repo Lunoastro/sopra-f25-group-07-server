@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService {
 
     private final UserService userService;
-    private final Logger log = LoggerFactory.getLogger(TeamService.class);
+    private final Logger log = LoggerFactory.getLogger(TaskService.class);
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
 
