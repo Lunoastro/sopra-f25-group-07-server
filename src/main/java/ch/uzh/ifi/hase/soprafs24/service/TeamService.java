@@ -51,16 +51,16 @@ public class TeamService {
   }
 
   public Team createTeam(Long userId, Team newTeam) {  //works as the registration func as well 
-    validateTeamName(newTeam.getTeamName()); //check if user's team name is valid
+    validateTeamName(newTeam.getName()); //check if user's team name is valid
     checkIfTeamExists(newTeam); //check if team name is already in repository
 
-    newTeam.setTeamXP(0);
-    newTeam.setTeamLevel(1);
-    newTeam.setTeamCode(generateUniqueTeamCode()); //generate a unique team code
-    if (newTeam.getTeamMembers() == null) {
-        newTeam.setTeamMembers(new ArrayList<>());  // Initialize the list if null
+    newTeam.setXp(0);
+    newTeam.setLevel(1);
+    newTeam.setCode(generateUniqueTeamCode()); //generate a unique team code
+    if (newTeam.getMembers() == null) {
+        newTeam.setMembers(new ArrayList<>());  // Initialize the list if null
     }
-    newTeam.getTeamMembers().add(userId); // Add userId to the list
+    newTeam.getMembers().add(userId); // Add userId to the list
     // saves the given entity but data is only persisted in the database once
     // flush() is called
     newTeam = teamRepository.save(newTeam);
@@ -81,10 +81,10 @@ public class TeamService {
     checkUserNotInTeam(user);
 
     // Assign the user to the team
-    user.setTeamId(team.getTeamId());
+    user.setTeamId(team.getId());
 
     // Add user to teamMembers list
-    team.getTeamMembers().add(user.getId());
+    team.getMembers().add(user.getId());
 
     // Save updates
     userRepository.save(user);
@@ -107,7 +107,7 @@ public class TeamService {
     checkIfTeamNameExists(newTeamName);
 
     // Update the team name
-    team.setTeamName(newTeamName);
+    team.setName(newTeamName);
     teamRepository.save(team);
     teamRepository.flush();
   }
@@ -121,7 +121,7 @@ public class TeamService {
     checkUserIsTeamMember(team, userId);
 
     // Remove user from the team
-    team.getTeamMembers().remove(userId);
+    team.getMembers().remove(userId);
     user.setTeamId(null);  // Remove teamId from user
 
     // Save changes
@@ -129,7 +129,7 @@ public class TeamService {
     teamRepository.save(team);
 
     // If the team has no more members, delete it
-    if (team.getTeamMembers().isEmpty()) {
+    if (team.getMembers().isEmpty()) {
         teamRepository.delete(team);
     }
 
@@ -139,7 +139,7 @@ public class TeamService {
   public List<Long> getUsersByTeamId(Long teamId) {
     Team team = this.teamRepository.findById(teamId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found."));
-    return team.getTeamMembers();
+    return team.getMembers();
   }
 
   public Team getTeamById(Long teamId) {
@@ -164,10 +164,10 @@ public class TeamService {
    */
 
   private void checkIfTeamExists(Team teamToBeCreated) {
-    if (teamRepository.findByTeamName(teamToBeCreated.getTeamName().trim()) != null) {
+    if (teamRepository.findByTeamName(teamToBeCreated.getName().trim()) != null) {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "Team name already exists.");
     }
-    if (teamRepository.findByTeamCode(teamToBeCreated.getTeamCode()) != null) {
+    if (teamRepository.findByTeamCode(teamToBeCreated.getCode()) != null) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Team code already exists.");
     }
   }
@@ -191,7 +191,7 @@ public class TeamService {
   }
 
   private void checkUserIsTeamMember(Team team, Long userId) {
-    if (!team.getTeamMembers().contains(userId)) {
+    if (!team.getMembers().contains(userId)) {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a member of this team.");
     }
   }

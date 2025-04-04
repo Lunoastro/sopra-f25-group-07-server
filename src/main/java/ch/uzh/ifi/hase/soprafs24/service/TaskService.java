@@ -36,13 +36,13 @@ public class TaskService {
 
     // validate the task based on the fields
     public void validateTask(Task task) {
-        if (task.getTaskName() == null || task.getTaskName().isEmpty()) {
+        if (task.getName() == null || task.getName().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
         }
         if (task.getDeadline() == null || task.getDeadline().before(new Date())) {
             throw new IllegalArgumentException("Invalid or past deadline provided.");
         }
-        if (taskRepository.findByTaskId(task.getTaskId()) != null) {
+        if (taskRepository.findByTaskId(task.getId()) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
         }
     }
@@ -52,17 +52,17 @@ public class TaskService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task cannot be null");
         }
         // Update only the fields that are provided in the DTO
-        if (taskPutDTO.getTaskName() != null) {
-            task.setTaskName(taskPutDTO.getTaskName());
+        if (taskPutDTO.getName() != null) {
+            task.setName(taskPutDTO.getName());
         }
-        if (taskPutDTO.getTaskDescription() != null) {
-            task.setTaskDescription(taskPutDTO.getTaskDescription());
+        if (taskPutDTO.getDescription() != null) {
+            task.setDescription(taskPutDTO.getDescription());
         }
         if (taskPutDTO.getDeadline() != null) {
             task.setDeadline(taskPutDTO.getDeadline());
         }
-        if (taskPutDTO.getTaskColor() != null) {
-            task.setTaskColor(taskPutDTO.getTaskColor());
+        if (taskPutDTO.getColor() != null) {
+            task.setColor(taskPutDTO.getColor());
         }
         if (taskPutDTO.isActiveStatus() != task.isActiveStatus()) {
             task.setActiveStatus(taskPutDTO.isActiveStatus());
@@ -100,16 +100,13 @@ public class TaskService {
     public Task createTask(Task task, String userToken) {
         validateTask(task);
         validateUserToken(userToken);
-        log.debug("Creating a new task with name: {}", task.getTaskName());
+        log.debug("Creating a new task with name: {}", task.getName());
         // set the task creation date
-        task.setTaskCreationDate(new Date(new Date().getTime() + 3600 * 1000));
+        task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
         task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());
         return taskRepository.save(task);
-        
-
     }
-
 
     public void deleteTask(Long taskId) {
         taskRepository.deleteById(taskId);
@@ -123,6 +120,7 @@ public class TaskService {
     public List<Task> getAllTasks() {
         return taskRepository.findAll();
     }
+    
     public Task getTaskById(Long taskId) {
         return taskRepository.findById(taskId).orElse(null);
     }
@@ -148,8 +146,4 @@ public class TaskService {
         task.setIsAssignedTo(null);
         taskRepository.save(task);
     }
-
-
-    
-
 }

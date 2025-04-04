@@ -53,21 +53,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
         // Create mock team data
         team = new Team();
-        team.setTeamId(1L);
-        team.setTeamName("Test Team");
-        team.setTeamCode("ABC123");
-        team.setTeamXP(0);
-        team.setTeamLevel(1);
+        team.setId(1L);
+        team.setName("Test Team");
+        team.setCode("ABC123");
+        team.setXP(0);
+        team.setLevel(1);
 
         teamPostDTO = new TeamPostDTO();
-        teamPostDTO.setTeamName("Test Team");
+        teamPostDTO.setName("Test Team");
 
         teamGetDTO = new TeamGetDTO();
-        teamGetDTO.setTeamId(1L);
-        teamGetDTO.setTeamName("Test Team");
-        teamGetDTO.setTeamCode("ABC123");
-        teamGetDTO.setTeamXP(0);
-        teamGetDTO.setTeamLevel(1);
+        teamGetDTO.setId(1L);
+        teamGetDTO.setName("Test Team");
+        teamGetDTO.setCode("ABC123");
+        teamGetDTO.setXp(0);
+        teamGetDTO.setLevel(1);
     }
 
     @Test
@@ -79,14 +79,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         when(teamService.createTeam(anyLong(), any(Team.class))).thenReturn(team);
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.post("/teams/create")
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams")
                 .header("Authorization", authorizationHeader)
                 .contentType("application/json")
-                .content("{ \"teamName\": \"Test Team\" }"))
+                .content("{ \"name\": \"Test Team\" }"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.teamName").value("Test Team"))
-                .andExpect(jsonPath("$.teamCode").value("ABC123"))
-                .andExpect(jsonPath("$.teamLevel").value(1));
+                .andExpect(jsonPath("$.name").value("Test Team"))
+                .andExpect(jsonPath("$.code").value("ABC123"))
+                .andExpect(jsonPath("$.level").value(1));
     }
 
     @Test
@@ -101,10 +101,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
             .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "add Team failed because team name already exists"));
 
     // Create a DTO for the team creation request
-        String teamJson = "{ \"teamName\": \"Test Team\" }";
+        String teamJson = "{ \"name\": \"Test Team\" }";
 
     // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.post("/teams/create")
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams")
                 .header("Authorization", authorizationHeader)
                 .contentType("application/json")
                 .content(teamJson))
@@ -121,8 +121,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         doNothing().when(teamService).joinTeam(anyLong(), anyString());
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.post("/teams/1/join")
-                .param("teamCode", "ABC123")
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams/join")
+                .param("code", "ABC123")
                 .header("Authorization", authorizationHeader))
                 .andExpect(status().isCreated());
 
@@ -142,8 +142,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 .when(teamService).joinTeam(anyLong(), anyString());
     
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.post("/teams/999/join")  // Assuming team with ID 999 doesn't exist
-                    .param("teamCode", "NONEXISTENT")
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams/join")  // Assuming team with
+                    .param("code", "NONEXISTENT")
                     .header("Authorization", authorizationHeader))
                 .andExpect(status().isNotFound());  // Expect a 404 Not Found status
     
@@ -164,8 +164,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         mockMvc.perform(MockMvcRequestBuilders.get("/teams/1")
                 .header("Authorization", authorizationHeader))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.teamId").value(1))
-                .andExpect(jsonPath("$.teamName").value("Test Team"));
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("Test Team"));
     }
 
     @Test
@@ -233,10 +233,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         doNothing().when(teamService).updateTeamName(anyLong(), anyLong(), anyString());
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.put("/teams/1/edit")
+        mockMvc.perform(MockMvcRequestBuilders.put("/teams/1")
                 .header("Authorization", authorizationHeader)
                 .contentType("application/json")
-                .content("{ \"teamName\": \"New Team Name\" }"))
+                .content("{ \"name\": \"New Team Name\" }"))
                 .andExpect(status().isNoContent());
 
         // Verify that the teamService.updateTeamName method was called
@@ -253,10 +253,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 .when(teamService).updateTeamName(anyLong(), anyLong(), anyString());
     
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.put("/teams/999/edit")
+        mockMvc.perform(MockMvcRequestBuilders.put("/teams/999")
                 .header("Authorization", authorizationHeader)
                 .contentType("application/json")
-                .content("{ \"teamName\": \"New Team Name\" }"))
+                .content("{ \"name\": \"New Team Name\" }"))
             .andExpect(status().isNotFound());
     
         // Verify that the teamService.updateTeamName method was called
@@ -273,7 +273,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         doNothing().when(teamService).quitTeam(anyLong(), anyLong());
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.delete("/teams/1/users/1/quit")
+        mockMvc.perform(MockMvcRequestBuilders.delete("/teams/1/users/1")
                 .header("Authorization", authorizationHeader))
                 .andExpect(status().isNoContent());
 
@@ -294,7 +294,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 .when(teamService).quitTeam(eq(1L), anyLong()); // Allow any teamId
     
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.delete("/teams/999/users/1/quit")
+        mockMvc.perform(MockMvcRequestBuilders.delete("/teams/999/users/1")
                 .header("Authorization", authorizationHeader))
             .andExpect(status().isNotFound());
     

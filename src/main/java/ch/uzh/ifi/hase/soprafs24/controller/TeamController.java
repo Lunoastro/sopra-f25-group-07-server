@@ -46,7 +46,7 @@ public class TeamController {
     this.userService = userService;
   }
 
-  @PostMapping("/teams/create")
+  @PostMapping("/teams")
   @ResponseStatus(HttpStatus.CREATED)
   @ResponseBody
   public TeamGetDTO createTeam(@RequestBody TeamPostDTO teamPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
@@ -69,7 +69,7 @@ public class TeamController {
     return DTOMapper.INSTANCE.convertEntityToTeamGetDTO(createdTeam);
   }
 
-  @PostMapping("/teams/{teamId}/join")
+  @PostMapping("/teams/join")
   @ResponseStatus(HttpStatus.CREATED)
   @ResponseBody
   public void joinTeam(@RequestParam String teamCode, @RequestHeader("Authorization") String authorizationHeader) {
@@ -133,7 +133,7 @@ public class TeamController {
                 .toList();
   }
 
-  @PutMapping("/teams/{teamId}/edit")
+  @PutMapping("/teams/{teamId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void editTeamName(@PathVariable Long teamId, @RequestBody TeamPutDTO teamPutDTO, 
                          @RequestHeader("Authorization") String authorizationHeader) {    
@@ -151,13 +151,21 @@ public class TeamController {
     }
 
     // Extract new team name from DTO
-    String newTeamName = teamPutDTO.getTeamName();
+    String newTeamName = teamPutDTO.getName();
 
     // Call service to update team name
     teamService.updateTeamName(teamId, userId, newTeamName);
   }
 
-  @DeleteMapping("/teams/{teamId}/users/{userId}/quit")
+  @PutMapping("/teams/{teamId}/paused")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void pauseTeam(@PathVariable Long teamId, @RequestHeader("Authorization") String authorizationHeader) {
+    
+    throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Pause team functionality not implemented yet.");
+
+  }
+
+  @DeleteMapping("/teams/{teamId}/users/{userId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void userQuit(@PathVariable Long teamId, @PathVariable Long userId, 
                      @RequestHeader("Authorization") String authorizationHeader) {

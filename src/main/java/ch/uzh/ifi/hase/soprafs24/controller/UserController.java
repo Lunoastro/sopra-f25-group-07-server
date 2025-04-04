@@ -36,6 +36,32 @@ public class UserController {
     this.userRepository = userRepository;
   }
 
+  @PostMapping("/users")
+  @ResponseStatus(HttpStatus.CREATED)
+  @ResponseBody
+  public UserGetDTO createUser(@RequestBody UserPostDTO userPostDTO) {
+    // convert API user to internal representation
+    User userInput = DTOMapper.INSTANCE.convertUserPostDTOtoEntity(userPostDTO);
+
+    // create user
+    User createdUser = userService.createUser(userInput);
+    // convert internal representation of user back to API
+    return DTOMapper.INSTANCE.convertEntityToUserGetDTO(createdUser);
+  }
+
+  @PostMapping("/login")
+  @ResponseStatus(HttpStatus.OK)
+  @ResponseBody
+  public UserGetDTO loginUser(@RequestBody UserPostDTO userPostDTO) {
+      // convert API user to internal representation
+    User userInput = DTOMapper.INSTANCE.convertUserPostDTOtoEntity(userPostDTO);
+
+      // log in user
+    User loggedInUser = userService.loginUser(userInput);
+      // convert internal representation of user back to API
+    return DTOMapper.INSTANCE.convertEntityToUserGetDTO(loggedInUser);
+  }  
+
   @GetMapping("/users")
   @ResponseStatus(HttpStatus.OK)
   @ResponseBody
@@ -56,48 +82,6 @@ public class UserController {
         userGetDTOs.add(DTOMapper.INSTANCE.convertEntityToUserGetDTO(user));
     }
     return userGetDTOs;
-}
-
-  @PostMapping("/users")
-  @ResponseStatus(HttpStatus.CREATED)
-  @ResponseBody
-  public UserGetDTO createUser(@RequestBody UserPostDTO userPostDTO) {
-    // convert API user to internal representation
-    User userInput = DTOMapper.INSTANCE.convertUserPostDTOtoEntity(userPostDTO);
-
-    // create user
-    User createdUser = userService.createUser(userInput);
-    // convert internal representation of user back to API
-    return DTOMapper.INSTANCE.convertEntityToUserGetDTO(createdUser);
-  }
-
-  @PostMapping("/registeredUsers")
-  @ResponseStatus(HttpStatus.OK)
-  @ResponseBody
-  public UserGetDTO loginUser(@RequestBody UserPostDTO userPostDTO) {
-      // convert API user to internal representation
-    User userInput = DTOMapper.INSTANCE.convertUserPostDTOtoEntity(userPostDTO);
-
-      // log in user
-    User loggedInUser = userService.loginUser(userInput);
-      // convert internal representation of user back to API
-    return DTOMapper.INSTANCE.convertEntityToUserGetDTO(loggedInUser);
-  }  
-
-  @PutMapping("/logoff")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void logoff(@RequestBody UserPutDTO userPutDTO, @RequestHeader("Authorization") String authorizationHeader) {
-    String token = validateAuthorizationHeader(authorizationHeader);
-    if (!userService.validateToken(token)) {
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
-    }
-    Long authenticatedUserId = userService.findIDforToken(token);
-    // Ensure the user ID in the request matches the authenticated user ID
-    if (!authenticatedUserId.equals(userPutDTO.getId())) {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: You can only log off your own account.");
-    }
-    User userInput = DTOMapper.INSTANCE.convertUserPutDTOtoEntity(userPutDTO);
-    userService.logoffUser(userInput);
   }
 
   @GetMapping("/users/{userId}")
@@ -113,7 +97,23 @@ public class UserController {
 
     User user = userService.getUserById(userId);
     return DTOMapper.INSTANCE.convertEntityToUserGetDTO(user);
-}
+  }
+
+  @PutMapping("/logout")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void logoff(@RequestBody UserPutDTO userPutDTO, @RequestHeader("Authorization") String authorizationHeader) {
+    String token = validateAuthorizationHeader(authorizationHeader);
+    if (!userService.validateToken(token)) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
+    }
+    Long authenticatedUserId = userService.findIDforToken(token);
+    // Ensure the user ID in the request matches the authenticated user ID
+    if (!authenticatedUserId.equals(userPutDTO.getId())) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: You can only log off your own account.");
+    }
+    User userInput = DTOMapper.INSTANCE.convertUserPutDTOtoEntity(userPutDTO);
+    userService.logoffUser(userInput);
+  }
 
   @PutMapping("/users/{userId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -141,12 +141,18 @@ public class UserController {
     userService.updateUser(userInput);
   }
 
+  @DeleteMapping("/users/{userId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteUser(@PathVariable Long userId, @RequestHeader("Authorization") String authorizationHeader) {
+
+    throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
+    
+  }
+
   private String validateAuthorizationHeader(String authorizationHeader) {
     if (authorizationHeader == null || authorizationHeader.trim().isEmpty() || !authorizationHeader.startsWith("Bearer ")) {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Missing or invalid Authorization header.");
     }
     return authorizationHeader.substring(7);  // Remove "Bearer " prefix
-}
-
-
+  }
 }

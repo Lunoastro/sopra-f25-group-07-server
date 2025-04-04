@@ -24,6 +24,19 @@ public class TaskController {
   TaskController(TaskService taskService) {
     this.taskService = taskService;
   }
+    @PostMapping("/tasks")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String userToken) {
+        // Extract the token from the Bearer header
+        taskService.validateUserToken(userToken);
+        // Convert the incoming DTO to an entity
+        Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(taskPostDTO);
+        // send the task to the service for creation
+        Task createdTask = taskService.createTask(task, userToken);
+        // Convert the created entity back to a DTO for the response
+        return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(createdTask);
+    }
+
     @GetMapping("/tasks")
     @ResponseStatus(HttpStatus.OK)
     public List<TaskGetDTO> getAllTasks(@RequestHeader("Authorization") String userToken) {
@@ -38,17 +51,20 @@ public class TaskController {
         return taskGetDTOs;
     }
 
-    @PostMapping("/tasks/create")
-    @ResponseStatus(HttpStatus.CREATED)
-    public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String userToken) {
-        // Extract the token from the Bearer header
-        taskService.validateUserToken(userToken);
-        // Convert the incoming DTO to an entity
-        Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(taskPostDTO);
-        // send the task to the service for creation
-        Task createdTask = taskService.createTask(task, userToken);
-        // Convert the created entity back to a DTO for the response
-        return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(createdTask);
+    @GetMapping("/tasks/pending")
+    @ResponseStatus(HttpStatus.OK)
+    public List<TaskGetDTO> getTasksPending(@RequestHeader("Authorization") String userToken) {
+        
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
+
+    }
+
+    @GetMapping("/tasks/recurring")
+    @ResponseStatus(HttpStatus.OK)
+    public List<TaskGetDTO> getRecurringTasks(@RequestHeader("Authorization") String userToken) {
+        
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
+
     }
 
     @GetMapping("/tasks/{taskId}")
@@ -65,8 +81,7 @@ public class TaskController {
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task);
     }
 
-
-    @PutMapping("/tasks/{taskId}/edit")
+    @PutMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.OK)
     public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String userToken) {
         // Validate the user token
@@ -82,8 +97,40 @@ public class TaskController {
         // Convert the updated entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(updatedTask);
     }
+
+    @PutMapping("/tasks/{taskId}/claim")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public List<TaskGetDTO> claimTasks(@RequestHeader("Authorization") String userToken) {
+        
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
+
+    }
+
+    @PutMapping("/tasks/{taskId}/quit")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public List<TaskGetDTO> quitTasks(@RequestHeader("Authorization") String userToken) {
+        
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
+
+    }
+
+    @PutMapping("/tasks/{taskId}/expire")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public List<TaskGetDTO> expireTasks(@RequestHeader("Authorization") String userToken) {
+        
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
+
+    }
+
+    @DeleteMapping("/tasks/{taskId}/finish")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public List<TaskGetDTO> finishTasks(@RequestHeader("Authorization") String userToken) {
+        
+        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
+
+    }
     
-    @DeleteMapping("/tasks/{taskId}/delete")
+    @DeleteMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTask(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         // Validate the user token

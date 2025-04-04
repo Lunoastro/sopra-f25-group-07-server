@@ -54,6 +54,7 @@ public class User implements Serializable {
   @Column(nullable = false)
   private int level;
 
+  @Enumerated(EnumType.STRING)
   @Column
   private ColorID color;
 
@@ -61,6 +62,7 @@ public class User implements Serializable {
   private long teamId;
 
 
+  // Getters and Setters
   public Long getId() {
     return id;
   }
@@ -117,7 +119,6 @@ public class User implements Serializable {
     this.birthDate = birthDate;
   }
 
-
   public String getPassword() {
     return password;
   }
@@ -126,11 +127,11 @@ public class User implements Serializable {
     this.password = password; 
   }
 
-  public int getXP() {
+  public int getXp() {
     return xp;
   }
 
-  public void setXP(int xp) {
+  public void setXp(int xp) {
     this.xp = xp;
   }
 
@@ -148,7 +149,6 @@ public class User implements Serializable {
 
   public void setColor(ColorID color) {
     this.color = color;
-
   }
 
   public Long getTeamId() {
