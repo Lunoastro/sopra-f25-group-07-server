@@ -18,4 +18,5 @@ public class TeamGetDTO {
     private int level;
     private String code;
     private List<Long> members;
+    private List<Long> tasks;
 }

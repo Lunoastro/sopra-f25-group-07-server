@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
+import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -40,6 +41,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     @MockBean
     private UserService userService;
 
+    @MockBean
+    private TeamRepository teamRepository;
+
     private MockMvc mockMvc;
 
     private Team team;
@@ -56,7 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         team.setId(1L);
         team.setName("Test Team");
         team.setCode("ABC123");
-        team.setXP(0);
+        team.setXp(0);
         team.setLevel(1);
 
         teamPostDTO = new TeamPostDTO();
@@ -118,6 +122,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
         when(userService.findIDforToken(anyString())).thenReturn(1L);
+        when(teamRepository.findByCode("ABC123")).thenReturn(new Team());
         doNothing().when(teamService).joinTeam(anyLong(), anyString());
 
         // When & Then
@@ -131,27 +136,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     }
 
     @Test
-     void POST_failedJoinTeam_invalidInput_teamNotFound() throws Exception {
+    void POST_joinTeam_invalidCode_teamNotFound() throws Exception {
         // Given
         String authorizationHeader = "Bearer valid_token";
         when(userService.validateToken(anyString())).thenReturn(true);
         when(userService.findIDforToken(anyString())).thenReturn(1L);
-        
-        // Simulate that the team does not exist (throws a not found exception)
-        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team with this team code does not exist"))
-                .when(teamService).joinTeam(anyLong(), anyString());
-    
+
+        // Mock joinTeam to throw 404
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found."))
+            .when(teamService).joinTeam(anyLong(), eq("INVALID_CODE"));
+
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.post("/teams/join")  // Assuming team with
-                    .param("code", "NONEXISTENT")
-                    .header("Authorization", authorizationHeader))
-                .andExpect(status().isNotFound());  // Expect a 404 Not Found status
-    
-        // Verify that the teamService.joinTeam method was called
-        verify(teamService, times(1)).joinTeam(anyLong(), eq("NONEXISTENT"));
+        mockMvc.perform(MockMvcRequestBuilders.post("/teams/join")
+                .param("code", "INVALID_CODE")
+                .header("Authorization", authorizationHeader))
+                .andExpect(status().isNotFound()); // Expect 404 when team not found
+
+        // Verify that the teamService.findByCode method was called
+        verify(teamService, times(1)).joinTeam(anyLong(), eq("INVALID_CODE"));
     }
     
-
     @Test
      void GET_getTeamById_validTeamId_teamReturned() throws Exception {
         // Given

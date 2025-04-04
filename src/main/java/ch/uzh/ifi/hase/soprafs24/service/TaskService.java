@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.Date;
@@ -42,7 +44,7 @@ public class TaskService {
         if (task.getDeadline() == null || task.getDeadline().before(new Date())) {
             throw new IllegalArgumentException("Invalid or past deadline provided.");
         }
-        if (taskRepository.findByTaskId(task.getId()) != null) {
+        if (taskRepository.findTaskById(task.getId()) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
         }
     }
@@ -64,8 +66,8 @@ public class TaskService {
         if (taskPutDTO.getColor() != null) {
             task.setColor(taskPutDTO.getColor());
         }
-        if (taskPutDTO.isActiveStatus() != task.isActiveStatus()) {
-            task.setActiveStatus(taskPutDTO.isActiveStatus());
+        if (taskPutDTO.getActiveStatus() != task.getActiveStatus()) {
+            task.setActiveStatus(taskPutDTO.getActiveStatus());
         }
     }
 
@@ -86,13 +88,34 @@ public class TaskService {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
         }
-        Task task = taskRepository.findByTaskId(taskId);
+        Task task = taskRepository.findTaskById(taskId);
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
         }
         if (!task.getIsAssignedTo().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit this task");
         }
+    }
+
+    public List<Task> getFilteredTasks(Boolean activeStatus, String type) {
+        List<Task> allTasks = getAllTasks();
+    
+        // Filter by activeStatus (if active or inactive)
+        if (activeStatus == true || activeStatus == false) {
+            allTasks = allTasks.stream()
+                           .filter(task -> task.getActiveStatus() == activeStatus) // True = active Tasks, False = inactive Tasks
+                           .collect(Collectors.toList());
+        }
+    
+        // Filter by type (additional or recurring)
+        if (type != null && !type.isEmpty()) {
+            if (type.equalsIgnoreCase("recurring")) {
+                allTasks = allTasks.stream()
+                                .filter(task -> task.getFrequency() != null) // Check if frequency is not null -> recurring task
+                                .collect(Collectors.toList());
+            }
+        }
+        return allTasks;
     }
 
     // check uniqueness of the task name
@@ -117,7 +140,7 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    public List<Task> getAllTasks() {
+    private List<Task> getAllTasks() {
         return taskRepository.findAll();
     }
     

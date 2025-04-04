@@ -122,7 +122,7 @@ public class TeamService {
 
     // Remove user from the team
     team.getMembers().remove(userId);
-    user.setTeamId(null);  // Remove teamId from user
+    user.setId(null);  // Remove teamId from user
 
     // Save changes
     userRepository.save(user);
@@ -144,7 +144,7 @@ public class TeamService {
 
   public Team getTeamById(Long teamId) {
     // Logic to fetch the team by TeamId
-    Team team = teamRepository.findByTeamId(teamId);
+    Team team = teamRepository.findTeamById(teamId);
     if (team == null) {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found.");
     } else {
@@ -164,10 +164,10 @@ public class TeamService {
    */
 
   private void checkIfTeamExists(Team teamToBeCreated) {
-    if (teamRepository.findByTeamName(teamToBeCreated.getName().trim()) != null) {
+    if (teamRepository.findByName(teamToBeCreated.getName().trim()) != null) {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "Team name already exists.");
     }
-    if (teamRepository.findByTeamCode(teamToBeCreated.getCode()) != null) {
+    if (teamRepository.findByCode(teamToBeCreated.getCode()) != null) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Team code already exists.");
     }
   }
@@ -179,7 +179,7 @@ public class TeamService {
   }
 
   private void checkIfTeamNameExists(String teamName) {
-    if (teamRepository.findByTeamName(teamName) != null) {
+    if (teamRepository.findByName(teamName) != null) {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "A team with this name already exists.");
     }
   }
@@ -200,13 +200,13 @@ public class TeamService {
     String teamCode;
     do {
         teamCode = UUID.randomUUID().toString().substring(0, 6);
-    } while (teamRepository.findByTeamCode(teamCode) != null); //if team cannot be found via generated code, we return the unique code
+    } while (teamRepository.findByCode(teamCode) != null); //if team cannot be found via generated code, we return the unique code
     return teamCode;
   }
 
   private Team getTeamByCode(String teamCode) {
     // Logic to fetch the team by TeamCode
-    Team team = teamRepository.findByTeamCode(teamCode);
+    Team team = teamRepository.findByCode(teamCode);
     if (team == null) {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found.");
     } else {

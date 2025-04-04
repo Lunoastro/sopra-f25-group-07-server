@@ -55,7 +55,7 @@ public class Task implements Serializable {
     private Long isAssignedTo;
 
     @Column(nullable = true)
-    private int frequency;
+    private Integer frequency;
 
 
     // Getters and Setters
@@ -139,7 +139,7 @@ public class Task implements Serializable {
         this.color = color;
     }
 
-    public boolean isActiveStatus() {
+    public boolean getActiveStatus() {
         return activeStatus;
     }
 
@@ -154,11 +154,11 @@ public class Task implements Serializable {
         this.isAssignedTo = isAssignedTo;
     }
 
-    public int getFrequency() {
+    public Integer getFrequency() {
         return frequency;
     }
 
-    public void setFrequency(int frequency) {
+    public void setFrequency(Integer frequency) {
         this.frequency = frequency;
     }
 }
