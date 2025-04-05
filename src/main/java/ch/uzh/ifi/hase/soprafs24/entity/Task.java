@@ -18,13 +18,13 @@ public class Task implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long taskId;
+    private Long id;
 
     @Column(nullable = false)
-    private String taskName;
+    private String name;
 
     @Column(nullable = true)
-    private String taskDescription;
+    private String description;
 
     @Column(nullable = false)
     private boolean isPaused;
@@ -39,14 +39,14 @@ public class Task implements Serializable {
     private Date deadline;
 
     @Column(nullable = false)
-    private Date taskCreationDate;
+    private Date creationDate;
 
     @Column(nullable = false)
     private int value;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = true)
-    private ColorID taskColor;
+    private ColorID color;
 
     @Column(nullable = false)
     private boolean activeStatus;
@@ -54,29 +54,33 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private Long isAssignedTo;
 
+    @Column(nullable = true)
+    private Integer frequency;
+
+
     // Getters and Setters
-    public Long getTaskId() {
-        return taskId;
+    public Long getId() {
+        return id;
     }
 
-    public void setTaskId(Long taskId) {
-        this.taskId = taskId;
+    public void setId(Long id) {
+        this.id = id;
     }
 
-    public String getTaskName() {
-        return taskName;
+    public String getName() {
+        return name;
     }
 
-    public void setTaskName(String taskName) {
-        this.taskName = taskName;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public String getTaskDescription() {
-        return taskDescription;
+    public String getDescription() {
+        return description;
     }
 
-    public void setTaskDescription(String taskDescription) {
-        this.taskDescription = taskDescription;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public boolean isPaused() {
@@ -111,12 +115,12 @@ public class Task implements Serializable {
         this.deadline = deadline;
     }
 
-    public Date getTaskCreationDate() {
-        return taskCreationDate;
+    public Date getCreationDate() {
+        return creationDate;
     }
 
-    public void setTaskCreationDate(Date taskCreationDate) {
-        this.taskCreationDate = taskCreationDate;
+    public void setCreationDate(Date creationDate) {
+        this.creationDate = creationDate;
     }
 
     public int getValue() {
@@ -127,25 +131,34 @@ public class Task implements Serializable {
         this.value = value;
     }
 
-    public ColorID getTaskColor() {
-        return taskColor;
+    public ColorID getColor() {
+        return color;
     }
 
-    public void setTaskColor(ColorID taskColor) {
-        this.taskColor = taskColor;
+    public void setColor(ColorID color) {
+        this.color = color;
     }
 
-    public boolean isActiveStatus() {
+    public boolean getActiveStatus() {
         return activeStatus;
     }
 
     public void setActiveStatus(boolean activeStatus) {
         this.activeStatus = activeStatus;
     }
+
     public Long getIsAssignedTo() {
         return isAssignedTo;
     }
     public void setIsAssignedTo(Long isAssignedTo) {
         this.isAssignedTo = isAssignedTo;
+    }
+
+    public Integer getFrequency() {
+        return frequency;
+    }
+
+    public void setFrequency(Integer frequency) {
+        this.frequency = frequency;
     }
 }

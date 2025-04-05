@@ -18,78 +18,82 @@ public class Team implements Serializable {
 
     @Id
     @GeneratedValue
-    private Long teamId;
+    private Long id;
 
     @Column(nullable = false, unique = true)
-    private String teamName;
+    private String name;
 
     @Column(nullable = false)
-    private int teamXP;
+    private int xp;
 
     @Column(nullable = false)
-    private int teamLevel;
+    private int level;
 
     @Column(nullable = false, unique = true)
-    private String teamCode;
+    private String code;
 
     @ElementCollection
-    private List<Long> teamMembers = new ArrayList<>(); // Storing user IDs of the team members
-
-
-    /*@ElementCollection
-    teamTasks
+    private List<Long> members = new ArrayList<>(); // Storing user IDs of the team members
 
     @ElementCollection
-    teamPendingTasks*/
+    private List<Long> tasks = new ArrayList<>(); // Storing task IDs of the all tasks (additional and recurring tasks)
 
 
     // Getters and Setters
-    public Long getTeamId() {
-        return teamId;
+    public Long getId() {
+        return id;
     }
 
-    public void setTeamId(Long teamId) {
-        this.teamId = teamId;
+    public void setId(Long id) {
+        this.id = id;
     }
 
-    public String getTeamName() {
-        return teamName;
+    public String getName() {
+        return name;
     }
 
-    public void setTeamName(String teamName) {
-        this.teamName = teamName;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public int getTeamXP() {
-        return teamXP;
+    public int getXp() {
+        return xp;
     }
 
-    public void setTeamXP(int teamXP) {
-        this.teamXP = teamXP;
+    public void setXp(int xp) {
+        this.xp = xp;
     }
 
-    public String getTeamCode() {
-        return teamCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setTeamCode(String teamCode) {
-        this.teamCode = teamCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
-    public int getTeamLevel() {
-        return teamLevel;
+    public int getLevel() {
+        return level;
     }
 
-    public void setTeamLevel(int teamLevel) {
-        this.teamLevel = teamLevel;
+    public void setLevel(int level) {
+        this.level = level;
     }
 
-    public List<Long> getTeamMembers() {
-        return teamMembers;
+    public List<Long> getMembers() {
+        return members;
     }
 
-    public void setTeamMembers(List<Long> teamMembers) {
-        this.teamMembers = teamMembers;
+    public void setMembers(List<Long> members) {
+        this.members = members;
+    }
+
+    public List<Long> getTasks() {
+        return tasks;
+    }
+    
+    public void setTasks(List<Long> tasks) {
+        this.tasks = tasks;
     }
 }
 

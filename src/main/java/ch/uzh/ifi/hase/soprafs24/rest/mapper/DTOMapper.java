@@ -11,6 +11,7 @@ import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamDeleteDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPutDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserDeleteDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
@@ -53,61 +54,58 @@ public interface DTOMapper {
   @Mapping(source = "birthDate", target = "birthDate")
   User convertUserPutDTOtoEntity(UserPutDTO userPutDTO);
 
-  @Mapping(source = "teamId", target = "teamId")
-  @Mapping(source = "teamName", target = "teamName")
-  @Mapping(source = "teamXP", target = "teamXP")
-  @Mapping(source = "teamLevel", target = "teamLevel")
-  @Mapping(source = "teamCode", target = "teamCode")
-  @Mapping(source = "teamMembers", target = "teamMembers")
-  TeamGetDTO convertEntityToTeamGetDTO(Team team);
+  @Mapping(source = "id", target = "id")
+  User convertUserDeleteDTOtoEntity(UserDeleteDTO userDeleteDTO);
 
-  @Mapping(source = "teamName", target = "teamName")
-  @Mapping(source = "teamCode", target = "teamCode")
+
+  @Mapping(source = "name", target = "name")
+  @Mapping(source = "code", target = "code")
   Team convertTeamPostDTOtoEntity(TeamPostDTO teamPostDTO);
 
-  @Mapping(source = "teamName", target = "teamName")
+  @Mapping(source = "id", target = "id")
+  @Mapping(source = "name", target = "name")
+  @Mapping(source = "xp", target = "xp")
+  @Mapping(source = "level", target = "level")
+  @Mapping(source = "code", target = "code")
+  @Mapping(source = "members", target = "members")
+  @Mapping(source = "tasks", target = "tasks")
+  TeamGetDTO convertEntityToTeamGetDTO(Team team);
+
+  @Mapping(source = "name", target = "name")
   Team convertTeamPutDTOtoEntity(TeamPutDTO teamPutDTO);
 
-  @Mapping(source = "teamId", target = "teamId")
+  @Mapping(source = "id", target = "id")
   Team convertTeamDeleteDTOtoEntity(TeamDeleteDTO teamDeleteDTO);
 
-  @Mapping(source = "taskId", target = "taskId")
-  @Mapping(source = "taskName", target = "taskName")
-  @Mapping(source = "taskDescription", target = "taskDescription")
+  @Mapping(source = "name", target = "name")
+  @Mapping(source = "description", target = "description")
+  @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
+  Task convertTaskPostDTOtoEntity(TaskPostDTO taskPostDTO);
+  
+  @Mapping(source = "id", target = "id")
+  @Mapping(source = "name", target = "name")
+  @Mapping(source = "description", target = "description")
   @Mapping(source = "deadline", target = "deadline")
-  @Mapping(source = "taskColor", target = "taskColor")
+  @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
   TaskGetDTO convertEntityToTaskGetDTO(Task task);
 
-  /*
-   * The Mapping for TaskPostDTO 
-   */
-
-  @Mapping(source = "taskName", target = "taskName")
-  @Mapping(source = "taskDescription", target = "taskDescription")
-  @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
-  Task convertTaskPostDTOtoEntity(TaskPostDTO taskPostDTO);
-  /*
-   * The Mapping for TaskGetDTO
-   */
-  @Mapping(source = "taskId", target = "taskId")
+  @Mapping(source = "id", target = "id")
   @Mapping(source = "isAssignedTo", target = "isAssignedTo")
-  @Mapping(source = "taskName", target = "taskName")
-  @Mapping(source = "taskDescription", target = "taskDescription")
+  @Mapping(source = "name", target = "name")
+  @Mapping(source = "description", target = "description")
   @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
-  @Mapping(source = "taskColor", target = "taskColor")
+  @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
   Task convertTaskGetDTOtoEntity(TaskGetDTO taskGetDTO);
-  /*
-   * The Mapping for TaskPutDTO
-   */
-  @Mapping(source = "taskName", target = "taskName")
-  @Mapping(source = "taskDescription", target = "taskDescription")
+
+  @Mapping(source = "name", target = "name")
+  @Mapping(source = "description", target = "description")
   @Mapping(source = "deadline", target = "deadline",dateFormat = "yyyy-MM-dd")
-  @Mapping(source = "taskColor", target = "taskColor")
+  @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
   Task convertTaskPutDTOtoEntity(TaskPutDTO taskPutDTO);
 
-  @Mapping(source = "taskId", target = "taskId")
+  @Mapping(source = "id", target = "id")
   Task convertTaskDeleteDTOtoEntity(TaskDeleteDTO taskDeleteDTO);
 }
