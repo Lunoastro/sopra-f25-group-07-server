@@ -102,7 +102,7 @@ public class TaskController {
 
     @PutMapping("/tasks/{taskId}/claim")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> claimTasks(@RequestHeader("Authorization") String userToken) {
+    public List<TaskGetDTO> claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
 
@@ -110,7 +110,7 @@ public class TaskController {
 
     @PutMapping("/tasks/{taskId}/quit")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> quitTasks(@RequestHeader("Authorization") String userToken) {
+    public List<TaskGetDTO> quitTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
 
@@ -118,7 +118,7 @@ public class TaskController {
 
     @PutMapping("/tasks/{taskId}/expire")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> expireTasks(@RequestHeader("Authorization") String userToken) {
+    public List<TaskGetDTO> expireTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
 
@@ -126,7 +126,7 @@ public class TaskController {
 
     @DeleteMapping("/tasks/{taskId}/finish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> finishTasks(@RequestHeader("Authorization") String userToken) {
+    public List<TaskGetDTO> finishTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
 
