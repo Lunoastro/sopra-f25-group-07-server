@@ -1,4 +1,4 @@
-package ch.uzh.ifi.hase.soprafs24.rest.dto.team;
+package ch.uzh.ifi.hase.soprafs24.rest.dto.user;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,6 +10,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TeamDeleteDTO {
+public class UserDeleteDTO {
     private Long id;
 }

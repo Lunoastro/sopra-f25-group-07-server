@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.*;
     testUser.setUsername("testUsername");
     testUser.setPassword("12345");
 
-    testUser.setXP(0); //later on this will be done in the service
+    testUser.setXp(0); //later on this will be done in the service
     testUser.setLevel(1);
     testUser.setColor(ColorID.C1);
 
@@ -59,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.*;
     assertEquals(testUser.getPassword(), createdUser.getPassword());
     assertNotNull(createdUser.getToken());
     assertEquals(UserStatus.ONLINE, createdUser.getStatus());
-    assertEquals(testUser.getXP(), createdUser.getXP());
+    assertEquals(testUser.getXp(), createdUser.getXp());
     assertEquals(testUser.getLevel(), createdUser.getLevel());
     assertEquals(testUser.getColor(), createdUser.getColor());
   }
@@ -73,7 +73,7 @@ import static org.junit.jupiter.api.Assertions.*;
     testUser.setUsername("testUsername");
     testUser.setPassword("12345");
 
-    testUser.setXP(0); //later on this will be done in the service
+    testUser.setXp(0); //later on this will be done in the service
     testUser.setLevel(1);
     testUser.setColor(ColorID.C1);
 
@@ -87,7 +87,7 @@ import static org.junit.jupiter.api.Assertions.*;
     testUser2.setUsername("testUsername");
     testUser.setPassword("12345");
 
-    testUser.setXP(0); //later on this will be done in the service
+    testUser.setXp(0); //later on this will be done in the service
     testUser.setLevel(1);
     testUser.setColor(ColorID.C1);
 

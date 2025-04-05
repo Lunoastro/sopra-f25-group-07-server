@@ -12,7 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class TaskPostDTO {
-    private String taskName;
-    private String taskDescription;
+    private String name;
+    private String description;
     private Date deadline;
 }

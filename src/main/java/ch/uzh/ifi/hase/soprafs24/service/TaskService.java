@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.Date;
@@ -36,13 +37,13 @@ public class TaskService {
 
     // validate the task based on the fields
     public void validateTask(Task task) {
-        if (task.getTaskName() == null || task.getTaskName().isEmpty()) {
+        if (task.getName() == null || task.getName().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
         }
         if (task.getDeadline() == null || task.getDeadline().before(new Date())) {
             throw new IllegalArgumentException("Invalid or past deadline provided.");
         }
-        if (taskRepository.findByTaskId(task.getTaskId()) != null) {
+        if (taskRepository.findTaskById(task.getId()) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
         }
     }
@@ -52,20 +53,20 @@ public class TaskService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task cannot be null");
         }
         // Update only the fields that are provided in the DTO
-        if (taskPutDTO.getTaskName() != null) {
-            task.setTaskName(taskPutDTO.getTaskName());
+        if (taskPutDTO.getName() != null) {
+            task.setName(taskPutDTO.getName());
         }
-        if (taskPutDTO.getTaskDescription() != null) {
-            task.setTaskDescription(taskPutDTO.getTaskDescription());
+        if (taskPutDTO.getDescription() != null) {
+            task.setDescription(taskPutDTO.getDescription());
         }
         if (taskPutDTO.getDeadline() != null) {
             task.setDeadline(taskPutDTO.getDeadline());
         }
-        if (taskPutDTO.getTaskColor() != null) {
-            task.setTaskColor(taskPutDTO.getTaskColor());
+        if (taskPutDTO.getColor() != null) {
+            task.setColor(taskPutDTO.getColor());
         }
-        if (taskPutDTO.isActiveStatus() != task.isActiveStatus()) {
-            task.setActiveStatus(taskPutDTO.isActiveStatus());
+        if (taskPutDTO.getActiveStatus() != task.getActiveStatus()) {
+            task.setActiveStatus(taskPutDTO.getActiveStatus());
         }
     }
 
@@ -86,7 +87,7 @@ public class TaskService {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
         }
-        Task task = taskRepository.findByTaskId(taskId);
+        Task task = taskRepository.findTaskById(taskId);
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
         }
@@ -95,21 +96,36 @@ public class TaskService {
         }
     }
 
-    // check uniqueness of the task name
+    public List<Task> getFilteredTasks(Boolean isActive, String type) {
+        // If both filters are null, return all tasks
+        List<Task> allTasks = getAllTasks(); 
+        
+        // Filter by activeStatus (if active or inactive)
+        if (isActive != null) {
+            allTasks = allTasks.stream()
+                           .filter(task -> task.getActiveStatus() == isActive) // True = active Tasks, False = inactive Tasks
+                           .toList();
+        }
+    
+        // Filter by type (recurring)
+        if (type != null  && type.equalsIgnoreCase("recurring")) {
+            allTasks = allTasks.stream()
+                            .filter(task -> task.getFrequency() != null) // Check if frequency is null -> additional task
+                            .toList();
+        }
+        return allTasks;
+    }
 
     public Task createTask(Task task, String userToken) {
         validateTask(task);
         validateUserToken(userToken);
-        log.debug("Creating a new task with name: {}", task.getTaskName());
+        log.debug("Creating a new task with name: {}", task.getName());
         // set the task creation date
-        task.setTaskCreationDate(new Date(new Date().getTime() + 3600 * 1000));
+        task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
         task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());
         return taskRepository.save(task);
-        
-
     }
-
 
     public void deleteTask(Long taskId) {
         taskRepository.deleteById(taskId);
@@ -120,9 +136,10 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    public List<Task> getAllTasks() {
+    private List<Task> getAllTasks() {
         return taskRepository.findAll();
     }
+    
     public Task getTaskById(Long taskId) {
         return taskRepository.findById(taskId).orElse(null);
     }
@@ -134,7 +151,6 @@ public class TaskService {
     }
 
     public void unpauseTask(Task task) {
-
         task.setPaused(false);
         task.setUnpausedDate(new Date());
         taskRepository.save(task);
@@ -148,8 +164,4 @@ public class TaskService {
         task.setIsAssignedTo(null);
         taskRepository.save(task);
     }
-
-
-    
-
 }

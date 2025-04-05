@@ -1,17 +1,13 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.entity.User;
-import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPutDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
-import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
@@ -21,9 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * User Controller
@@ -36,17 +30,15 @@ import java.util.stream.Collectors;
 public class TeamController {
 
   private final TeamService teamService;
-  private final TeamRepository teamRepository;
 
   private final UserService userService;
 
-  TeamController(TeamService teamService, TeamRepository teamRepository, UserService userService) {
+  TeamController(TeamService teamService, UserService userService) {
     this.teamService = teamService;
-    this.teamRepository = teamRepository;
     this.userService = userService;
   }
 
-  @PostMapping("/teams/create")
+  @PostMapping("/teams")
   @ResponseStatus(HttpStatus.CREATED)
   @ResponseBody
   public TeamGetDTO createTeam(@RequestBody TeamPostDTO teamPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
@@ -69,10 +61,10 @@ public class TeamController {
     return DTOMapper.INSTANCE.convertEntityToTeamGetDTO(createdTeam);
   }
 
-  @PostMapping("/teams/{teamId}/join")
+  @PostMapping("/teams/join")
   @ResponseStatus(HttpStatus.CREATED)
   @ResponseBody
-  public void joinTeam(@RequestParam String teamCode, @RequestHeader("Authorization") String authorizationHeader) {
+  public void joinTeam(@RequestParam String code, @RequestHeader("Authorization") String authorizationHeader) {
     // Validate the token
     String token = validateAuthorizationHeader(authorizationHeader);
 
@@ -87,7 +79,7 @@ public class TeamController {
     }
 
     // Process team joining
-    teamService.joinTeam(userId, teamCode);
+    teamService.joinTeam(userId, code);
   }
 
   @GetMapping("/teams/{teamId}")
@@ -133,7 +125,7 @@ public class TeamController {
                 .toList();
   }
 
-  @PutMapping("/teams/{teamId}/edit")
+  @PutMapping("/teams/{teamId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void editTeamName(@PathVariable Long teamId, @RequestBody TeamPutDTO teamPutDTO, 
                          @RequestHeader("Authorization") String authorizationHeader) {    
@@ -151,13 +143,21 @@ public class TeamController {
     }
 
     // Extract new team name from DTO
-    String newTeamName = teamPutDTO.getTeamName();
+    String newTeamName = teamPutDTO.getName();
 
     // Call service to update team name
     teamService.updateTeamName(teamId, userId, newTeamName);
   }
 
-  @DeleteMapping("/teams/{teamId}/users/{userId}/quit")
+  @PutMapping("/teams/{teamId}/paused")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void pauseTeam(@PathVariable Long teamId, @RequestHeader("Authorization") String authorizationHeader) {
+    
+    throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Pause team functionality not implemented yet.");
+
+  }
+
+  @DeleteMapping("/teams/{teamId}/users/{userId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void userQuit(@PathVariable Long teamId, @PathVariable Long userId, 
                      @RequestHeader("Authorization") String authorizationHeader) {

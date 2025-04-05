@@ -12,11 +12,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class TeamGetDTO {
-  
-    private Long teamId;
-    private String teamName;
-    private int teamXP;
-    private int teamLevel;
-    private String teamCode;
-    private List<Long> teamMembers;
+    private Long id;
+    private String name;
+    private int xp;
+    private int level;
+    private String code;
+    private List<Long> members;
+    private List<Long> tasks;
 }

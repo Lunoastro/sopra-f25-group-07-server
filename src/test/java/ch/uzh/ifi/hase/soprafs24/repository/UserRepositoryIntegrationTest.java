@@ -34,7 +34,7 @@ import java.util.Date;
     user.setToken("1");
     user.setCreationDate(now);
     user.setBirthDate(null);
-    user.setXP(0);  // Default xp value
+    user.setXp(0);  // Default xp value
     user.setLevel(1);  // Default level
     user.setColor(ColorID.C1);
 
@@ -53,7 +53,7 @@ import java.util.Date;
     assertEquals(found.getStatus(), user.getStatus());
     assertEquals(found.getCreationDate(), user.getCreationDate());
     assertEquals(found.getBirthDate(), user.getBirthDate());
-    assertEquals(found.getXP(), user.getXP());
+    assertEquals(found.getXp(), user.getXp());
     assertEquals(found.getLevel(), user.getLevel());
     assertEquals(found.getColor(), user.getColor());
   }

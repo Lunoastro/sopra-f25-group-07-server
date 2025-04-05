@@ -1,24 +1,16 @@
 package ch.uzh.ifi.hase.soprafs24.rest.dto.team;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class TeamPostDTO {
-  
-    private String teamName;
-    private String teamCode;  // Optional field for the team code, if it is not provided in the body the string will be null
-
-
-    public String getTeamName() {
-        return teamName;
-    }
-
-    public void setTeamName(String teamName) {
-        this.teamName = teamName;
-    }
-
-    public String getTeamCode() {
-        return teamCode;
-    }
-
-    public void setTeamCode(String teamCode) {
-        this.teamCode = teamCode;
-    }
+    private String name;
+    private String code;  // Optional field for the team code, if it is not provided in the body the string will be null
 }
