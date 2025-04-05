@@ -1,10 +1,7 @@
 package ch.uzh.ifi.hase.soprafs24.rest.dto.task;
 import java.util.Date;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

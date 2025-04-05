@@ -1,17 +1,13 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.entity.User;
-import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPutDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
-import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
@@ -21,9 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * User Controller
@@ -36,13 +30,11 @@ import java.util.stream.Collectors;
 public class TeamController {
 
   private final TeamService teamService;
-  private final TeamRepository teamRepository;
 
   private final UserService userService;
 
-  TeamController(TeamService teamService, TeamRepository teamRepository, UserService userService) {
+  TeamController(TeamService teamService, UserService userService) {
     this.teamService = teamService;
-    this.teamRepository = teamRepository;
     this.userService = userService;
   }
 

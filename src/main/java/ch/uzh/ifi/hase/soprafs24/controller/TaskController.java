@@ -39,12 +39,12 @@ public class TaskController {
 
     @GetMapping("/tasks")
     @ResponseStatus(HttpStatus.OK)
-    public List<TaskGetDTO> getTasks(@RequestParam(required = false) Boolean activeStatus,
+    public List<TaskGetDTO> getTasks(@RequestParam(required = false) Boolean isActive,
                                         @RequestParam(required = false) String type,
                                         @RequestHeader("Authorization") String userToken) {
         taskService.validateUserToken(userToken);
         // Retrieve all tasks using the service
-        List<Task> tasks = taskService.getFilteredTasks(activeStatus, type);
+        List<Task> tasks = taskService.getFilteredTasks(isActive, type);
         // Convert the list of entities to a list of DTOs for the response
         List<TaskGetDTO> taskGetDTOs = new ArrayList<>();
         for (Task task : tasks) {

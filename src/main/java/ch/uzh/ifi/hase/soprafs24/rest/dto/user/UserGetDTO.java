@@ -2,7 +2,6 @@ package ch.uzh.ifi.hase.soprafs24.rest.dto.user;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import java.util.Date;
 
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

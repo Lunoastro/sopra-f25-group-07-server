@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -97,28 +96,25 @@ public class TaskService {
         }
     }
 
-    public List<Task> getFilteredTasks(Boolean activeStatus, String type) {
-        List<Task> allTasks = getAllTasks();
-    
+    public List<Task> getFilteredTasks(Boolean isActive, String type) {
+        // If both filters are null, return all tasks
+        List<Task> allTasks = getAllTasks(); 
+        
         // Filter by activeStatus (if active or inactive)
-        if (activeStatus == true || activeStatus == false) {
+        if (isActive != null) {
             allTasks = allTasks.stream()
-                           .filter(task -> task.getActiveStatus() == activeStatus) // True = active Tasks, False = inactive Tasks
-                           .collect(Collectors.toList());
+                           .filter(task -> task.getActiveStatus() == isActive) // True = active Tasks, False = inactive Tasks
+                           .toList();
         }
     
-        // Filter by type (additional or recurring)
-        if (type != null && !type.isEmpty()) {
-            if (type.equalsIgnoreCase("recurring")) {
-                allTasks = allTasks.stream()
-                                .filter(task -> task.getFrequency() != null) // Check if frequency is not null -> recurring task
-                                .collect(Collectors.toList());
-            }
+        // Filter by type (recurring)
+        if (type != null  && type.equalsIgnoreCase("recurring")) {
+            allTasks = allTasks.stream()
+                            .filter(task -> task.getFrequency() != null) // Check if frequency is null -> additional task
+                            .toList();
         }
         return allTasks;
     }
-
-    // check uniqueness of the task name
 
     public Task createTask(Task task, String userToken) {
         validateTask(task);
@@ -155,7 +151,6 @@ public class TaskService {
     }
 
     public void unpauseTask(Task task) {
-
         task.setPaused(false);
         task.setUnpausedDate(new Date());
         taskRepository.save(task);
