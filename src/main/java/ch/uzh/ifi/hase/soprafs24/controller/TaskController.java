@@ -27,6 +27,10 @@ public class TaskController {
     @PostMapping("/tasks")
     @ResponseStatus(HttpStatus.CREATED)
     public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String userToken) {
+        // I added the check here because the one in the service validation did not get triggered
+        if (taskPostDTO.getName() == null || taskPostDTO.getName().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
+        }
         // Extract the token from the Bearer header
         taskService.validateUserToken(userToken);
         // Convert the incoming DTO to an entity
