@@ -110,12 +110,13 @@ public class TaskController {
          * Retrieves Task by Id or throws Http error if the task doesn't exist
          */
         Task existingTask = taskService.getTaskById(taskId);
-        // convert putDTO to entity
-        Task task = DTOMapper.INSTANCE.convertTaskPutDTOtoEntity(taskPutDTO);
-        Task updatedTask = taskService.claimTask(task,userToken);
+        /* 
+         * Claims the task for the user and assigns the user to the correct field 
+        */
+        Task claimed = taskService.claimTask(existingTask,userToken);
         
         // Convert the updated entity back to a DTO for the response
-        return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(updatedTask);
+        return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(claimed);
     }
 
     @PutMapping("/tasks/{taskId}/quit")
