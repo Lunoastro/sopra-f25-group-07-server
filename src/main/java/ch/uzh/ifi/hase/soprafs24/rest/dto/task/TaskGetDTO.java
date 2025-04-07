@@ -12,6 +12,7 @@ import lombok.Setter;
 @Builder
 public class TaskGetDTO {
     private Long id;
+    private Long creatorId;
     private Long isAssignedTo;
     private String name;
     private String description;

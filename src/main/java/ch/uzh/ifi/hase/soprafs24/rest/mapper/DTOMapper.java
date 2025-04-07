@@ -91,6 +91,7 @@ public interface DTOMapper {
   TaskGetDTO convertEntityToTaskGetDTO(Task task);
 
   @Mapping(source = "id", target = "id")
+  @Mapping(source = "creatorId", target = "creatorId")
   @Mapping(source = "isAssignedTo", target = "isAssignedTo")
   @Mapping(source = "name", target = "name")
   @Mapping(source = "description", target = "description")
