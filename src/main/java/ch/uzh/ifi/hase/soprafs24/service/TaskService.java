@@ -3,6 +3,7 @@ package ch.uzh.ifi.hase.soprafs24.service;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 
 import org.slf4j.Logger;
@@ -35,14 +36,18 @@ public class TaskService {
         this.userService = userService;
     }
 
+    // validate PostDTO based on the fields
+    public void validatePostDto(TaskPostDTO dto) {
+    if (dto.getName() == null || dto.getName().isEmpty()) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
+    }
+    if (dto.getDeadline() == null || dto.getDeadline().before(new Date())) {
+        throw new IllegalArgumentException("Invalid or past deadline provided.");
+    }
+}
+
     // validate the task based on the fields
     public void validateTask(Task task) {
-        if (task.getName() == null || task.getName().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
-        }
-        if (task.getDeadline() == null || task.getDeadline().before(new Date())) {
-            throw new IllegalArgumentException("Invalid or past deadline provided.");
-        }
         if (taskRepository.findTaskById(task.getId()) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
         }

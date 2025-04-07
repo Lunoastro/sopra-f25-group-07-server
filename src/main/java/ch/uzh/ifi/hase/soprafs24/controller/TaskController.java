@@ -29,6 +29,8 @@ public class TaskController {
     public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String userToken) {
         // Extract the token from the Bearer header
         taskService.validateUserToken(userToken);
+        // validate the DTO before converting to catch errors
+        taskService.validatePostDto(taskPostDTO);
         // Convert the incoming DTO to an entity
         Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(taskPostDTO);
         // send the task to the service for creation
@@ -84,7 +86,7 @@ public class TaskController {
     }
 
     @PutMapping("/tasks/{taskId}")
-    @ResponseStatus(HttpStatus.OK)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String userToken) {
         // Validate the user token
         taskService.validateUserToken(userToken);

@@ -305,6 +305,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // Verify the method was called with the correct userId, but any teamId
         verify(teamService, times(1)).quitTeam(eq(1L), anyLong());
     }
-    
+
     
 }
