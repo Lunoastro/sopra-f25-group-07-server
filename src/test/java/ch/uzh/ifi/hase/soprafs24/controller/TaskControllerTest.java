@@ -100,21 +100,25 @@ class TaskControllerTest {
     void POST_failedCreateTask_invalidInput_taskNotCreated() throws Exception {
         TaskPostDTO taskPostDTO = new TaskPostDTO();
         taskPostDTO.setName(null);  // Invalid input (null name)
-
+    
         String token = "token123";
-
+    
         doNothing().when(taskService).validateUserToken("Bearer " + token);
-
+    
+        // Simulate validation failure
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null"))
+            .when(taskService).validatePostDto(any(TaskPostDTO.class));
+    
         // Perform the POST request
         MockHttpServletRequestBuilder postRequest = post("/tasks")
             .contentType(MediaType.APPLICATION_JSON)
             .header("Authorization", "Bearer " + token)
             .content(asJsonString(taskPostDTO));
-
-        // Expecting Bad Request (400) because name is null
+    
         mockMvc.perform(postRequest)
             .andExpect(status().isBadRequest()); // Expecting 400 status
     }
+
     
        
     @Test
@@ -170,10 +174,7 @@ class TaskControllerTest {
 
 }
 
-
-    
-
-    
+        
     @Test
     void PUT_updateTask_validInput_taskUpdated() throws Exception {
         Date now = new Date();
@@ -212,11 +213,9 @@ class TaskControllerTest {
 
         // When: Perform the PUT request and then validate the response
         mockMvc.perform(putRequest)
-            .andExpect(status().isOk());
+        .andExpect(status().isNoContent());
 }
 
-
-    //update test invalid input can be added when validation in service layer works
 
     @Test
     void PUT_failedUpdateTask_invalidTaskId_taskNotFound() throws Exception {
