@@ -101,8 +101,8 @@ public class TaskController {
         // Convert the updated entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(updatedTask);
     }
-
-    @PutMapping("/tasks/{taskId}/claim")
+    //decided on Patch since it only requires the update of one singular field
+    @PatchMapping("/tasks/{taskId}/claim")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public TaskGetDTO claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         

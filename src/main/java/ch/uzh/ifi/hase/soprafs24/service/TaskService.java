@@ -133,12 +133,12 @@ public class TaskService {
     }
 
     public Task claimTask(Task task, String userToken) {
-        validateUserToken(userToken);
         log.debug("Claiming task with name: {}", task.getName());
         // verify that the task has not yet been claimed
         if (task.getIsAssignedTo() != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed");
         }
+        validateUserToken(userToken);
         // store the userId of the creator
         task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());
         return taskRepository.save(task);
