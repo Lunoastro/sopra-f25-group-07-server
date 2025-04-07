@@ -148,7 +148,9 @@ public class TaskService {
         verifyClaimStatus(task);
         validateUserToken(userToken);
         // store the userId of the creator
-        task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());
+        User user = userRepository.findByToken(userToken.substring(7));
+        task.setIsAssignedTo(user.getId());
+        task.setColor(user.getColor());
         return taskRepository.save(task);
     }
 

@@ -43,6 +43,7 @@ public interface DTOMapper {
   @Mapping(source = "id", target = "id")
   @Mapping(source = "name", target = "name")
   @Mapping(source = "username", target = "username")
+  @Mapping(source = "color", target = "color")
   @Mapping(source = "token", target = "token")
   @Mapping(source = "status", target = "status")
   @Mapping(source = "creationDate", target = "creationDate")
@@ -50,6 +51,7 @@ public interface DTOMapper {
   UserGetDTO convertEntityToUserGetDTO(User user);
 
   @Mapping(source = "username", target = "username")
+  @Mapping(source = "color", target = "color")
   @Mapping(source = "id", target = "id")
   @Mapping(source = "birthDate", target = "birthDate")
   User convertUserPutDTOtoEntity(UserPutDTO userPutDTO);
