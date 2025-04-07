@@ -47,9 +47,16 @@ public class TaskService {
 }
 
     // validate the task based on the fields
-    public void validateTask(Task task) {
+    public void verifyTaskExistence(Task task) {
         if (taskRepository.findTaskById(task.getId()) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
+        }
+    }
+
+    public void verifyClaimStatus(Task task) {
+        if (taskRepository.findTaskById(task.getIsAssignedTo()) != null) {
+            log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed");
         }
     }
 
@@ -57,9 +64,12 @@ public class TaskService {
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task cannot be null");
         }
-        // Update only the fields that are provided in the DTO
         if (taskPutDTO.getName() != null) {
             task.setName(taskPutDTO.getName());
+        }
+        // since a unclaimed status is allowed the null check doesn't work here
+        if(taskPutDTO.getIsAssignedTo() != task.getIsAssignedTo()) {
+            task.setIsAssignedTo(taskPutDTO.getIsAssignedTo());
         }
         if (taskPutDTO.getDescription() != null) {
             task.setDescription(taskPutDTO.getDescription());
@@ -67,7 +77,7 @@ public class TaskService {
         if (taskPutDTO.getDeadline() != null) {
             task.setDeadline(taskPutDTO.getDeadline());
         }
-        if (taskPutDTO.getColor() != null) {
+        if (taskPutDTO.getColor() != null ) {
             task.setColor(taskPutDTO.getColor());
         }
         if (taskPutDTO.getActiveStatus() != task.getActiveStatus()) {
@@ -96,7 +106,7 @@ public class TaskService {
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
         }
-        if (!task.getIsAssignedTo().equals(user.getId())) {
+        if (!task.getCreatorId().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit this task");
         }
     }
@@ -122,22 +132,20 @@ public class TaskService {
     }
 
     public Task createTask(Task task, String userToken) {
-        validateTask(task);
+        verifyTaskExistence(task);
         validateUserToken(userToken);
         log.debug("Creating a new task with name: {}", task.getName());
         // set the task creation date
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
-        task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());
+        task.setCreatorId(userRepository.findByToken(userToken.substring(7)).getId());
         return taskRepository.save(task);
     }
 
     public Task claimTask(Task task, String userToken) {
         log.debug("Claiming task with name: {}", task.getName());
         // verify that the task has not yet been claimed
-        if (task.getIsAssignedTo() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed");
-        }
+        verifyClaimStatus(task);
         validateUserToken(userToken);
         // store the userId of the creator
         task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());

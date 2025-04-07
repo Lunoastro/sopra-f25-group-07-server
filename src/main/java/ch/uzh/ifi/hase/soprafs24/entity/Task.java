@@ -51,6 +51,9 @@ public class Task implements Serializable {
     @Column(nullable = false)
     private boolean activeStatus;
 
+    @Column(nullable = false)
+    private Long CreatorId;
+
     @Column(nullable = true)
     private Long isAssignedTo;
 
@@ -145,6 +148,13 @@ public class Task implements Serializable {
 
     public void setActiveStatus(boolean activeStatus) {
         this.activeStatus = activeStatus;
+    }
+
+    public Long getCreatorId() {
+        return CreatorId;
+    }
+    public void setCreatorId(Long creatorId) {
+        CreatorId = creatorId;
     }
 
     public Long getIsAssignedTo() {
