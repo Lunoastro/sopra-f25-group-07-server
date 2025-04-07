@@ -150,7 +150,11 @@ public class TaskService {
         // store the userId of the creator
         User user = userRepository.findByToken(userToken.substring(7));
         task.setIsAssignedTo(user.getId());
-        task.setColor(user.getColor());
+        if(user.getColor() != null) {
+            task.setColor(user.getColor());
+        } else{
+            new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set");
+        }
         return taskRepository.save(task);
     }
 
