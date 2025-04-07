@@ -132,7 +132,7 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    private Task claimTask(Task task, String userToken) {
+    public Task claimTask(Task task, String userToken) {
         validateUserToken(userToken);
         log.debug("Claiming task with name: {}", task.getName());
         // verify that the task has not yet been claimed
@@ -158,7 +158,8 @@ public class TaskService {
     }
     
     public Task getTaskById(Long taskId) {
-        return taskRepository.findById(taskId).orElse(null);
+        return taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
     }
 
     public void pauseTask(Task task) {

@@ -104,10 +104,18 @@ public class TaskController {
 
     @PutMapping("/tasks/{taskId}/claim")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
+    public TaskGetDTO claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
         
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
-
+        /*
+         * Retrieves Task by Id or throws Http error if the task doesn't exist
+         */
+        Task existingTask = taskService.getTaskById(taskId);
+        // convert putDTO to entity
+        Task task = DTOMapper.INSTANCE.convertTaskPutDTOtoEntity(taskPutDTO);
+        Task updatedTask = taskService.claimTask(task,userToken);
+        
+        // Convert the updated entity back to a DTO for the response
+        return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(updatedTask);
     }
 
     @PutMapping("/tasks/{taskId}/quit")
