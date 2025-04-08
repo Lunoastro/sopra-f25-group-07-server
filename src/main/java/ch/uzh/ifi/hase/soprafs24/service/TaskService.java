@@ -56,7 +56,7 @@ public class TaskService {
     public void verifyClaimStatus(Task task) {
         if (taskRepository.findTaskById(task.getIsAssignedTo()) != null) {
             log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)");
         }
     }
 
@@ -152,6 +152,9 @@ public class TaskService {
         // store the userId of the creator
         User user = userRepository.findByToken(userToken.substring(7));
         task.setIsAssignedTo(user.getId());
+        /*
+         * * set the task color to the color of the user who claimed it
+         */
         if(user.getColor() != null) {
             task.setColor(user.getColor());
         } else{
