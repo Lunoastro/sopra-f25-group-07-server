@@ -139,6 +139,8 @@ public class TaskService {
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
         task.setCreatorId(userRepository.findByToken(userToken.substring(7)).getId());
+        // enforce that the task colour is initially set to white 
+        task.setColor(null);
         return taskRepository.save(task);
     }
 
