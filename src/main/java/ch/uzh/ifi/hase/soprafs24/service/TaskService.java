@@ -56,7 +56,7 @@ public class TaskService {
     public void verifyClaimStatus(Task task) {
         if (taskRepository.findTaskById(task.getIsAssignedTo()) != null) {
             log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)");
         }
     }
 
@@ -139,6 +139,8 @@ public class TaskService {
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
         task.setCreatorId(userRepository.findByToken(userToken.substring(7)).getId());
+        // enforce that the task colour is initially set to white 
+        task.setColor(null);
         return taskRepository.save(task);
     }
 
@@ -148,7 +150,16 @@ public class TaskService {
         verifyClaimStatus(task);
         validateUserToken(userToken);
         // store the userId of the creator
-        task.setIsAssignedTo(userRepository.findByToken(userToken.substring(7)).getId());
+        User user = userRepository.findByToken(userToken.substring(7));
+        task.setIsAssignedTo(user.getId());
+        /*
+         * * set the task color to the color of the user who claimed it
+         */
+        if(user.getColor() != null) {
+            task.setColor(user.getColor());
+        } else{
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set");
+        }
         return taskRepository.save(task);
     }
 

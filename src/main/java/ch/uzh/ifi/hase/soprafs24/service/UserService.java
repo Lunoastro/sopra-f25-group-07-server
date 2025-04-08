@@ -122,6 +122,9 @@ public class UserService {
     else {
       user.setBirthDate(adjustBirthDateByOneHour(userInput.getBirthDate()));  // Explicitly set birthDate to null if not provided
     }
+    if (userInput.getColor() != null) {
+        user.setColor(userInput.getColor());
+    }
 
     user = userRepository.save(user);
     userRepository.flush();

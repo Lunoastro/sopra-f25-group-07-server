@@ -55,7 +55,7 @@ public class User implements Serializable {
   private int level;
 
   @Enumerated(EnumType.STRING)
-  @Column
+  @Column(nullable = true)
   private ColorID color;
 
   @Column
