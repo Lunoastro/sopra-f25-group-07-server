@@ -158,7 +158,7 @@ public class TaskService {
         if(user.getColor() != null) {
             task.setColor(user.getColor());
         } else{
-            new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set");
         }
         return taskRepository.save(task);
     }
