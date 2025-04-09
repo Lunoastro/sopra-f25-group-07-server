@@ -91,6 +91,9 @@ public class TaskService {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
         }
+        if (user.getTeamId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not in team");
+        }
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authorized (login required)");
         }
