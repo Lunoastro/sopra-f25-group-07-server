@@ -66,6 +66,7 @@ sonar {
 jacocoTestReport {
     reports {
         xml.enabled true
+        html.enabled true
     }
 }
 
@@ -95,12 +96,14 @@ task bootRunDev {
     finalizedBy bootRun
 }
 
-task bootRunProd {
-    group = 'application'
-    description = 'Run in prod profile'
-    doFirst {
-        bootRun.systemProperty 'spring.profiles.active', 'prod'
+bootRun {
+    // Set prod as the default profile for bootRun
+    systemProperty "spring.profiles.active", "prod"
+    
+    // Allow overriding via command line
+    if (project.hasProperty('profile')) {
+        systemProperty "spring.profiles.active", project.getProperty('profile')
+        systemProperty 'spring.devtools.add-properties', 'false'
     }
-    finalizedBy bootRun
 }
 defaultTasks 'bootJar', 'build'
