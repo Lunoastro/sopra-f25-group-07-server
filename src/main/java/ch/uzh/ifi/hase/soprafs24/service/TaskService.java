@@ -54,7 +54,7 @@ public class TaskService {
     }
 
     public void verifyClaimStatus(Task task) {
-        if (taskRepository.findTaskById(task.getIsAssignedTo()) != null) {
+        if (task.getIsAssignedTo() != null) {
             log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)");
         }
