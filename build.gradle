@@ -60,6 +60,7 @@ sonar {
         property "sonar.projectKey", "Lunoastro_sopra-f25-group-07-server"
         property "sonar.organization", "lunoastro"
         property "sonar.host.url", "https://sonarcloud.io"
+
     }
 }
 
