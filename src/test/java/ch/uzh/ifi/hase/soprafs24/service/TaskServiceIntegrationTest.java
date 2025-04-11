@@ -65,7 +65,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setCreatorId(testUser.getId());  // Set the creator ID to the test user
+        testTask.setcreatorId(testUser.getId());  // Set the creator ID to the test user
         taskRepository.save(testTask);
 
         // When the task is claimed
@@ -88,7 +88,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setCreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId());  // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to claim the task
@@ -110,7 +110,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setCreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId());  // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to claim the task
@@ -128,7 +128,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setCreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId());  // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to claim the task with an invalid token
@@ -146,7 +146,7 @@ class TaskServiceIntegrationTest {
         newTask.setValue(10);
         newTask.setActiveStatus(true);
         newTask.setPaused(false); // Initially not paused
-        newTask.setCreatorId(testUser.getId());  // Set the creator ID
+        newTask.setcreatorId(testUser.getId());  // Set the creator ID
 
         // When creating the task
         Task createdTask = taskService.createTask(newTask, "Bearer valid-token");
@@ -167,7 +167,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setCreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId());  // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to create a task with the same name
@@ -184,7 +184,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setCreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId());  // Set the creator ID
 
         // When trying to create the task with an invalid token
         assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "Bearer invalid-token"));
