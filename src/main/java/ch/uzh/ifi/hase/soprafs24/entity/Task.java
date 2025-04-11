@@ -52,7 +52,7 @@ public class Task implements Serializable {
     private boolean activeStatus;
 
     @Column(nullable = false)
-    private Long CreatorId;
+    private Long creatorId;
 
     @Column(nullable = true)
     private Long isAssignedTo;
@@ -150,11 +150,11 @@ public class Task implements Serializable {
         this.activeStatus = activeStatus;
     }
 
-    public Long getCreatorId() {
-        return CreatorId;
+    public Long getcreatorId() {
+        return creatorId;
     }
-    public void setCreatorId(Long creatorId) {
-        CreatorId = creatorId;
+    public void setcreatorId(Long creatorId) {
+        this.creatorId = creatorId;
     }
 
     public Long getIsAssignedTo() {

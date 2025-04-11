@@ -109,7 +109,7 @@ public class TaskService {
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
         }
-        if (!task.getCreatorId().equals(user.getId())) {
+        if (!task.getcreatorId().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit this task");
         }
     }
@@ -141,7 +141,7 @@ public class TaskService {
         // set the task creation date
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
-        task.setCreatorId(userRepository.findByToken(userToken.substring(7)).getId());
+        task.setcreatorId(userRepository.findByToken(userToken.substring(7)).getId());
         // enforce that the task colour is initially set to white 
         task.setColor(null);
         return taskRepository.save(task);

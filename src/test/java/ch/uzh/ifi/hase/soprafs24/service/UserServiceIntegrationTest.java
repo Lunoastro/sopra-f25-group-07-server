@@ -77,7 +77,9 @@ import static org.junit.jupiter.api.Assertions.*;
     testUser.setLevel(1);
     testUser.setColor(ColorID.C1);
 
+    // when
     User createdUser = userService.createUser(testUser);
+    assertEquals(testUser.getId(), createdUser.getId());
 
     // attempt to create second user with same username
     User testUser2 = new User();
