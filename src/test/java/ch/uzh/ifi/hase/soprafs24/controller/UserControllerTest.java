@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserDeleteDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -282,6 +284,43 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // then execute the mock GET request (which we've set to throw an exception, should result in 409 (not found)
         mockMvc.perform(putRequest).andExpect(status().isNotFound());
     }
+
+
+    @Test
+    void DELETE_deleteUser_success() throws Exception {
+        Long userId = 1L;
+        String validToken = "valid-token";
+    
+        // Mock service
+        when(userService.validateToken(validToken)).thenReturn(true);
+        when(userService.findIDforToken(validToken)).thenReturn(userId);
+        doNothing().when(userService).deleteUser(userId);
+    
+        MockHttpServletRequestBuilder deleteRequest = delete("/users/{userId}", userId)
+                .header("Authorization", "Bearer " + validToken);
+    
+        mockMvc.perform(deleteRequest)
+                .andExpect(status().isNoContent()); // 204
+    }
+    
+    @Test
+    void DELETE_failedDeleteUser_userNotFound() throws Exception {
+        Long userId = 1L;
+        String validToken = "valid-token";
+    
+        when(userService.validateToken(validToken)).thenReturn(true);
+        when(userService.findIDforToken(validToken)).thenReturn(userId);
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found"))
+                .when(userService).deleteUser(userId);
+    
+        MockHttpServletRequestBuilder deleteRequest = delete("/users/{userId}", userId)
+                .header("Authorization", "Bearer " + validToken);
+    
+        mockMvc.perform(deleteRequest)
+                .andExpect(status().isNotFound()); // 404
+    }
+    
+
 
   /**
    * Helper Method to convert userPostDTO into a JSON string such that the input

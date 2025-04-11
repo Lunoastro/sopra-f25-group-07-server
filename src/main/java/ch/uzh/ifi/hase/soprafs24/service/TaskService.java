@@ -54,7 +54,7 @@ public class TaskService {
     }
 
     public void verifyClaimStatus(Task task) {
-        if (taskRepository.findTaskById(task.getIsAssignedTo()) != null) {
+        if (task.getIsAssignedTo() != null) {
             log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)");
         }
@@ -90,6 +90,9 @@ public class TaskService {
         User user = userRepository.findByToken(token);
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
+        }
+        if (user.getTeamId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not in team");
         }
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authorized (login required)");

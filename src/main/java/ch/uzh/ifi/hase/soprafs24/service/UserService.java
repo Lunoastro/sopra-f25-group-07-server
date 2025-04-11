@@ -130,6 +130,12 @@ public class UserService {
     userRepository.flush();
   }
 
+  public void deleteUser(Long userId) {
+    User user = getUserById(userId); // otherwise we throw a 404
+    userRepository.delete(user);
+    userRepository.flush();
+}
+
 
 
   /**
