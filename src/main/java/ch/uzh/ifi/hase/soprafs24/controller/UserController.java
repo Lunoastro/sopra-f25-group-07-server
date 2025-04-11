@@ -144,14 +144,14 @@ public class UserController {
 
   @DeleteMapping("/users/{userId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deleteUser(@PathVariable Long userId, @RequestBody UserDeleteDTO userDeleteDTO, @RequestHeader("Authorization") String authorizationHeader) {
+  public void deleteUser(@PathVariable Long userId, @RequestHeader("Authorization") String authorizationHeader) {
     String token = validateAuthorizationHeader(authorizationHeader);
     if (!userService.validateToken(token)) {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
     }
     Long authenticatedUserId = userService.findIDforToken(token);
     // Ensure the user is deleting their own account
-    if (!authenticatedUserId.equals(userId) || !userId.equals(userDeleteDTO.getId())) {
+    if (!authenticatedUserId.equals(userId)) {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: You can only delete your own account.");
     }
     userService.deleteUser(userId);

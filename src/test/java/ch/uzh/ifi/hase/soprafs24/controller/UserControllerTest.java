@@ -290,46 +290,36 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     void DELETE_deleteUser_success() throws Exception {
         Long userId = 1L;
         String validToken = "valid-token";
-
-        // Create UserDeleteDTO
-        UserDeleteDTO userDeleteDTO = new UserDeleteDTO();
-        userDeleteDTO.setId(userId);
-
+    
         // Mock service
         when(userService.validateToken(validToken)).thenReturn(true);
         when(userService.findIDforToken(validToken)).thenReturn(userId);
         doNothing().when(userService).deleteUser(userId);
-
+    
         MockHttpServletRequestBuilder deleteRequest = delete("/users/{userId}", userId)
-                .header("Authorization", "Bearer " + validToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(userDeleteDTO));
-
+                .header("Authorization", "Bearer " + validToken);
+    
         mockMvc.perform(deleteRequest)
                 .andExpect(status().isNoContent()); // 204
     }
-
+    
     @Test
     void DELETE_failedDeleteUser_userNotFound() throws Exception {
         Long userId = 1L;
         String validToken = "valid-token";
-
-        UserDeleteDTO userDeleteDTO = new UserDeleteDTO();
-        userDeleteDTO.setId(userId);
-
+    
         when(userService.validateToken(validToken)).thenReturn(true);
         when(userService.findIDforToken(validToken)).thenReturn(userId);
         doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found"))
                 .when(userService).deleteUser(userId);
-
+    
         MockHttpServletRequestBuilder deleteRequest = delete("/users/{userId}", userId)
-                .header("Authorization", "Bearer " + validToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(userDeleteDTO));
-
+                .header("Authorization", "Bearer " + validToken);
+    
         mockMvc.perform(deleteRequest)
                 .andExpect(status().isNotFound()); // 404
     }
+    
 
 
   /**
