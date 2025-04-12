@@ -104,6 +104,8 @@ bootRun {
     // Allow overriding via command line
     if (project.hasProperty('profile')) {
         systemProperty "spring.profiles.active", project.getProperty('profile')
+        systemProperty 'spring.devtools.add-properties', 'true'
+    }else{
         systemProperty 'spring.devtools.add-properties', 'false'
     }
 }
