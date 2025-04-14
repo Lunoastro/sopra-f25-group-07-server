@@ -5,6 +5,7 @@ import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPutDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
@@ -155,6 +156,28 @@ public class TeamController {
     
     throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Pause team functionality not implemented yet.");
 
+  }
+
+  // POST /teams/id/tasks/recurring
+  @PostMapping("/teams/{teamId}/tasks/recurring")
+  @ResponseStatus(HttpStatus.CREATED)
+  public void createRecurringTask(@PathVariable Long teamId, @RequestBody TaskPostDTO taskPostDTO, 
+                                  @RequestHeader("Authorization") String authorizationHeader) {
+    // Validate token
+    String token = validateAuthorizationHeader(authorizationHeader);
+    if (!userService.validateToken(token)) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
+    }
+
+    // Get authenticated user ID from token since it is needed for creation of task
+    Long userId = userService.findIDforToken(token);
+    if (userId == null) {
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
+    }
+
+    // Call service to create recurring task
+    // TODO: Implement the logic to create a recurring task (Refer to Issue #65)
+    //teamService.createRecurringTask(teamId, userId, taskPostDTO);
   }
 
   @DeleteMapping("/teams/{teamId}/users/{userId}")
