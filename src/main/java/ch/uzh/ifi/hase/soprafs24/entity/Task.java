@@ -35,13 +35,16 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private Date unpausedDate;
 
+    @Column(nullable = true)
+    private Date starttime;
+
     @Column(nullable = false)
     private Date deadline;
 
     @Column(nullable = false)
     private Date creationDate;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "int default 0")
     private int value;
 
     @Enumerated(EnumType.STRING)
@@ -58,7 +61,7 @@ public class Task implements Serializable {
     private Long isAssignedTo;
 
     @Column(nullable = true)
-    private Integer frequency;
+    private int frequency;
 
 
     // Getters and Setters
@@ -108,6 +111,14 @@ public class Task implements Serializable {
 
     public void setUnpausedDate(Date unpausedDate) {
         this.unpausedDate = unpausedDate;
+    }
+
+    public Date getStarttime(){
+        return starttime;
+    }
+
+    public void setStarttime(Date starttime){
+        this.starttime = starttime;
     }
 
     public Date getDeadline() {
