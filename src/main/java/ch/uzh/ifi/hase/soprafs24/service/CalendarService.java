@@ -23,6 +23,7 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ch.uzh.ifi.hase.soprafs24.entity.Task; // Adjust the package path if necessary
 
@@ -53,7 +54,8 @@ public class CalendarService {
   private static final List<String> SCOPES =
       Collections.singletonList(CalendarScopes.CALENDAR);
 
-  private static final String REDIRECT_URI = "http://localhost:8080/calendar/callback"; // update with prod URL if needed
+  @Value("${redirect.uri}")  // Injecting the redirect URI dynamically from the application properties
+  private String redirectUri;
 
   private GoogleAuthorizationCodeFlow flow; // reused later
 
@@ -154,7 +156,7 @@ public class CalendarService {
             .build();
 
     return flow.newAuthorizationUrl()
-            .setRedirectUri(REDIRECT_URI)
+            .setRedirectUri(redirectUri)
             .setState(userId.toString())
             .build();
   }
@@ -171,7 +173,7 @@ public class CalendarService {
     }
 
     var tokenResponse = flow.newTokenRequest(code)
-            .setRedirectUri(REDIRECT_URI)
+            .setRedirectUri(redirectUri)
             .execute();
 
     Credential credential = flow.createAndStoreCredential(tokenResponse, userId.toString());
