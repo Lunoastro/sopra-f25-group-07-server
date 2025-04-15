@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs24.service;
 
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
+import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 class TaskServiceTest {
 
@@ -276,6 +278,78 @@ class TaskServiceTest {
                 () -> taskService.validateToBeEditedFields(null, updatedTask));
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         assertEquals("Task cannot be null", exception.getReason());
+    }
+
+        @Test
+    void validateCreator_validInputs_success() {
+        
+        Task testTask = new Task();
+        testTask.setId(1L);
+        testTask.setName("Test Task");
+        testTask.setCreationDate(new Date());
+        testTask.setcreatorId(testUser.getId());
+        testTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        taskRepository.save(testTask);
+        taskRepository.flush(); // Ensure the task is saved before validation
+        // No mocking needed; rely on the actual repository behavior
+        
+        // Save the task to the repository
+        // When & Then (no exception should be thrown)
+        when(userRepository.findByToken("valid-token")).thenReturn(testUser);
+        when(taskRepository.findTaskById(testTask.getId())).thenReturn(testTask);
+        assertDoesNotThrow(() -> taskService.validateCreator("Bearer valid-token", testTask.getId()));
+    }
+
+    @Test
+    void validateCreator_userNotFound_throwsUnauthorizedException() {
+        // Given a task but no user
+        Task testTask = new Task();
+        testTask.setId(1L);
+        testTask.setName("Test Task");
+        testTask.setCreationDate(new Date());
+        testTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        testTask.setcreatorId(1L);
+        taskRepository.save(testTask);
+
+        // When & Then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateCreator("Bearer invalid-token", testTask.getId()));
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
+        assertEquals("User not found", exception.getReason());
+    }
+
+    @Test
+    void validateCreator_taskNotFound_throwsNotFoundException() {
+    
+        // When & Then
+        when(userRepository.findByToken("valid-token")).thenReturn(testUser);
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateCreator("Bearer valid-token", 999L)); // Non-existent task ID
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        assertEquals("Task not found", exception.getReason());
+    }
+
+    @Test
+    void validateCreator_notAuthorized_throwsForbiddenException() {
+        testUser.setStatus(UserStatus.OFFLINE);
+        userRepository.save(testUser);
+        
+        Task testTask = new Task();
+        testTask.setId(1L);
+        testTask.setName("Test Task");
+        testTask.setCreationDate(new Date());
+        testTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        testTask.setcreatorId(2L); // Different creator ID
+        taskRepository.save(testTask);
+
+        // When & Then
+        
+        when(userRepository.findByToken("valid-token")).thenReturn(testUser);
+        when(taskRepository.findTaskById(testTask.getId())).thenReturn(testTask);
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateCreator("Bearer valid-token", testTask.getId()));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Not authorized to edit this task", exception.getReason());
     }
 
 }
