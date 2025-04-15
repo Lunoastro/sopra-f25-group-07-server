@@ -40,7 +40,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
     runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql:42.2.18'
 
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
@@ -58,12 +60,14 @@ sonar {
         property "sonar.projectKey", "Lunoastro_sopra-f25-group-07-server"
         property "sonar.organization", "lunoastro"
         property "sonar.host.url", "https://sonarcloud.io"
+
     }
 }
 
 jacocoTestReport {
     reports {
         xml.enabled true
+        html.enabled true
     }
 }
 
@@ -72,7 +76,14 @@ test {
     testLogging.showStandardStreams = true
     maxParallelForks = 1
 }
-
+tasks.named('sonar').configure {
+    dependsOn jacocoTestReport
+}
+sonar {
+  properties {
+    property "sonar.coverage.jacoco.xmlReportPaths", "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
+  }
+}
 File secretPropsFile = file('./local.properties')
 if (secretPropsFile.exists()) {
     Properties p = new Properties()
@@ -84,5 +95,25 @@ if (secretPropsFile.exists()) {
 tasks.withType(JavaCompile).configureEach {
     options.annotationProcessorPath = configurations.annotationProcessor
 }
+task bootRunDev {
+    group = 'application'
+    description = 'Run in dev profile'
+    doFirst {
+        bootRun.systemProperty 'spring.profiles.active', 'dev'
+    }
+    finalizedBy bootRun
+}
 
+bootRun {
+    // Set prod as the default profile for bootRun
+    systemProperty "spring.profiles.active", "prod"
+    
+    // Allow overriding via command line
+    if (project.hasProperty('profile')) {
+        systemProperty "spring.profiles.active", project.getProperty('profile')
+        systemProperty 'spring.devtools.add-properties', 'true'
+    }else{
+        systemProperty 'spring.devtools.add-properties', 'false'
+    }
+}
 defaultTasks 'bootJar', 'build'
