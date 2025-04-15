@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -157,6 +158,57 @@ class TaskServiceTest {
         assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "Bearer invalid-token"));
     }
     
+    @Test
+void validatePostDto_validInput_success() {
+    // given
+    TaskPostDTO validTaskPostDTO = new TaskPostDTO();
+    validTaskPostDTO.setName("Valid Task");
+    validTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future deadline
+
+    // when & then (no exception should be thrown)
+    assertDoesNotThrow(() -> taskService.validatePostDto(validTaskPostDTO));
+}
+
+@Test
+void validatePostDto_nullName_throwsBadRequestException() {
+    // given
+    TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
+    invalidTaskPostDTO.setName(null); // Invalid name
+    invalidTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future deadline
+
+    // when & then
+    ResponseStatusException exception = assertThrows(ResponseStatusException.class, 
+        () -> taskService.validatePostDto(invalidTaskPostDTO));
+    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+    assertEquals("Task name cannot be null or empty", exception.getReason());
+}
+
+@Test
+void validatePostDto_emptyName_throwsBadRequestException() {
+    // given
+    TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
+    invalidTaskPostDTO.setName(""); // Invalid name
+    invalidTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future deadline
+
+    // when & then
+    ResponseStatusException exception = assertThrows(ResponseStatusException.class, 
+        () -> taskService.validatePostDto(invalidTaskPostDTO));
+    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+    assertEquals("Task name cannot be null or empty", exception.getReason());
+}
+
+@Test
+void validatePostDto_pastDeadline_throwsIllegalArgumentException() {
+    // given
+    TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
+    invalidTaskPostDTO.setName("Valid Task");
+    invalidTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() - 3600 * 1000)); // Past deadline
+
+    // when & then
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
+        () -> taskService.validatePostDto(invalidTaskPostDTO));
+    assertEquals("Invalid or past deadline provided.", exception.getMessage());
+}
 
 
 }
