@@ -69,7 +69,7 @@ public class UserService {
     checkIfUserExists(newUser);
     // saves the given entity but data is only persisted in the database once
     // flush() is called
-    newUser = userRepository.save(newUser);
+    userRepository.save(newUser);
     userRepository.flush();
 
     log.debug("Created Information for User: {}", newUser);
@@ -99,7 +99,7 @@ public class UserService {
     User user = userRepository.findByUsername(userInput.getUsername());
     if(user == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user null");}
     user.setStatus(UserStatus.OFFLINE);
-    user = userRepository.save(user);
+    userRepository.save(user);
     userRepository.flush();
       
   }
@@ -126,9 +126,15 @@ public class UserService {
         user.setColor(userInput.getColor());
     }
 
-    user = userRepository.save(user);
+    userRepository.save(user);
     userRepository.flush();
   }
+
+  public void deleteUser(Long userId) {
+    User user = getUserById(userId); // otherwise we throw a 404
+    userRepository.delete(user);
+    userRepository.flush();
+}
 
 
 

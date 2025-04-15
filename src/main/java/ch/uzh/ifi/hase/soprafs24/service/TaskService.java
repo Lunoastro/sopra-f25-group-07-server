@@ -54,7 +54,7 @@ public class TaskService {
     }
 
     public void verifyClaimStatus(Task task) {
-        if (taskRepository.findTaskById(task.getIsAssignedTo()) != null) {
+        if (task.getIsAssignedTo() != null) {
             log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)");
         }
@@ -67,8 +67,7 @@ public class TaskService {
         if (taskPutDTO.getName() != null) {
             task.setName(taskPutDTO.getName());
         }
-        // since a unclaimed status is allowed the null check doesn't work here
-        if(taskPutDTO.getIsAssignedTo().equals(task.getIsAssignedTo())) {
+        if (task.getIsAssignedTo() == null || !task.getIsAssignedTo().equals(taskPutDTO.getIsAssignedTo())) {
             task.setIsAssignedTo(taskPutDTO.getIsAssignedTo());
         }
         if (taskPutDTO.getDescription() != null) {
@@ -91,6 +90,9 @@ public class TaskService {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
         }
+        if (user.getTeamId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not in team");
+        }
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authorized (login required)");
         }
@@ -106,7 +108,7 @@ public class TaskService {
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
         }
-        if (!task.getCreatorId().equals(user.getId())) {
+        if (!task.getcreatorId().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit this task");
         }
     }
@@ -138,7 +140,7 @@ public class TaskService {
         // set the task creation date
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
-        task.setCreatorId(userRepository.findByToken(userToken.substring(7)).getId());
+        task.setcreatorId(userRepository.findByToken(userToken.substring(7)).getId());
         // enforce that the task colour is initially set to white 
         task.setColor(null);
         return taskRepository.save(task);

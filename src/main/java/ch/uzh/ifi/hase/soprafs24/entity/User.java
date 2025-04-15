@@ -18,13 +18,15 @@ import java.util.Date;
  * the primary key
  */
 @Entity
-@Table(name = "USER")
+@Table(name = "USERS")
 public class User implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
   @Id
-  @GeneratedValue
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_sequence")
+  @SequenceGenerator(name = "user_sequence", sequenceName = "user_sequence", allocationSize = 1)
+  @Column(updatable = false)
   private Long id;
 
   @Column(nullable = false)

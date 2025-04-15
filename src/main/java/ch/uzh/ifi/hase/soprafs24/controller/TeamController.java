@@ -40,7 +40,7 @@ public class TeamController {
 
   @PostMapping("/teams")
   @ResponseStatus(HttpStatus.CREATED)
-  @ResponseBody
+  
   public TeamGetDTO createTeam(@RequestBody TeamPostDTO teamPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
     // convert API user to internal representation
     String token = validateAuthorizationHeader(authorizationHeader);
@@ -63,7 +63,7 @@ public class TeamController {
 
   @PostMapping("/teams/join")
   @ResponseStatus(HttpStatus.CREATED)
-  @ResponseBody
+  
   public void joinTeam(@RequestParam String code, @RequestHeader("Authorization") String authorizationHeader) {
     // Validate the token
     String token = validateAuthorizationHeader(authorizationHeader);
@@ -84,7 +84,7 @@ public class TeamController {
 
   @GetMapping("/teams/{teamId}")
   @ResponseStatus(HttpStatus.OK)
-  @ResponseBody
+  
   public TeamGetDTO getTeamById(@PathVariable Long teamId, @RequestHeader("Authorization") String authorizationHeader) {
     // Extract and validate the token
     String token = validateAuthorizationHeader(authorizationHeader);
@@ -102,7 +102,7 @@ public class TeamController {
 
   @GetMapping("/teams/{teamId}/users")
   @ResponseStatus(HttpStatus.OK)
-  @ResponseBody
+  
   public List<UserGetDTO> getUsersByTeam(@PathVariable Long teamId, @RequestHeader("Authorization") String authorizationHeader) {
     // Extract and validate the token
     String token = validateAuthorizationHeader(authorizationHeader);
