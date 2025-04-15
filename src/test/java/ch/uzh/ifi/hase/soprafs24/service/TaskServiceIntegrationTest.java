@@ -15,7 +15,6 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Date;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @WebAppConfiguration
@@ -45,7 +44,7 @@ class TaskServiceIntegrationTest {
         testUser.setUsername("testUser");
         testUser.setName("Test User");
         testUser.setPassword("password");
-        testUser.setColor(ColorID.C1);  // Assign a color to the user
+        testUser.setColor(ColorID.C1); // Assign a color to the user
         testUser.setXp(0);
         testUser.setLevel(1);
         testUser.setStatus(UserStatus.ONLINE);
@@ -65,7 +64,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setcreatorId(testUser.getId());  // Set the creator ID to the test user
+        testTask.setcreatorId(testUser.getId()); // Set the creator ID to the test user
         taskRepository.save(testTask);
 
         // When the task is claimed
@@ -75,7 +74,6 @@ class TaskServiceIntegrationTest {
         assertEquals(testUser.getId(), claimedTask.getIsAssignedTo());
         assertEquals(ColorID.C1, claimedTask.getColor());
     }
-
 
     @Test
     void claimTask_alreadyClaimed_throwsConflictException() {
@@ -88,7 +86,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setcreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId()); // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to claim the task
@@ -110,7 +108,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setcreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId()); // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to claim the task
@@ -128,7 +126,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setcreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId()); // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to claim the task with an invalid token
@@ -146,7 +144,7 @@ class TaskServiceIntegrationTest {
         newTask.setValue(10);
         newTask.setActiveStatus(true);
         newTask.setPaused(false); // Initially not paused
-        newTask.setcreatorId(testUser.getId());  // Set the creator ID
+        newTask.setcreatorId(testUser.getId()); // Set the creator ID
 
         // When creating the task
         Task createdTask = taskService.createTask(newTask, "Bearer valid-token");
@@ -167,7 +165,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setcreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId()); // Set the creator ID
         taskRepository.save(testTask);
 
         // When trying to create a task with the same name
@@ -184,7 +182,7 @@ class TaskServiceIntegrationTest {
         testTask.setValue(10);
         testTask.setActiveStatus(true);
         testTask.setPaused(false); // Initially not paused
-        testTask.setcreatorId(testUser.getId());  // Set the creator ID
+        testTask.setcreatorId(testUser.getId()); // Set the creator ID
 
         // When trying to create the task with an invalid token
         assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "Bearer invalid-token"));
