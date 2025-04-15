@@ -19,17 +19,18 @@ jobs:
         with:
           java-version: 17
           distribution: "temurin"
+      - name: Set environment variables
+        env:
+          SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+          SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+        run: echo "Environment variables set"
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
           path: ~/.gradle/caches
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
           restore-keys: ${{ runner.os }}-gradle
-      - name: Replace application-prod.properties with secrets
-        run: |
-            sed -i 's|^spring.datasource.url=.*|spring.datasource.url=${{ secrets.DB_URL }}|' ./src/main/resources/application-prod.properties
-            sed -i 's|^spring.datasource.url=.*|spring.datasource.username=${{ secrets.DB_USERNAME }}|' ./src/main/resources/application-prod.properties
-            sed -i 's|^spring.datasource.url=.*|spring.datasource.password=${{ secrets.DB_PASSWORD }}|' ./src/main/resources/application-prod.properties
       - name: Build with Gradle
         run: ./gradlew build
 
@@ -67,6 +68,7 @@ jobs:
           deliverables: app.yaml
           version: v1
           credentials: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
+          promote: true
 
       - name: Test
         run: curl "${{ steps.deploy.outputs.url }}"

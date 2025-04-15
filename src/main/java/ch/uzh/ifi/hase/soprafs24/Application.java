@@ -20,17 +20,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @SpringBootApplication
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
-    
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
-    
+
     @GetMapping(value = "/", produces = MediaType.TEXT_PLAIN_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public String helloWorld() {
         return "The application is running!";
     }
-    
+
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
@@ -40,18 +40,25 @@ public class Application {
             }
         };
     }
-    
+
     @Bean
-    public CommandLineRunner checkDatabaseConfig(Environment environment,
-                                             @Value("${spring.datasource.url}") String datasourceUrl) {
+    public CommandLineRunner checkDatabaseConfig(Environment environment) {
         return args -> {
             String[] activeProfiles = environment.getActiveProfiles();
             logger.info("Active profiles: {}", String.join(", ", activeProfiles));
-            // This will help you confirm the correct profile is active
-            if (datasourceUrl.contains("h2")) {
-                logger.warn("H2 DATABASE IN USE - NOT PRODUCTION CONFIG");
-            } else {
-                logger.info("Production database configuration detected");
+
+            try {
+                String datasourceUrl = environment.getProperty("spring.datasource.url");
+            
+                if (datasourceUrl != null && datasourceUrl.contains("h2")) {
+                    logger.warn("H2 DATABASE IN USE - NOT PRODUCTION CONFIG");
+                } else if (datasourceUrl != null) {
+                    logger.info("Production database configuration detected");
+                } else {
+                    logger.error("No datasource URL configured!");
+                }
+            } catch (Exception e) {
+                logger.error("Error checking database configuration", e);
             }
         };
     }
