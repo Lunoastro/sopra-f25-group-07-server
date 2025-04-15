@@ -76,7 +76,12 @@ test {
     testLogging.showStandardStreams = true
     maxParallelForks = 1
 }
-
+sonar {
+  properties {
+    property "sonar.coverage.jacoco.xmlReportPaths", "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
+  }
+  dependsOn jacocoTestReport
+}
 File secretPropsFile = file('./local.properties')
 if (secretPropsFile.exists()) {
     Properties p = new Properties()
