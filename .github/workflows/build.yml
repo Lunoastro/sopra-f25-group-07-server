@@ -7,7 +7,7 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 jobs:
-  build:
+  build:    
     name: Build and analyze
     runs-on: ubuntu-latest
     env:
@@ -53,6 +53,16 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && success()
     steps:
+      - name: Generate app.yaml
+        run: |
+          echo "runtime: java17" > app.yaml
+          echo "instance_class: F2" >> app.yaml
+          echo "" >> app.yaml
+          echo "env_variables:" >> app.yaml
+          echo "  SPRING_PROFILES_ACTIVE: prod" >> app.yaml
+          echo "  SPRING_DATASOURCE_URL: '${{ secrets.SPRING_DATASOURCE_URL }}'" >> app.yaml
+          echo "  SPRING_DATASOURCE_USERNAME: '${{ secrets.SPRING_DATASOURCE_USERNAME }}'" >> app.yaml
+          echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_PASSWORD }}'" >> app.yaml
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -64,6 +74,7 @@ jobs:
           deliverables: app.yaml
           version: v1
           credentials: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
+          promote: true
         env:
           GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
       

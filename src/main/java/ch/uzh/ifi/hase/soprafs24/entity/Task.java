@@ -17,7 +17,9 @@ public class Task implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "task_sequence")
+    @SequenceGenerator(name = "task_sequence", sequenceName = "task_sequence", allocationSize = 1)
+    @Column(updatable = false)
     private Long id;
 
     @Column(nullable = false)
@@ -52,7 +54,7 @@ public class Task implements Serializable {
     private boolean activeStatus;
 
     @Column(nullable = false)
-    private Long CreatorId;
+    private Long creatorId;
 
     @Column(nullable = true)
     private Long isAssignedTo;
@@ -150,11 +152,11 @@ public class Task implements Serializable {
         this.activeStatus = activeStatus;
     }
 
-    public Long getCreatorId() {
-        return CreatorId;
+    public Long getcreatorId() {
+        return creatorId;
     }
-    public void setCreatorId(Long creatorId) {
-        CreatorId = creatorId;
+    public void setcreatorId(Long creatorId) {
+        this.creatorId = creatorId;
     }
 
     public Long getIsAssignedTo() {
