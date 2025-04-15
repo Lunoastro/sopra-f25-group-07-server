@@ -99,7 +99,7 @@ public class UserService {
     User user = userRepository.findByUsername(userInput.getUsername());
     if(user == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user null");}
     user.setStatus(UserStatus.OFFLINE);
-    user = userRepository.save(user);
+    userRepository.save(user);
     userRepository.flush();
       
   }
