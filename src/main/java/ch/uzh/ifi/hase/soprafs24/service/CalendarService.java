@@ -18,6 +18,7 @@ import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
@@ -51,8 +52,6 @@ public class CalendarService {
   //If modifying these scopes, delete your previously saved tokens/ folder.
   private static final List<String> SCOPES =
       Collections.singletonList(CalendarScopes.CALENDAR);
-
-  private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
 
   private static final String REDIRECT_URI = "http://localhost:8080/calendar/callback"; // update with prod URL if needed
 
@@ -180,12 +179,14 @@ public class CalendarService {
   }
 
   private GoogleClientSecrets getClientSecrets() throws IOException {
-    InputStream in = CalendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
-    if (in == null) {
-        throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
+    String json = System.getenv("GOOGLE_CALENDAR_CREDENTIALS");
+
+    if (json != null && !json.isEmpty()) {
+        InputStream in = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+        return GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
     }
 
-    return GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+    throw new FileNotFoundException("Environment variable GOOGLE_CALENDAR_CREDENTIALS is not set.");
   }
 
   public Calendar getDefaultUserGoogleCalendar() throws GeneralSecurityException, IOException {
@@ -214,21 +215,24 @@ public class CalendarService {
   }
   
   private static Credential getDefaultCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-    InputStream in = CalendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
-    if (in == null) {
-        throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
+    String json = System.getenv("GOOGLE_CALENDAR_CREDENTIALS");
+
+    if (json != null && !json.isEmpty()) {
+        InputStream in = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+                .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
+                .setAccessType("offline")
+                .build();
+
+        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder().setPort(8888).build())
+                .authorize("user");
     }
 
-    GoogleClientSecrets clientSecrets =
-            GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-
-    GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-            HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-            .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
-            .setAccessType("offline")
-            .build();
-    return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder().setPort(8888).build()).authorize("user");
-}
+    throw new FileNotFoundException("Environment variable GOOGLE_CALENDAR_CREDENTIALS is not set.");
+  }
 
   public String toISOString(Date date) {
     return date != null ? date.toInstant().toString() : null;

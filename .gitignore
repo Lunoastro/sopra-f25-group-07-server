@@ -44,5 +44,3 @@ local.properties
 .xcode*
 
 /bin
-
-src/main/resources/credentials.json
