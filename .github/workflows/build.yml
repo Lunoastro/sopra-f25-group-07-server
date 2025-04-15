@@ -60,7 +60,7 @@ jobs:
           echo "  SPRING_PROFILES_ACTIVE: prod" >> app.yaml
           echo "  SPRING_DATASOURCE_URL: '${{ secrets.SPRING_DATASOURCE_URL }}'" >> app.yaml
           echo "  SPRING_DATASOURCE_USERNAME: '${{ secrets.SPRING_DATASOURCE_USERNAME }}'" >> app.yaml
-          echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_USERNAME }}'" >> app.yaml
+          echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_PASSWORD }}'" >> app.yaml
       - name: Checkout
         uses: actions/checkout@v2
 
