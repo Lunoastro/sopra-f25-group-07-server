@@ -19,12 +19,6 @@ jobs:
         with:
           java-version: 17
           distribution: "temurin"
-      - name: Set environment variables
-        env:
-          SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
-          SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
-          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
-        run: echo "Environment variables set"
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
