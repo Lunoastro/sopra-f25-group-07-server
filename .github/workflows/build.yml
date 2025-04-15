@@ -7,10 +7,15 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 jobs:
-  build:
+  build:    
     name: Build and analyze
     runs-on: ubuntu-latest
     steps:
+      - name: Replace application-prod.properties with secrets
+        run: |
+          sed -i 's|^spring.datasource.url=.*|spring.datasource.url=${{ secrets.DB_URL }}|' src/main/resources/application-prod.properties
+          sed -i 's|^spring.datasource.url=.*|spring.datasource.username=${{ secrets.DB_USERNAME }}|' src/main/resources/application-prod.properties
+          sed -i 's|^spring.datasource.url=.*|spring.datasource.password=${{ secrets.DB_PASSWORD }}|' src/main/resources/application-prod.properties
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis

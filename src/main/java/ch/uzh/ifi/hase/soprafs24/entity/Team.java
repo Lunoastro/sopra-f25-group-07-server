@@ -17,7 +17,9 @@ public class Team implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "team_sequence")
+    @SequenceGenerator(name = "team_sequence", sequenceName = "team_sequence", allocationSize = 1)
+    @Column(updatable = false)
     private Long id;
 
     @Column(nullable = false, unique = true)
