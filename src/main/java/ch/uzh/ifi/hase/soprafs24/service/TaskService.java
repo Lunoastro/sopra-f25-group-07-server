@@ -67,8 +67,7 @@ public class TaskService {
         if (taskPutDTO.getName() != null) {
             task.setName(taskPutDTO.getName());
         }
-        // since a unclaimed status is allowed the null check doesn't work here
-        if(taskPutDTO.getIsAssignedTo().equals(task.getIsAssignedTo())) {
+        if (task.getIsAssignedTo() == null || !task.getIsAssignedTo().equals(taskPutDTO.getIsAssignedTo())) {
             task.setIsAssignedTo(taskPutDTO.getIsAssignedTo());
         }
         if (taskPutDTO.getDescription() != null) {
