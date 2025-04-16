@@ -229,7 +229,7 @@ public class CalendarService {
                 .setAccessType("offline")
                 .build();
 
-        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder().setPort(8888).build())
+        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder().setPort(8080).build())
                 .authorize("user");
     }
 
