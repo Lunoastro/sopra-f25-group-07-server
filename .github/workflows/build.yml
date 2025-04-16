@@ -10,6 +10,9 @@ jobs:
   build:    
     name: Build and analyze
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
+      REDIRECT_URI_LOCAL: "http://localhost:8080/Callback" # Defined with a different name
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,7 +32,11 @@ jobs:
         run: ./gradlew build
 
       - name: Test with Gradle
-        run: ./gradlew test
+        env:
+          GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
+          SPRING_PROFILES_ACTIVE: dev # Activate the 'dev' profile during tests
+          REDIRECT_URI_SYSTEM_PROP: ${{ env.REDIRECT_URI_LOCAL }} # Pass as another env var        
+        run: ./gradlew test -Dredirect.uri=${{ env.REDIRECT_URI_SYSTEM_PROP }}
       
       - name: Cache SonarQube packages
         if: github.event_name != 'workflow_dispatch'
@@ -50,6 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && success()
+    env:
+      REDIRECT_URI_PROD: "https://sopra-fs25-group-07-server.oa.r.appspot.com/Callback" # Define prod URI
     steps:
       - name: Generate app.yaml
         run: |
@@ -73,6 +82,8 @@ jobs:
           version: v1
           credentials: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
           promote: true
-
+        env:
+          GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
+      
       - name: Test
         run: curl "${{ steps.deploy.outputs.url }}"

@@ -47,6 +47,15 @@ public class Application {
             logger.info("Active profiles: {}", String.join(", ", activeProfiles));
 
             try {
+                // Retrieve the redirect.uri from the properties file based on the active profile
+                String redirectUri = environment.getProperty("redirect.uri");
+
+                if (redirectUri != null) {
+                    logger.info("Using redirect URI: {}", redirectUri);
+                } else {
+                    logger.error("No redirect URI configured!");
+                }
+
                 String datasourceUrl = environment.getProperty("spring.datasource.url");
             
                 if (datasourceUrl != null && datasourceUrl.contains("h2")) {
