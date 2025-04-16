@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.security.GeneralSecurityException;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -98,7 +99,7 @@ public class CalendarController {
 
     @GetMapping("/events/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public Event getEventById(@PathVariable String id, @RequestHeader("Authorization") String authorizationHeader) throws IOException {
+    public Event getEventById(@PathVariable String id, @RequestHeader("Authorization") String authorizationHeader) throws IOException, GeneralSecurityException {
         String token = validateAuthorizationHeader(authorizationHeader);
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
@@ -108,7 +109,7 @@ public class CalendarController {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
-        return calendarService.getEventById(id);
+        return calendarService.getEventById(id, userId);
     }
 
     @GetMapping("/combined")
