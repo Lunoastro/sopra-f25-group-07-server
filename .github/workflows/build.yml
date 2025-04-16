@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
+      redirect.uri: "http://localhost:8080/Callback"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,6 +34,7 @@ jobs:
       - name: Test with Gradle
         env:
           GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
+          SPRING_PROFILES_ACTIVE: dev # Activate the 'dev' profile during tests
         run: ./gradlew test
       
       - name: Cache SonarQube packages
@@ -54,6 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && success()
+    env:
+      redirect.uri: "http://localhost:8080/Callback"
     steps:
       - name: Generate app.yaml
         run: |
