@@ -20,6 +20,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ import ch.uzh.ifi.hase.soprafs24.entity.Task;
 
 @Service
 public class CalendarService {
+    private static final Logger logger = LoggerFactory.getLogger(CalendarService.class);
     private static final String APPLICATION_NAME = "TaskAway Calendar";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = System.getProperty("user.home") + "/.taskaway_tokens";
@@ -100,8 +103,7 @@ public class CalendarService {
                 }
             }
         } catch (IOException | GeneralSecurityException e) {
-            e.printStackTrace();
-        }
+            logger.error("Error syncing task with Google Calendar for user {}: {}", userId, e.getMessage(), e);        }
     }
 
     public void syncAllActiveTasksToUserCalendar(Long userId) throws IOException {
