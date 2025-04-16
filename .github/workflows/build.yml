@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
-      redirect.uri: "http://localhost:8080/Callback"
+      REDIRECT_URI_LOCAL: "http://localhost:8080/Callback" # Defined with a different name
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,7 +35,8 @@ jobs:
         env:
           GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
           SPRING_PROFILES_ACTIVE: dev # Activate the 'dev' profile during tests
-        run: ./gradlew test
+          REDIRECT_URI_SYSTEM_PROP: ${{ env.REDIRECT_URI_LOCAL }} # Pass as another env var        
+        run: ./gradlew test -Dredirect.uri=${{ env.REDIRECT_URI_SYSTEM_PROP }}
       
       - name: Cache SonarQube packages
         if: github.event_name != 'workflow_dispatch'
@@ -57,7 +58,7 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && success()
     env:
-      redirect.uri: "http://localhost:8080/Callback"
+      REDIRECT_URI_PROD: "https://sopra-fs25-group-07-server.oa.r.appspot.com/Callback" # Define prod URI
     steps:
       - name: Generate app.yaml
         run: |
