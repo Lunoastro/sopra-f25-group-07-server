@@ -352,4 +352,37 @@ class TaskServiceTest {
         assertEquals("Not authorized to edit this task", exception.getReason());
     }
 
+    @Test
+    void validateToBeEditedFields_taskNameCanBeUpdated_success() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setName("Old Task");
+    
+        Task updatedTask = new Task();
+        updatedTask.setName("Updated Task");
+    
+        // when
+        taskService.validateToBeEditedFields(existingTask, updatedTask);
+    
+        // then
+        assertEquals("Updated Task", existingTask.getName());
+    }
+    
+    @Test
+    void validateToBeEditedFields_taskAssignmentCanBeUpdated_success() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setIsAssignedTo(5L);
+
+        Task updatedTask = new Task();
+        updatedTask.setIsAssignedTo(10L);
+
+        // when
+        taskService.validateToBeEditedFields(existingTask, updatedTask);
+
+        // then
+        assertEquals(10L, existingTask.getIsAssignedTo());
+    }
+    
+
 }
