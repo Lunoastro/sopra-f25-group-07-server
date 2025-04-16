@@ -31,6 +31,8 @@ jobs:
         run: ./gradlew build
 
       - name: Test with Gradle
+        env:
+          GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
         run: ./gradlew test
       
       - name: Cache SonarQube packages
