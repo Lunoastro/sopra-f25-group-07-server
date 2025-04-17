@@ -1,4 +1,4 @@
-package ch.uzh.ifi.hase.soprafs24.service;
+package ch.uzh.ifi.hase.soprafs24.service.Task;
 
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
@@ -7,6 +7,8 @@ import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
+import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import java.util.Date;
 
@@ -59,6 +61,7 @@ class TaskServiceTest {
 
     @Test
     void claimTask_validInputs_success() {
+        testUser.setTeamId(1L);
         // when
         Mockito.when(userRepository.findByToken("some-valid-token")).thenReturn(testUser);
         Mockito.when(userService.validateToken("some-valid-token")).thenReturn(true); // Mock validateToken
@@ -108,6 +111,7 @@ class TaskServiceTest {
 
     @Test
     void createTask_validInput_success() {
+        testUser.setTeamId(1L);
         // given a valid task and user token
         TaskPostDTO validTaskPostDTO = new TaskPostDTO();
         validTaskPostDTO.setName("New Task");

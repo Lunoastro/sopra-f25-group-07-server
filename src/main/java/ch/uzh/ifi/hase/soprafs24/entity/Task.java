@@ -24,7 +24,7 @@ public class Task implements Serializable {
 
     @Column(nullable = false)
     private String name;
-
+    
     @Column(nullable = true)
     private String description;
 
