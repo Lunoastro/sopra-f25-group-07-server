@@ -44,6 +44,9 @@ public class Task implements Serializable {
     private Date creationDate;
 
     @Column(nullable = false)
+    private Date startDate;
+
+    @Column(nullable = false)
     private int value;
 
     @Enumerated(EnumType.STRING)
@@ -62,6 +65,8 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private Integer frequency;
 
+    @Column(nullable = true)
+    private Integer daysVisible;
 
     // Getters and Setters
     public Long getId() {
@@ -128,6 +133,14 @@ public class Task implements Serializable {
         this.creationDate = creationDate;
     }
 
+    public Date getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(Date startDate) {
+        this.startDate = startDate;
+    }
+
     public int getValue() {
         return value;
     }
@@ -172,5 +185,13 @@ public class Task implements Serializable {
 
     public void setFrequency(Integer frequency) {
         this.frequency = frequency;
+    }
+
+    public Integer getDaysVisible() {
+        return daysVisible;
+    }
+
+    public void setDaysVisible(Integer daysVisible) {
+        this.daysVisible = daysVisible;
     }
 }

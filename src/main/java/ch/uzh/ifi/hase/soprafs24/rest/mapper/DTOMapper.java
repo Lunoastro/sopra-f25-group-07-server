@@ -80,16 +80,22 @@ public interface DTOMapper {
   Team convertTeamDeleteDTOtoEntity(TeamDeleteDTO teamDeleteDTO);
 
   @Mapping(source = "name", target = "name")
+  @Mapping(source = "value", target = "value")
   @Mapping(source = "description", target = "description")
+  @Mapping(source = "daysVisible", target = "daysVisible")
   @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
+  @Mapping(source = "startDate", target = "startDate", dateFormat = "yyyy-MM-dd")
   Task convertTaskPostDTOtoEntity(TaskPostDTO taskPostDTO);
   
   @Mapping(source = "id", target = "id")
+  @Mapping(source = "creatorId", target = "creatorId")
+  @Mapping(source = "isAssignedTo", target = "isAssignedTo")
   @Mapping(source = "name", target = "name")
   @Mapping(source = "description", target = "description")
-  @Mapping(source = "deadline", target = "deadline")
+  @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
   @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
+  @Mapping(source = "value", target = "value")
   TaskGetDTO convertEntityToTaskGetDTO(Task task);
 
   @Mapping(source = "id", target = "id")
@@ -100,11 +106,15 @@ public interface DTOMapper {
   @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
   @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
+  @Mapping(source = "value", target = "value")
   Task convertTaskGetDTOtoEntity(TaskGetDTO taskGetDTO);
 
+  @Mapping(source = "isAssignedTo", target = "isAssignedTo")
   @Mapping(source = "name", target = "name")
   @Mapping(source = "description", target = "description")
+  @Mapping(source = "daysVisible", target = "daysVisible")
   @Mapping(source = "deadline", target = "deadline",dateFormat = "yyyy-MM-dd")
+  @Mapping(source = "startDate", target = "startDate",dateFormat = "yyyy-MM-dd")
   @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
   Task convertTaskPutDTOtoEntity(TaskPutDTO taskPutDTO);

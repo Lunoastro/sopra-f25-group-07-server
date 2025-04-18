@@ -14,5 +14,8 @@ import lombok.Setter;
 public class TaskPostDTO {
     private String name;
     private String description;
+    private Date startDate;
     private Date deadline;
+    private int value;
+    private Integer daysVisible;
 }

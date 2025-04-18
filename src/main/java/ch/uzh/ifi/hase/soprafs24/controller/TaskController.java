@@ -55,22 +55,6 @@ public class TaskController {
         return taskGetDTOs;
     }
 
-    @GetMapping("/tasks/pending")
-    @ResponseStatus(HttpStatus.OK)
-    public List<TaskGetDTO> getTasksPending(@RequestHeader("Authorization") String userToken) {
-        
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
-
-    }
-
-    @GetMapping("/tasks/recurring")
-    @ResponseStatus(HttpStatus.OK)
-    public List<TaskGetDTO> getRecurringTasks(@RequestHeader("Authorization") String userToken) {
-        
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
-
-    }
-
     @GetMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.OK)
     public TaskGetDTO getTask(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
@@ -97,7 +81,6 @@ public class TaskController {
         // convert putDTO to entity
         Task task = DTOMapper.INSTANCE.convertTaskPutDTOtoEntity(taskPutDTO);
         Task updatedTask = taskService.updateTask(existingTask, task);
-        
         // Convert the updated entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(updatedTask);
     }
@@ -105,16 +88,12 @@ public class TaskController {
     @PatchMapping("/tasks/{taskId}/claim")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public TaskGetDTO claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
-        
-        /*
-         * Retrieves Task by Id or throws Http error if the task doesn't exist
-         */
+        // Validate the user token        
+        taskService.validateUserToken(userToken);
+        //Retrieves Task by Id or throws Http error if the task doesn't exist
         Task existingTask = taskService.getTaskById(taskId);
-        /* 
-         * Claims the task for the user and assigns the user to the correct field 
-        */
+        //Claims the task for the user and assigns the user to the correct field 
         Task claimed = taskService.claimTask(existingTask,userToken);
-        
         // Convert the updated entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(claimed);
     }

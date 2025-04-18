@@ -19,4 +19,5 @@ public class TaskGetDTO {
     private String deadline;
     private String color;
     private boolean activeStatus;
+    private int value;
 }
