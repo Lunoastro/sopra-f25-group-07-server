@@ -61,7 +61,7 @@ public class User implements Serializable {
   private ColorID color;
 
   @Column
-  private long teamId;
+  private Long teamId;
 
 
   // Getters and Setters
