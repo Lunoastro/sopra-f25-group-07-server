@@ -64,10 +64,15 @@ public class TaskService {
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task cannot be null");
         }
-        if (taskPutDTO.getName() != null) {
-            task.setName(taskPutDTO.getName());
+        if (taskPutDTO.getName() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null");
         }
-        if (task.getIsAssignedTo() == null || !task.getIsAssignedTo().equals(taskPutDTO.getIsAssignedTo())) {
+        task.setName(taskPutDTO.getName());
+
+        if (taskPutDTO.getIsAssignedTo() != null) {
+            if (task.getIsAssignedTo() != null && !task.getIsAssignedTo().equals(taskPutDTO.getIsAssignedTo())) {
+                verifyClaimStatus(task); // will throw a 409 if the task is still claimed by someone else
+            }
             task.setIsAssignedTo(taskPutDTO.getIsAssignedTo());
         }
         if (taskPutDTO.getDescription() != null) {
