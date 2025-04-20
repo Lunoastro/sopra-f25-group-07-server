@@ -1,4 +1,4 @@
-package ch.uzh.ifi.hase.soprafs24.service;
+package ch.uzh.ifi.hase.soprafs24.service.Task;
 
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
@@ -7,6 +7,8 @@ import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
+import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import java.util.Date;
 
@@ -59,6 +61,7 @@ class TaskServiceTest {
 
     @Test
     void claimTask_validInputs_success() {
+        testUser.setTeamId(1L);
         // when
         Mockito.when(userRepository.findByToken("some-valid-token")).thenReturn(testUser);
         Mockito.when(userService.validateToken("some-valid-token")).thenReturn(true); // Mock validateToken
@@ -108,6 +111,7 @@ class TaskServiceTest {
 
     @Test
     void createTask_validInput_success() {
+        testUser.setTeamId(1L);
         // given a valid task and user token
         TaskPostDTO validTaskPostDTO = new TaskPostDTO();
         validTaskPostDTO.setName("New Task");
@@ -254,7 +258,8 @@ class TaskServiceTest {
         existingTask.setColor(ColorID.C1);
         existingTask.setActiveStatus(true);
 
-        Task updatedTask = new Task(); // All fields are null
+        Task updatedTask = new Task();
+        updatedTask.setName("Old Task");
 
         // when
         taskService.validateToBeEditedFields(existingTask, updatedTask);
@@ -352,4 +357,67 @@ class TaskServiceTest {
         assertEquals("Not authorized to edit this task", exception.getReason());
     }
 
+    @Test
+    void validateToBeEditedFields_taskNameCanBeUpdated_success() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setName("Old Task");
+    
+        Task updatedTask = new Task();
+        updatedTask.setName("Updated Task");
+    
+        // when
+        taskService.validateToBeEditedFields(existingTask, updatedTask);
+    
+        // then
+        assertEquals("Updated Task", existingTask.getName());
+    }
+
+    @Test
+    void validateToBeEditedFields_taskNameCannotBeNullOrEmpty_failure() {
+        Task existingTask = new Task();
+        existingTask.setName("Old Task");
+
+        Task updatedTask = new Task();
+        updatedTask.setName(null);  // Invalid name (null)
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+        () -> taskService.validateToBeEditedFields(existingTask, updatedTask));  // Service should throw an exception
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());  // We expect a 400 BAD_REQUEST
+
+        assertEquals("Task name cannot be null", exception.getReason());  
+    }
+    
+    @Test
+    void validateToBeEditedFields_taskAssignmentCannotBeReassignedWithoutUnassigning_first() {
+        Task existingTask = new Task();
+        existingTask.setName("Important Task");
+        existingTask.setIsAssignedTo(5L);
+
+        Task updatedTask = new Task();
+        updatedTask.setName("Important Task");
+        updatedTask.setIsAssignedTo(10L);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> taskService.validateToBeEditedFields(existingTask, updatedTask));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals("Task already claimed (Needs to be released first)", exception.getReason());
+    }
+
+    @Test
+    void validateToBeEditedFields_taskAssignmentCanBeClaimed_success() {
+        Task existingTask = new Task();
+        existingTask.setName("Unclaimed Task");
+        existingTask.setIsAssignedTo(null);
+
+        Task updatedTask = new Task();
+        updatedTask.setName("Unclaimed Task");
+        updatedTask.setIsAssignedTo(10L);
+
+        taskService.validateToBeEditedFields(existingTask, updatedTask);
+
+        assertEquals(10L, existingTask.getIsAssignedTo());
+    }
 }

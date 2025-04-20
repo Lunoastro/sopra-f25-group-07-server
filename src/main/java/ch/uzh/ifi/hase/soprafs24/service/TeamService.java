@@ -119,7 +119,7 @@ public class TeamService {
 
     // Remove user from the team
     team.getMembers().remove(userId);
-    user.setId(null);  // Remove teamId from user
+    user.setTeamId(null);  // Remove teamId from user
 
     // Save changes
     userRepository.save(user);

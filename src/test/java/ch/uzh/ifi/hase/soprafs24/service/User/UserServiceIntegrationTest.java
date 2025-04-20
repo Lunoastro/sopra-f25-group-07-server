@@ -1,9 +1,11 @@
-package ch.uzh.ifi.hase.soprafs24.service;
+package ch.uzh.ifi.hase.soprafs24.service.User;
 
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.service.UserService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
