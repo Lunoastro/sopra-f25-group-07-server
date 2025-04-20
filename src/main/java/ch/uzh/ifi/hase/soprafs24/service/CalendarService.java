@@ -40,6 +40,10 @@ public class CalendarService {
 
     private GoogleAuthorizationCodeFlow flow;
 
+    private String privateEvent = "private";
+
+    private String offlineStatus = "offline";
+
     @Autowired
     private TaskService taskService;
 
@@ -63,7 +67,7 @@ public class CalendarService {
                     .build();
 
             DateTime now = new DateTime(System.currentTimeMillis());
-            Events events = calendar.events().list("primary")
+            Events events = calendar.events().list(privateEvent)
                     .setMaxResults(maxResults)
                     .setTimeMin(now)
                     .setOrderBy("startTime")
@@ -92,13 +96,13 @@ public class CalendarService {
                         .setEnd(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get("end")).get("dateTime"))));
 
                 if ("active".equals(taskEvent.get("status"))) {
-                    Event inserted = userCalendar.events().insert("primary", event).execute();
+                    Event inserted = userCalendar.events().insert(privateEvent, event).execute();
                     System.out.println("Inserted Google event ID: " + inserted.getId());
                     // Store inserted.getId() in DB as needed
                 } else if ("inactive".equals(taskEvent.get("status"))) {
                     String googleEventId = (String) taskEvent.get("googleEventId");
                     if (googleEventId != null) {
-                        userCalendar.events().delete("primary", googleEventId).execute();
+                        userCalendar.events().delete(privateEvent, googleEventId).execute();
                     }
                 }
             }
@@ -106,7 +110,7 @@ public class CalendarService {
             logger.error("Error syncing task with Google Calendar for user {}: {}", userId, e.getMessage(), e);        }
     }
 
-    public void syncAllActiveTasksToUserCalendar(Long userId) throws IOException {
+    public void syncAllActiveTasksToUserCalendar(Long userId) {
         List<Task> tasks = taskService.getFilteredTasks(true, null);
 
         for (Task task : tasks) {
@@ -127,7 +131,7 @@ public class CalendarService {
         flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
-                .setAccessType("offline")
+                .setAccessType(offlineStatus)
                 .build();
 
         return flow.newAuthorizationUrl()
@@ -143,7 +147,7 @@ public class CalendarService {
             flow = new GoogleAuthorizationCodeFlow.Builder(
                     HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), SCOPES)
                     .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
-                    .setAccessType("offline")
+                    .setAccessType(offlineStatus)
                     .build();
         }
 
@@ -172,7 +176,7 @@ public class CalendarService {
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), SCOPES)
                 .setDataStoreFactory(dataStoreFactory)
-                .setAccessType("offline")
+                .setAccessType(offlineStatus)
                 .build();
 
         Credential credential = flow.loadCredential(userId.toString());

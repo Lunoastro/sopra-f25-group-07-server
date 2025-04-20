@@ -173,6 +173,7 @@ class TaskServiceTest {
         // given
         TaskPostDTO validTaskPostDTO = new TaskPostDTO();
         validTaskPostDTO.setName("Valid Task");
+        validTaskPostDTO.setValue(10);
         validTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future deadline
 
         // when & then (no exception should be thrown)
@@ -212,6 +213,7 @@ class TaskServiceTest {
         // given
         TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
         invalidTaskPostDTO.setName("Valid Task");
+        invalidTaskPostDTO.setValue(10);
         invalidTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() - 3600 * 1000)); // Past deadline
 
         // when & then
@@ -234,8 +236,6 @@ class TaskServiceTest {
         updatedTask.setName("New Task");
         updatedTask.setDescription("New Description");
         updatedTask.setDeadline(new Date(System.currentTimeMillis() + 7200 * 1000)); // Future deadline
-        updatedTask.setColor(ColorID.C2);
-        updatedTask.setActiveStatus(false);
 
         // when
         taskService.validateToBeEditedFields(existingTask, updatedTask);
@@ -244,12 +244,12 @@ class TaskServiceTest {
         assertEquals("New Task", existingTask.getName());
         assertEquals("New Description", existingTask.getDescription());
         assertEquals(updatedTask.getDeadline(), existingTask.getDeadline());
-        assertEquals(ColorID.C2, existingTask.getColor());
-        assertFalse(existingTask.getActiveStatus());
+        assertEquals(ColorID.C1, existingTask.getColor());
+        assertTrue(existingTask.getActiveStatus());
     }
 
     @Test
-    void validateToBeEditedFields_nullFields_noChanges() {
+    void validateToBeEditedFields_nullFields_noChanges_additonal_Task() {
         // given
         Task existingTask = new Task();
         existingTask.setName("Old Task");
@@ -269,7 +269,7 @@ class TaskServiceTest {
         assertEquals("Old Description", existingTask.getDescription());
         assertNotNull(existingTask.getDeadline());
         assertEquals(ColorID.C1, existingTask.getColor());
-        assertFalse(existingTask.getActiveStatus());
+        assertTrue(existingTask.getActiveStatus());
     }
 
     @Test
@@ -374,19 +374,19 @@ class TaskServiceTest {
     }
 
     @Test
-    void validateToBeEditedFields_taskNameCannotBeNullOrEmpty_failure() {
+    void validateToBeEditedFields_taskNameCannotBeEmpty_failure() {
         Task existingTask = new Task();
         existingTask.setName("Old Task");
 
         Task updatedTask = new Task();
-        updatedTask.setName(null);  // Invalid name (null)
+        updatedTask.setName("");  // Invalid name (empty string)
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
         () -> taskService.validateToBeEditedFields(existingTask, updatedTask));  // Service should throw an exception
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());  // We expect a 400 BAD_REQUEST
 
-        assertEquals("Task name cannot be null", exception.getReason());  
+        assertEquals("Task name cannot be empty", exception.getReason());  
     }
     
     @Test

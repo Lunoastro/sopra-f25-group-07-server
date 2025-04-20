@@ -43,15 +43,18 @@ public class Task implements Serializable {
     @Column(nullable = false)
     private Date creationDate;
 
+    @Column(nullable = true)
+    private Date startDate;
+
     @Column(nullable = false)
-    private int value;
+    private Integer value;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = true)
     private ColorID color;
 
     @Column(nullable = false)
-    private boolean activeStatus;
+    private Boolean activeStatus;
 
     @Column(nullable = false)
     private Long creatorId;
@@ -62,6 +65,8 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private Integer frequency;
 
+    @Column(nullable = true)
+    private Integer daysVisible;
 
     // Getters and Setters
     public Long getId() {
@@ -128,11 +133,19 @@ public class Task implements Serializable {
         this.creationDate = creationDate;
     }
 
-    public int getValue() {
+    public Date getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(Date startDate) {
+        this.startDate = startDate;
+    }
+
+    public Integer getValue() {
         return value;
     }
 
-    public void setValue(int value) {
+    public void setValue(Integer value) {
         this.value = value;
     }
 
@@ -144,11 +157,11 @@ public class Task implements Serializable {
         this.color = color;
     }
 
-    public boolean getActiveStatus() {
+    public Boolean getActiveStatus() {
         return activeStatus;
     }
 
-    public void setActiveStatus(boolean activeStatus) {
+    public void setActiveStatus(Boolean activeStatus) {
         this.activeStatus = activeStatus;
     }
 
@@ -172,5 +185,13 @@ public class Task implements Serializable {
 
     public void setFrequency(Integer frequency) {
         this.frequency = frequency;
+    }
+
+    public Integer getDaysVisible() {
+        return daysVisible;
+    }
+
+    public void setDaysVisible(Integer daysVisible) {
+        this.daysVisible = daysVisible;
     }
 }

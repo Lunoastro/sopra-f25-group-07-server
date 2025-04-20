@@ -15,6 +15,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.Date;
+import java.util.Calendar;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class TaskService {
     private final Logger log = LoggerFactory.getLogger(TaskService.class);
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private String recurringTask = "recurring"; 
 
     @Autowired
     public TaskService(@Qualifier("taskRepository") TaskRepository taskRepository,
@@ -38,54 +40,105 @@ public class TaskService {
 
     // validate PostDTO based on the fields
     public void validatePostDto(TaskPostDTO dto) {
-    if (dto.getName() == null || dto.getName().isEmpty()) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
-    }
-    if (dto.getDeadline() == null || dto.getDeadline().before(new Date())) {
-        throw new IllegalArgumentException("Invalid or past deadline provided.");
-    }
-}
-
-    // validate the task based on the fields
-    public void verifyTaskExistence(Task task) {
-        if (taskRepository.findTaskById(task.getId()) != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
+        if (dto.getName() == null || dto.getName().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
+        }
+        if (dto.getValue() == null || dto.getValue() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task value cannot be null or less than or equal to 0");
+        }
+        if (dto.getDeadline() == null) { //short type check (recurring or additional task)
+            validateRecurringPostDto(dto); //recurring dto checks
+        } else {
+            if (dto.getDeadline().before(new Date())) {
+                throw new IllegalArgumentException("Invalid or past deadline provided.");
+            }
         }
     }
 
-    public void verifyClaimStatus(Task task) {
-        if (task.getIsAssignedTo() != null) {
-            log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)");
+    private void validateRecurringPostDto(TaskPostDTO dto) {
+        if (dto.getFrequency() == null || dto.getFrequency() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task frequency cannot be null or less than or equal to 0");
+        }
+        if (dto.getStartDate() != null && dto.getStartDate().before(new Date())) {
+            throw new IllegalArgumentException("Invalid or past start date provided.");
+        }
+        int half;
+        if (dto.getFrequency() == 1) { // SPECIAL CASE: if frequency is 1, we set half to 1 as daysVisible can never be 0
+            half = 1;
+        } else {
+            half = dto.getFrequency() / 2; // half of the frequency is the default minimum cooldown period 
+        }
+        if (dto.getDaysVisible() != null && dto.getDaysVisible() < half) { // half also includes 0 and negative values
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task daysVisible cannot be null or less than half of frequency (exception: if frequency = 1, daysVisible = 1)");
         }
     }
 
     public void validateToBeEditedFields(Task task, Task taskPutDTO) {
+        validateCommonTaskPutDto(task, taskPutDTO); // validate common fields
+        if (recurringTask.equals(checkTaskType(task))) {
+            validateRecurringPutDto(task, taskPutDTO); // validate recurring fields
+            calculateDeadline(task);
+        } else {
+            if (taskPutDTO.getDeadline() != null) { //validate additional task
+                if (taskPutDTO.getDeadline().before(new Date())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deadline must be in the future");
+                }
+                task.setDeadline(taskPutDTO.getDeadline());
+            }
+        }
+    }
+    
+    private void validateCommonTaskPutDto(Task task, Task taskPutDTO) {
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task cannot be null");
         }
-        if (taskPutDTO.getName() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null");
-        }
-        task.setName(taskPutDTO.getName());
-
-        if (taskPutDTO.getIsAssignedTo() != null) {
-            if (task.getIsAssignedTo() != null && !task.getIsAssignedTo().equals(taskPutDTO.getIsAssignedTo())) {
-                verifyClaimStatus(task); // will throw a 409 if the task is still claimed by someone else
+        if (taskPutDTO.getName() != null) {
+            if (taskPutDTO.getName().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be empty");
             }
-            task.setIsAssignedTo(taskPutDTO.getIsAssignedTo());
+            if (taskRepository.findTaskByName(taskPutDTO.getName()) != null && !taskPutDTO.getName().equals(task.getName())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Task name already exists");
+            }
+            task.setName(taskPutDTO.getName());
+        }
+        if (taskPutDTO.getValue() != null) {
+            if (taskPutDTO.getValue() <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task value must be greater than 0");
+            }
+            task.setValue(taskPutDTO.getValue());
         }
         if (taskPutDTO.getDescription() != null) {
             task.setDescription(taskPutDTO.getDescription());
         }
-        if (taskPutDTO.getDeadline() != null) {
-            task.setDeadline(taskPutDTO.getDeadline());
+        if (taskPutDTO.getIsAssignedTo() != null) {
+            verifyClaimStatus(task);
+            task.setIsAssignedTo(taskPutDTO.getIsAssignedTo());
         }
-        if (taskPutDTO.getColor() != null ) {
-            task.setColor(taskPutDTO.getColor());
-        }
-        if (taskPutDTO.getActiveStatus() != task.getActiveStatus()) {
+    }
+
+    private void validateRecurringPutDto(Task task, Task taskPutDTO) {
+        if (taskPutDTO.getActiveStatus() != null && !taskPutDTO.getActiveStatus().equals(task.getActiveStatus())) {
             task.setActiveStatus(taskPutDTO.getActiveStatus());
+        }
+        if (taskPutDTO.getFrequency() != null) {
+            if (taskPutDTO.getFrequency() <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Frequency must be greater than 0");
+            }
+            task.setFrequency(taskPutDTO.getFrequency());
+        }
+        int half = getHalfFrequency(task);
+        if (taskPutDTO.getDaysVisible() != null) {
+            if (taskPutDTO.getDaysVisible() < half) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
+            }
+            task.setDaysVisible(taskPutDTO.getDaysVisible());
+        }
+        if (taskPutDTO.getStartDate() != null) {
+            if (taskPutDTO.getStartDate().before(new Date())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be in the future");
+            }
+            task.setStartDate(taskPutDTO.getStartDate());
         }
     }
 
@@ -121,16 +174,14 @@ public class TaskService {
     public List<Task> getFilteredTasks(Boolean isActive, String type) {
         // If both filters are null, return all tasks
         List<Task> allTasks = getAllTasks(); 
-        
         // Filter by activeStatus (if active or inactive)
         if (isActive != null) {
             allTasks = allTasks.stream()
-                           .filter(task -> task.getActiveStatus() == isActive) // True = active Tasks, False = inactive Tasks
+                           .filter(task -> isActive.equals(task.getActiveStatus())) // True = active Tasks, False = inactive Tasks
                            .toList();
         }
-    
         // Filter by type (recurring)
-        if (type != null  && type.equalsIgnoreCase("recurring")) {
+        if (type != null  && type.equalsIgnoreCase(recurringTask)) {
             allTasks = allTasks.stream()
                             .filter(task -> task.getFrequency() != null) // Check if frequency is null -> additional task
                             .toList();
@@ -141,6 +192,7 @@ public class TaskService {
     public Task createTask(Task task, String userToken) {
         verifyTaskExistence(task);
         validateUserToken(userToken);
+        String taskType = checkTaskType(task);
         log.debug("Creating a new task with name: {}", task.getName());
         // set the task creation date
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
@@ -148,6 +200,26 @@ public class TaskService {
         task.setcreatorId(userRepository.findByToken(userToken.substring(7)).getId());
         // enforce that the task colour is initially set to white 
         task.setColor(null);
+        // store status of the task
+        task.setActiveStatus(true);
+        if (recurringTask.equals(taskType)) { // check if task is recurring
+            // if start Date wasnt given, we use a default value
+            if (task.getStartDate() == null) { 
+                task.setStartDate((task.getCreationDate()));
+            }
+            // if daysVisible was not given, we use a default value
+            if (task.getDaysVisible() == null) {
+                int half = getHalfFrequency(task);
+                task.setDaysVisible(half); // half of the frequency is the default minimum cooldown period
+            }
+            // calculation and setting of new deadline; start Date + frequency = deadline
+            calculateDeadline(task);
+        }
+        else { // if task is additional task
+            long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
+            int daysDiff = (int) (millisDiff / (1000 * 60 * 60 * 24));
+            task.setDaysVisible(daysDiff); // set daysVisible to the difference between deadline and creation date -> easy filtering for pinboard
+        }
         return taskRepository.save(task);
     }
 
@@ -159,15 +231,21 @@ public class TaskService {
         // store the userId of the creator
         User user = userRepository.findByToken(userToken.substring(7));
         task.setIsAssignedTo(user.getId());
-        /*
-         * * set the task color to the color of the user who claimed it
-         */
+        //set the task color to the color of the user who claimed it
         if(user.getColor() != null) {
             task.setColor(user.getColor());
         } else{
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set");
         }
         return taskRepository.save(task);
+    }
+
+    public void updateAllTaskColors(User user) { // update all tasks of a user with the color of the user -> FUTURE USE ONCE WE HAVE WEBSOCKET
+        List<Task> userTasks = taskRepository.findTaskByIsAssignedTo(user.getId());
+        for (Task task : userTasks) {
+            task.setColor(user.getColor());
+        }
+        taskRepository.saveAll(userTasks);
     }
 
     public void deleteTask(Long taskId) {
@@ -178,34 +256,79 @@ public class TaskService {
         validateToBeEditedFields(task, taskPutDTO);
         return taskRepository.save(task);
     }
-
-    private List<Task> getAllTasks() {
-        return taskRepository.findAll();
-    }
     
     public Task getTaskById(Long taskId) {
         return taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
     }
 
-    public void pauseTask(Task task) {
+    public void pauseTask(Task task) { // -> will need to be updated to pause all tasks of the entire team; fetch all tasks then pause them
         task.setPaused(true);
         task.setPausedDate(new Date());
         taskRepository.save(task);
     }
 
-    public void unpauseTask(Task task) {
+    public void unpauseTask(Task task) { // -> will need to be updated to unpause all tasks of the entire team; fetch all tasks then unpause them + update every deadline using total paused time
         task.setPaused(false);
         task.setUnpausedDate(new Date());
         taskRepository.save(task);
     }
 
-    public void assignTask(Task task, Long userId) {
+    public void assignTask(Task task, Long userId) { 
         task.setIsAssignedTo(userId);
         taskRepository.save(task);
     }
     public void unassignTask(Task task) {
         task.setIsAssignedTo(null);
         taskRepository.save(task);
+    }
+
+    //-------------------------------------helper functions here-------------------------------------------------
+
+    private String checkTaskType(Task task) {
+        String taskType;
+        if (task.getFrequency() != null) {
+            taskType = recurringTask;
+        } else {
+            taskType = "additional";
+        }
+        return taskType;
+    }
+
+    // validate the task based on the fields
+    private void verifyTaskExistence(Task task) {
+        if (taskRepository.findTaskById(task.getId()) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
+        }
+    }
+
+    private void verifyClaimStatus(Task task) {
+        if (task.getIsAssignedTo() != null) {
+            log.debug("Task with name: {} is already claimed by user with id: {}", task.getName(), task.getIsAssignedTo());
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)");
+        }
+    }
+
+    private int getHalfFrequency(Task task) {
+        int half;
+        if (task.getFrequency() == 1) { // SPECIAL CASE: if frequency is 1, we set half to 1 as daysVisible can never be 0
+            half = 1;
+        } else {
+            half = task.getFrequency() / 2; // half of the frequency is the default minimum cooldown period 
+        }
+        return half;
+    }
+
+    private void calculateDeadline(Task task) {
+        // calculate deadline = startDate + frequency days
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(task.getStartDate());
+        calendar.add(Calendar.DATE, task.getFrequency());
+        Date deadline = calendar.getTime();
+        task.setDeadline(deadline);
+    }
+
+    private List<Task> getAllTasks() {
+        return taskRepository.findAll();
     }
 }

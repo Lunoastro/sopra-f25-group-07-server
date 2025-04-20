@@ -14,10 +14,13 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class TaskPutDTO {
-    private String name;
     private Long isAssignedTo;
+    private String name;
     private String description;
+    private Integer daysVisible;
+    private Integer value;
+    private Date startDate;
     private Date deadline;
     private ColorID color;
-    private boolean activeStatus;
+    private Boolean activeStatus;
 }
