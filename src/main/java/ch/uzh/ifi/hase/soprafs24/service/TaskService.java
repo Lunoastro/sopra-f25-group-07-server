@@ -110,6 +110,10 @@ public class TaskService {
         if (taskPutDTO.getDescription() != null) {
             task.setDescription(taskPutDTO.getDescription());
         }
+        if (taskPutDTO.getIsAssignedTo() != null) {
+            verifyClaimStatus(task);
+            task.setIsAssignedTo(taskPutDTO.getIsAssignedTo());
+        }
     }
 
     private void validateRecurringPutDto(Task task, Task taskPutDTO) {

@@ -374,19 +374,19 @@ class TaskServiceTest {
     }
 
     @Test
-    void validateToBeEditedFields_taskNameCannotBeNullOrEmpty_failure() {
+    void validateToBeEditedFields_taskNameCannotBeEmpty_failure() {
         Task existingTask = new Task();
         existingTask.setName("Old Task");
 
         Task updatedTask = new Task();
-        updatedTask.setName(null);  // Invalid name (null)
+        updatedTask.setName("");  // Invalid name (empty string)
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
         () -> taskService.validateToBeEditedFields(existingTask, updatedTask));  // Service should throw an exception
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());  // We expect a 400 BAD_REQUEST
 
-        assertEquals("Task name cannot be null", exception.getReason());  
+        assertEquals("Task name cannot be empty", exception.getReason());  
     }
     
     @Test
