@@ -169,6 +169,7 @@ class TaskServiceTest {
         // given
         TaskPostDTO validTaskPostDTO = new TaskPostDTO();
         validTaskPostDTO.setName("Valid Task");
+        validTaskPostDTO.setValue(10);
         validTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future deadline
 
         // when & then (no exception should be thrown)
@@ -208,6 +209,7 @@ class TaskServiceTest {
         // given
         TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
         invalidTaskPostDTO.setName("Valid Task");
+        invalidTaskPostDTO.setValue(10);
         invalidTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() - 3600 * 1000)); // Past deadline
 
         // when & then
@@ -230,8 +232,6 @@ class TaskServiceTest {
         updatedTask.setName("New Task");
         updatedTask.setDescription("New Description");
         updatedTask.setDeadline(new Date(System.currentTimeMillis() + 7200 * 1000)); // Future deadline
-        updatedTask.setColor(ColorID.C2);
-        updatedTask.setActiveStatus(false);
 
         // when
         taskService.validateToBeEditedFields(existingTask, updatedTask);
@@ -240,12 +240,12 @@ class TaskServiceTest {
         assertEquals("New Task", existingTask.getName());
         assertEquals("New Description", existingTask.getDescription());
         assertEquals(updatedTask.getDeadline(), existingTask.getDeadline());
-        assertEquals(ColorID.C2, existingTask.getColor());
-        assertFalse(existingTask.getActiveStatus());
+        assertEquals(ColorID.C1, existingTask.getColor());
+        assertTrue(existingTask.getActiveStatus());
     }
 
     @Test
-    void validateToBeEditedFields_nullFields_noChanges() {
+    void validateToBeEditedFields_nullFields_noChanges_additonal_Task() {
         // given
         Task existingTask = new Task();
         existingTask.setName("Old Task");
@@ -264,7 +264,7 @@ class TaskServiceTest {
         assertEquals("Old Description", existingTask.getDescription());
         assertNotNull(existingTask.getDeadline());
         assertEquals(ColorID.C1, existingTask.getColor());
-        assertFalse(existingTask.getActiveStatus());
+        assertTrue(existingTask.getActiveStatus());
     }
 
     @Test

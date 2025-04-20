@@ -16,6 +16,7 @@ public class TaskPostDTO {
     private String description;
     private Date startDate;
     private Date deadline;
-    private int value;
+    private Integer value;
     private Integer daysVisible;
+    private Integer frequency;
 }

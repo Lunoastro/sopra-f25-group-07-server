@@ -84,6 +84,7 @@ public class TaskController {
         // Convert the updated entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(updatedTask);
     }
+    
     //decided on Patch since it only requires the update of one singular field
     @PatchMapping("/tasks/{taskId}/claim")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -93,7 +94,7 @@ public class TaskController {
         //Retrieves Task by Id or throws Http error if the task doesn't exist
         Task existingTask = taskService.getTaskById(taskId);
         //Claims the task for the user and assigns the user to the correct field 
-        Task claimed = taskService.claimTask(existingTask,userToken);
+        Task claimed = taskService.claimTask(existingTask,userToken);               
         // Convert the updated entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(claimed);
     }

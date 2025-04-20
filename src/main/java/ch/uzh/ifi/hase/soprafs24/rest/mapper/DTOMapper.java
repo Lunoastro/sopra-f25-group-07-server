@@ -81,6 +81,7 @@ public interface DTOMapper {
 
   @Mapping(source = "name", target = "name")
   @Mapping(source = "value", target = "value")
+  @Mapping(source = "frequency", target = "frequency")
   @Mapping(source = "description", target = "description")
   @Mapping(source = "daysVisible", target = "daysVisible")
   @Mapping(source = "deadline", target = "deadline", dateFormat = "yyyy-MM-dd")
@@ -112,6 +113,7 @@ public interface DTOMapper {
   @Mapping(source = "isAssignedTo", target = "isAssignedTo")
   @Mapping(source = "name", target = "name")
   @Mapping(source = "description", target = "description")
+  @Mapping(source = "value", target = "value")
   @Mapping(source = "daysVisible", target = "daysVisible")
   @Mapping(source = "deadline", target = "deadline",dateFormat = "yyyy-MM-dd")
   @Mapping(source = "startDate", target = "startDate",dateFormat = "yyyy-MM-dd")

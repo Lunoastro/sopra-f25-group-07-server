@@ -18,8 +18,9 @@ public class TaskPutDTO {
     private String name;
     private String description;
     private Integer daysVisible;
+    private Integer value;
     private Date startDate;
     private Date deadline;
     private ColorID color;
-    private boolean activeStatus;
+    private Boolean activeStatus;
 }

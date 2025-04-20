@@ -43,18 +43,18 @@ public class Task implements Serializable {
     @Column(nullable = false)
     private Date creationDate;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Date startDate;
 
     @Column(nullable = false)
-    private int value;
+    private Integer value;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = true)
     private ColorID color;
 
     @Column(nullable = false)
-    private boolean activeStatus;
+    private Boolean activeStatus;
 
     @Column(nullable = false)
     private Long creatorId;
@@ -141,11 +141,11 @@ public class Task implements Serializable {
         this.startDate = startDate;
     }
 
-    public int getValue() {
+    public Integer getValue() {
         return value;
     }
 
-    public void setValue(int value) {
+    public void setValue(Integer value) {
         this.value = value;
     }
 
@@ -157,11 +157,11 @@ public class Task implements Serializable {
         this.color = color;
     }
 
-    public boolean getActiveStatus() {
+    public Boolean getActiveStatus() {
         return activeStatus;
     }
 
-    public void setActiveStatus(boolean activeStatus) {
+    public void setActiveStatus(Boolean activeStatus) {
         this.activeStatus = activeStatus;
     }
 
