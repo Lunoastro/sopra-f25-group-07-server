@@ -78,12 +78,14 @@ public class TaskService {
         if (recurringTask.equals(checkTaskType(task))) {
             validateRecurringPutDto(task, taskPutDTO); // validate recurring fields
             calculateDeadline(task);
+            checkDaysVisible(task); // check if daysVisible is valid (daysVisible >= half of frequency)
         } else {
             if (taskPutDTO.getDeadline() != null) { //validate additional task
                 if (taskPutDTO.getDeadline().before(new Date())) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deadline must be in the future");
                 }
                 task.setDeadline(taskPutDTO.getDeadline());
+                calculateDaysVisible(task);
             }
         }
     }
@@ -216,9 +218,7 @@ public class TaskService {
             calculateDeadline(task);
         }
         else { // if task is additional task
-            long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
-            int daysDiff = (int) (millisDiff / (1000 * 60 * 60 * 24));
-            task.setDaysVisible(daysDiff); // set daysVisible to the difference between deadline and creation date -> easy filtering for pinboard
+            calculateDaysVisible(task); // set daysVisible to the difference between deadline and creation date -> easy filtering for pinboard
         }
         return taskRepository.save(task);
     }
@@ -326,6 +326,22 @@ public class TaskService {
         calendar.add(Calendar.DATE, task.getFrequency());
         Date deadline = calendar.getTime();
         task.setDeadline(deadline);
+    }
+
+    private void calculateDaysVisible(Task task) {
+        // calculate daysVisible = deadline - creationDate
+        long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
+        int daysDiff = (int) (millisDiff / (1000 * 60 * 60 * 24));
+        task.setDaysVisible(daysDiff);
+    }
+
+    private void checkDaysVisible(Task task) {
+        String taskType = checkTaskType(task);
+        if (recurringTask.equals(taskType) && task.getDaysVisible() < getHalfFrequency(task) && task.getDaysVisible() != 1) {
+            // check daysVisible >= half of frequency and special case for frequency = 1
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
+        } 
     }
 
     private List<Task> getAllTasks() {
