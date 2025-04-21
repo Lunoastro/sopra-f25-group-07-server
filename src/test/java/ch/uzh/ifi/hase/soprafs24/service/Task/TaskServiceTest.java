@@ -231,6 +231,7 @@ class TaskServiceTest {
         existingTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future deadline
         existingTask.setColor(ColorID.C1);
         existingTask.setActiveStatus(true);
+        existingTask.setCreationDate(new Date());
 
         Task updatedTask = new Task();
         updatedTask.setName("New Task");
