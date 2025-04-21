@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.exceptions.CalendarAuthorizationException;
 
 @Service
 public class CalendarService {
@@ -57,9 +58,15 @@ public class CalendarService {
         File tokenDir = new File(TOKENS_DIRECTORY_PATH);
         if (!tokenDir.exists()) {
             tokenDir.mkdirs();
-            tokenDir.setReadable(true, true);
-            tokenDir.setWritable(true, true);
-            tokenDir.setExecutable(true, true);
+            boolean isDirCreated = tokenDir.mkdirs();
+            if (isDirCreated) {
+                tokenDir.setReadable(true);
+                tokenDir.setWritable(true);
+                tokenDir.setExecutable(true);
+                logger.info("Token directory created and permissions set: {}", TOKENS_DIRECTORY_PATH);
+            } else {
+                logger.warn("Failed to create token directory: {}", TOKENS_DIRECTORY_PATH);
+            }
         }
     }
 
@@ -133,18 +140,22 @@ public class CalendarService {
         }
     }
 
-    public String generateAuthUrl(Long userId) throws Exception {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        flow = new GoogleAuthorizationCodeFlow.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
-                .setAccessType(offlineStatus)
-                .build();
+    public String generateAuthUrl(Long userId) throws CalendarAuthorizationException {
+        try {
+            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+            flow = new GoogleAuthorizationCodeFlow.Builder(
+                    HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), SCOPES)
+                    .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
+                    .setAccessType(offlineStatus)
+                    .build();
 
-        return flow.newAuthorizationUrl()
-                .setRedirectUri(redirectUri)
-                .setState(userId.toString())
-                .build();
+            return flow.newAuthorizationUrl()
+                    .setRedirectUri(redirectUri)
+                    .setState(userId.toString())
+                    .build();
+        } catch (Exception e) {
+            throw new CalendarAuthorizationException("Failed to generate authorization URL for user: " + userId, e);
+        }
     }
 
     public void handleOAuthCallback(String code, Long userId) throws Exception {

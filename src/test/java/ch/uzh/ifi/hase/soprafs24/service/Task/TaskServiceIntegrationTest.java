@@ -161,7 +161,7 @@ class TaskServiceIntegrationTest {
     }
 
     @Test
-    void createTask_taskAlreadyExists_throwsConflictException() {
+    void createTaskAlreadyExistsTest() {
         // Given an existing task
         Task testTask = new Task();
         testTask.setName("Existing Task");

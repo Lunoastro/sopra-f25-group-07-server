@@ -143,7 +143,7 @@ class TaskServiceTest {
     }
 
     @Test
-    void createTask_taskAlreadyExists_throwsConflictException() {
+    void createTaskAlreadyExists() {
         // given a task that already exists
         Task existingTask = new Task();
         existingTask.setId(1L);
