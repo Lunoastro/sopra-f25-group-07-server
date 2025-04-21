@@ -161,7 +161,7 @@ class TaskServiceIntegrationTest {
     }
 
     @Test
-    void createTask_taskAlreadyExists_throwsConflictException() {
+    void createTaskAlreadyExistsTest() {
         // Given an existing task
         Task testTask = new Task();
         testTask.setName("Existing Task");
@@ -258,9 +258,8 @@ class TaskServiceIntegrationTest {
         taskRepository.save(task);
     
         // Attempt to update the task as anotherUser (not the creator)
-        assertThrows(ResponseStatusException.class, () -> {
-            taskService.validateCreator("Bearer another-token", task.getId());
-        });
+        assertThrows(ResponseStatusException.class, 
+            () -> taskService.validateCreator("Bearer another-token", task.getId()));
     }
 
     @Test

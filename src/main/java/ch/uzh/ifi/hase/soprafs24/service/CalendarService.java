@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.exceptions.CalendarAuthorizationException;
 
 @Service
 public class CalendarService {
@@ -34,6 +35,8 @@ public class CalendarService {
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = System.getProperty("user.home") + "/.taskaway_tokens";
     private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
+    private static final String DATETIME_FIELD = "dateTime";
+    private static final String STATUS_FIELD = "status"; // Defined constant for "status"
 
     @Value("${redirect.uri}")
     private String redirectUri;
@@ -44,16 +47,26 @@ public class CalendarService {
 
     private String offlineStatus = "offline";
 
+    private final TaskService taskService;
+
     @Autowired
-    private TaskService taskService;
+    public CalendarService(TaskService taskService) {
+        this.taskService = taskService;
+    }
 
     static {
         File tokenDir = new File(TOKENS_DIRECTORY_PATH);
         if (!tokenDir.exists()) {
             tokenDir.mkdirs();
-            tokenDir.setReadable(true, true);
-            tokenDir.setWritable(true, true);
-            tokenDir.setExecutable(true, true);
+            boolean isDirCreated = tokenDir.mkdirs();
+            if (isDirCreated) {
+                tokenDir.setReadable(true);
+                tokenDir.setWritable(true);
+                tokenDir.setExecutable(true);
+                logger.info("Token directory created and permissions set: {}", TOKENS_DIRECTORY_PATH);
+            } else {
+                logger.warn("Failed to create token directory: {}", TOKENS_DIRECTORY_PATH);
+            }
         }
     }
 
@@ -92,14 +105,14 @@ public class CalendarService {
                 Event event = new Event()
                         .setSummary((String) taskEvent.get("summary"))
                         .setDescription((String) taskEvent.get("description"))
-                        .setStart(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get("start")).get("dateTime"))))
-                        .setEnd(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get("end")).get("dateTime"))));
+                        .setStart(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get("start")).get(DATETIME_FIELD))))
+                        .setEnd(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get("end")).get(DATETIME_FIELD))));
 
-                if ("active".equals(taskEvent.get("status"))) {
+                if ("active".equals(taskEvent.get(STATUS_FIELD))) {
                     Event inserted = userCalendar.events().insert(privateEvent, event).execute();
-                    System.out.println("Inserted Google event ID: " + inserted.getId());
+                    logger.info("Inserted Google event ID: {}", inserted.getId());
                     // Store inserted.getId() in DB as needed
-                } else if ("inactive".equals(taskEvent.get("status"))) {
+                } else if ("inactive".equals(taskEvent.get(STATUS_FIELD))) {
                     String googleEventId = (String) taskEvent.get("googleEventId");
                     if (googleEventId != null) {
                         userCalendar.events().delete(privateEvent, googleEventId).execute();
@@ -107,7 +120,8 @@ public class CalendarService {
                 }
             }
         } catch (IOException | GeneralSecurityException e) {
-            logger.error("Error syncing task with Google Calendar for user {}: {}", userId, e.getMessage(), e);        }
+            logger.error("Error syncing task with Google Calendar for user {}: {}", userId, e.getMessage(), e);        
+        }
     }
 
     public void syncAllActiveTasksToUserCalendar(Long userId) {
@@ -118,26 +132,30 @@ public class CalendarService {
             taskEvent.put("id", "task-" + task.getId());
             taskEvent.put("summary", "[TASK] " + task.getName());
             taskEvent.put("description", task.getDescription());
-            taskEvent.put("start", Map.of("dateTime", toISOString(task.getDeadline())));
-            taskEvent.put("end", Map.of("dateTime", toISOString(task.getDeadline())));
-            taskEvent.put("status", "active");
+            taskEvent.put("start", Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
+            taskEvent.put("end", Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
+            taskEvent.put(STATUS_FIELD, "active");
 
             syncTaskWithGoogleCalendar(userId, taskEvent);
         }
     }
 
-    public String generateAuthUrl(Long userId) throws Exception {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        flow = new GoogleAuthorizationCodeFlow.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
-                .setAccessType(offlineStatus)
-                .build();
+    public String generateAuthUrl(Long userId) throws CalendarAuthorizationException {
+        try {
+            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+            flow = new GoogleAuthorizationCodeFlow.Builder(
+                    HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), SCOPES)
+                    .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
+                    .setAccessType(offlineStatus)
+                    .build();
 
-        return flow.newAuthorizationUrl()
-                .setRedirectUri(redirectUri)
-                .setState(userId.toString())
-                .build();
+            return flow.newAuthorizationUrl()
+                    .setRedirectUri(redirectUri)
+                    .setState(userId.toString())
+                    .build();
+        } catch (Exception e) {
+            throw new CalendarAuthorizationException("Failed to generate authorization URL for user: " + userId, e);
+        }
     }
 
     public void handleOAuthCallback(String code, Long userId) throws Exception {
@@ -156,7 +174,7 @@ public class CalendarService {
                 .execute();
 
         Credential credential = flow.createAndStoreCredential(tokenResponse, userId.toString());
-        System.out.println("Google OAuth token saved for user: " + userId);
+        logger.info("Google OAuth token saved for user: {}", userId);
     }
 
     private GoogleClientSecrets getClientSecrets() throws IOException {

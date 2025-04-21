@@ -36,7 +36,7 @@ public class CalendarController {
 
     @PostMapping("/sync")
     @ResponseStatus(HttpStatus.OK)
-    public String syncAllActiveTasks(@RequestHeader("Authorization") String authorizationHeader) throws IOException {
+    public String syncAllActiveTasks(@RequestHeader("Authorization") String authorizationHeader) {
         String token = validateAuthorizationHeader(authorizationHeader);
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
