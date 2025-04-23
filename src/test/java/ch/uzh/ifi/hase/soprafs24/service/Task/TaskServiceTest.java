@@ -11,9 +11,11 @@ import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import java.util.Date;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -22,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TaskServiceTest {
@@ -286,7 +289,7 @@ class TaskServiceTest {
         assertEquals("Task cannot be null", exception.getReason());
     }
 
-        @Test
+    @Test
     void validateCreator_validInputs_success() {
         
         Task testTask = new Task();
@@ -420,5 +423,300 @@ class TaskServiceTest {
         taskService.validateToBeEditedFields(existingTask, updatedTask);
 
         assertEquals(10L, existingTask.getIsAssignedTo());
+    }
+
+    @Test
+    void updateAllTaskColors_success() {
+        // given
+        User testUser = new User();
+        testUser.setId(42L);
+        testUser.setUsername("testUser");
+        testUser.setColor(ColorID.C1);
+
+        // Create a list of tasks assigned to this user
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Task 1");
+        task1.setIsAssignedTo(testUser.getId());
+        task1.setColor(ColorID.C2); // Different color initially
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Task 2");
+        task2.setIsAssignedTo(testUser.getId());
+        task2.setColor(ColorID.C3); // Different color initially
+
+        List<Task> userTasks = List.of(task1, task2);
+
+        // when
+        when(taskRepository.findTaskByIsAssignedTo(testUser.getId())).thenReturn(userTasks);
+        when(taskRepository.saveAll(Mockito.anyList())).thenReturn(userTasks);
+
+        taskService.updateAllTaskColors(testUser);
+
+        // then
+        Mockito.verify(taskRepository).findTaskByIsAssignedTo(testUser.getId());
+        Mockito.verify(taskRepository).saveAll(Mockito.anyList());
+
+        // Verify that both tasks now have the user's color
+        ArgumentCaptor<List<Task>> taskCaptor = ArgumentCaptor.forClass(List.class);
+        verify(taskRepository).saveAll(taskCaptor.capture());
+        List<Task> capturedTasks = taskCaptor.getValue();
+        
+        assertEquals(2, capturedTasks.size());
+        assertEquals(ColorID.C1, capturedTasks.get(0).getColor());
+        assertEquals(ColorID.C1, capturedTasks.get(1).getColor());
+    }
+
+    @Test
+    void deleteTask_success() {
+        // given
+        Long taskId = 1L;
+
+        // when
+        taskService.deleteTask(taskId);
+
+        // then
+        Mockito.verify(taskRepository).deleteById(taskId);
+    }
+
+    @Test
+    void getTaskById_success() {
+        // given
+        Task task = new Task();
+        task.setId(1L);
+        task.setName("Test Task");
+
+        // when
+        when(taskRepository.findById(1L)).thenReturn(java.util.Optional.of(task));
+        Task result = taskService.getTaskById(1L);
+
+        // then
+        assertEquals(task.getId(), result.getId());
+        assertEquals(task.getName(), result.getName());
+        Mockito.verify(taskRepository).findById(1L);
+    }
+
+    @Test
+    void getTaskById_notFound_throwsNotFoundException() {
+        // given
+        Long taskId = 999L;
+
+        // when
+        when(taskRepository.findById(taskId)).thenReturn(java.util.Optional.empty());
+
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.getTaskById(taskId));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        assertEquals("Task not found", exception.getReason());
+    }
+
+    @Test
+    void pauseTask_success() {
+        // given
+        Task task = new Task();
+        task.setId(1L);
+        task.setName("Test Task");
+        task.setPaused(false);
+        task.setPausedDate(null);
+
+        // when
+        taskService.pauseTask(task);
+
+        // then
+        assertTrue(task.isPaused());
+        assertNotNull(task.getPausedDate());
+        Mockito.verify(taskRepository).save(task);
+    }
+
+    @Test
+    void unpauseTask_success() {
+        // given
+        Task task = new Task();
+        task.setId(1L);
+        task.setName("Test Task");
+        task.setPaused(true);
+        task.setPausedDate(new Date());
+        task.setUnpausedDate(null);
+
+        // when
+        taskService.unpauseTask(task);
+
+        // then
+        assertFalse(task.isPaused());
+        assertNotNull(task.getUnpausedDate());
+        Mockito.verify(taskRepository).save(task);
+    }
+
+    @Test
+    void assignTask_success() {
+        // given
+        Task task = new Task();
+        task.setId(1L);
+        task.setName("Test Task");
+        task.setIsAssignedTo(null); // Task is initially unassigned
+
+        Long userId = 42L;
+
+        // when
+        taskService.assignTask(task, userId);
+
+        // then
+        assertEquals(userId, task.getIsAssignedTo());
+        Mockito.verify(taskRepository).save(task);
+    }
+
+    @Test
+    void unassignTask_success() {
+        // given
+        Task task = new Task();
+        task.setId(1L);
+        task.setName("Test Task");
+        task.setIsAssignedTo(42L); // Task is initially assigned
+
+        // when
+        taskService.unassignTask(task);
+
+        // then
+        assertNull(task.getIsAssignedTo());
+        Mockito.verify(taskRepository).save(task);
+    }
+
+    @Test
+    void getFilteredTasks_noFilters_returnsAllTasks() {
+        // given
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Regular Task");
+        task1.setActiveStatus(true);
+        task1.setFrequency(null); // Not recurring
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Recurring Task");
+        task2.setActiveStatus(true);
+        task2.setFrequency(7); // Recurring
+
+        Task task3 = new Task();
+        task3.setId(3L);
+        task3.setName("Inactive Task");
+        task3.setActiveStatus(false);
+        task3.setFrequency(null); // Not recurring
+
+        List<Task> allTasks = List.of(task1, task2, task3);
+
+        // when
+        when(taskRepository.findAll()).thenReturn(allTasks);
+        List<Task> result = taskService.getFilteredTasks(null, null);
+
+        // then
+        assertEquals(3, result.size());
+        assertTrue(result.contains(task1));
+        assertTrue(result.contains(task2));
+        assertTrue(result.contains(task3));
+    }
+
+    @Test
+    void getFilteredTasks_activeFilter_returnsActiveTasks() {
+        // given
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Active Task 1");
+        task1.setActiveStatus(true);
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Active Task 2");
+        task2.setActiveStatus(true);
+
+        Task task3 = new Task();
+        task3.setId(3L);
+        task3.setName("Inactive Task");
+        task3.setActiveStatus(false);
+
+        List<Task> allTasks = List.of(task1, task2, task3);
+
+        // when
+        when(taskRepository.findAll()).thenReturn(allTasks);
+        List<Task> result = taskService.getFilteredTasks(true, null);
+
+        // then
+        assertEquals(2, result.size());
+        assertTrue(result.contains(task1));
+        assertTrue(result.contains(task2));
+        assertFalse(result.contains(task3));
+    }
+
+    @Test
+    void getFilteredTasks_recurringFilter_returnsRecurringTasks() {
+        // given
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Regular Task");
+        task1.setFrequency(null); // Not recurring
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Recurring Task 1");
+        task2.setFrequency(7); // Recurring weekly
+
+        Task task3 = new Task();
+        task3.setId(3L);
+        task3.setName("Recurring Task 2");
+        task3.setFrequency(30); // Recurring monthly
+
+        List<Task> allTasks = List.of(task1, task2, task3);
+
+        // when
+        when(taskRepository.findAll()).thenReturn(allTasks);
+        List<Task> result = taskService.getFilteredTasks(null, "recurring");
+
+        // then
+        assertEquals(2, result.size());
+        assertFalse(result.contains(task1));
+        assertTrue(result.contains(task2));
+        assertTrue(result.contains(task3));
+    }
+
+    @Test
+    void getFilteredTasks_bothFilters_returnsActiveRecurringTasks() {
+        // given
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Active Regular Task");
+        task1.setActiveStatus(true);
+        task1.setFrequency(null); // Not recurring
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Active Recurring Task");
+        task2.setActiveStatus(true);
+        task2.setFrequency(7); // Recurring
+
+        Task task3 = new Task();
+        task3.setId(3L);
+        task3.setName("Inactive Recurring Task");
+        task3.setActiveStatus(false);
+        task3.setFrequency(14); // Recurring
+
+        Task task4 = new Task();
+        task4.setId(4L);
+        task4.setName("Inactive Regular Task");
+        task4.setActiveStatus(false);
+        task4.setFrequency(null); // Not recurring
+
+        List<Task> allTasks = List.of(task1, task2, task3, task4);
+
+        // when
+        when(taskRepository.findAll()).thenReturn(allTasks);
+        List<Task> result = taskService.getFilteredTasks(true, "recurring");
+
+        // then
+        assertEquals(1, result.size());
+        assertFalse(result.contains(task1));
+        assertTrue(result.contains(task2));
+        assertFalse(result.contains(task3));
+        assertFalse(result.contains(task4));
     }
 }
