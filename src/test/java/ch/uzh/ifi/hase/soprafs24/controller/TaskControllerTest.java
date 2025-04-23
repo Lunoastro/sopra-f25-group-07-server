@@ -75,8 +75,8 @@ class TaskControllerTest {
         taskPostDTO.setDeadline(now);
     
         String token = "token123";
-        doNothing().when(taskService).validateUserToken("Bearer " + token);
-        given(taskService.createTask(Mockito.any(), Mockito.eq("Bearer " + token))).willReturn(task);
+        doNothing().when(taskService).validateUserToken(token);
+        given(taskService.createTask(Mockito.any(), Mockito.eq(token))).willReturn(task);
     
         MockHttpServletRequestBuilder postRequest = post("/tasks")
             .contentType(MediaType.APPLICATION_JSON)

@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs24.service;
 
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
@@ -17,7 +18,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.Objects;
 
 
 
@@ -60,7 +64,14 @@ public class TeamService {
     newTeam.getMembers().add(userId); // Add userId to the list
     // saves the given entity but data is only persisted in the database once
     // flush() is called
+
+    User creator = userService.getUserById(userId);
+    creator.setTeamId(newTeam.getId()); // Set the teamId for the user
+    creator.setColor(ColorID.C1); // Set the color to C1 (default) for the creator
+
+    userRepository.save(creator);
     newTeam = teamRepository.save(newTeam);
+    userRepository.flush();
     teamRepository.flush();
 
     log.debug("Created Information for Team: {}", newTeam);
@@ -71,11 +82,21 @@ public class TeamService {
     // Find the team by teamCode
     Team team = getTeamByCode(teamCode);
 
+    // Check if team has spots open
+    if (team.getMembers().size() >= ColorID.values().length) {
+      throw new ResponseStatusException(
+              HttpStatus.CONFLICT,
+              "Team " + team.getId() + " is full (all colours in use).");
+    }
+
     // Find the user
     User user = userService.getUserById(userId);
 
     // Check if user is already in a team
     checkUserNotInTeam(user);
+
+    // Assign a color to the user that is not already taken by another member
+    user.setColor(newTeamMemberColor(team));
 
     // Assign the user to the team
     user.setTeamId(team.getId());
@@ -89,7 +110,7 @@ public class TeamService {
     userRepository.flush();
     teamRepository.flush();
   }
-
+  
   public void updateTeamName(Long teamId, Long userId, String newTeamName) {
     // Check if team exists
     Team team = getTeamById(teamId);
@@ -120,6 +141,7 @@ public class TeamService {
     // Remove user from the team
     team.getMembers().remove(userId);
     user.setTeamId(null);  // Remove teamId from user
+    user.setColor(null);
 
     // Save changes
     userRepository.save(user);
@@ -131,6 +153,7 @@ public class TeamService {
     }
 
     teamRepository.flush();
+    userRepository.flush();
   }
 
   public List<Long> getUsersByTeamId(Long teamId) {
@@ -209,5 +232,26 @@ public class TeamService {
     } else {
         return team;
     }
+  }
+
+  private ColorID newTeamMemberColor(Team team) {
+    // Collect colours already in use
+    Set<ColorID> usedColours = team.getMembers().stream()
+          .map(userService::getUserById)          // fetch each member
+          .map(User::getColor)                    // their colour
+          .filter(Objects::nonNull)               // skip nulls (no colour yet)
+          .collect(Collectors.toSet());
+
+    // Return the first unused colour in the enum order C1…C10
+    for (ColorID candidate : ColorID.values()) {
+      if (!usedColours.contains(candidate)) {
+          return candidate;
+      }
+    }
+
+    // If all colours are taken, conflict
+    throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "All team colours are already in use for team " + team.getId());
   }
 }
