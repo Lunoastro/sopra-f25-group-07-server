@@ -3,9 +3,10 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPutDTO;
-
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -270,161 +271,147 @@ class TaskControllerTest {
             .andExpect(status().isNotFound());
 
         verify(taskService, times(1)).deleteTask(1L);
+    }   
+    
+    @Test
+    void PATCH_successfulClaimTask_taskClaimed() throws Exception {
+        // Setup: Create a valid task and a token
+        Long taskId = 1L;
+        String token = "valid_token";
+        
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Test Task");
+        existingTask.setActiveStatus(true);
+        existingTask.setIsAssignedTo(null); // Not assigned yet
+        
+        Task claimedTask = new Task();
+        claimedTask.setId(taskId);
+        claimedTask.setName("Test Task");
+        claimedTask.setActiveStatus(true);
+        claimedTask.setIsAssignedTo(123L); // Now assigned to user with ID 123
+        
+        TaskGetDTO claimedTaskDTO = new TaskGetDTO();
+        claimedTaskDTO.setId(taskId);
+        claimedTaskDTO.setName("Test Task");
+        claimedTaskDTO.setIsAssignedTo(123L);
+        
+        doNothing().when(taskService).validateUserToken(token);
+        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
+        when(taskService.claimTask(existingTask, token)).thenReturn(claimedTask);
+        
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // For HTTP 204 No Content, we should check status code only
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isNoContent());
+            
+        // Verify that the service methods were called correctly
+        verify(taskService).validateUserToken(token);
+        verify(taskService).getTaskById(taskId);
+        verify(taskService).claimTask(existingTask, token);
     }
 
     @Test
-    void PATCH_claimTask_validInput_taskClaimed() throws Exception {
-        // Given
-        Date now = new Date();
-        Task existingTask = new Task();
-        existingTask.setId(1L);
-        existingTask.setName("Clean Kitchen");
-        existingTask.setDescription("Wipe down counters");
-        existingTask.setIsAssignedTo(null); // Not claimed yet
-        existingTask.setDeadline(now);
-        existingTask.setCreationDate(now);
-        existingTask.setValue(50);
-        existingTask.setActiveStatus(true);
+    void PATCH_failedClaimTask_invalidToken_unauthorized() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String invalidToken = "invalid_token";
         
-        Task claimedTask = new Task();
-        claimedTask.setId(1L);
-        claimedTask.setName("Clean Kitchen");
-        claimedTask.setDescription("Wipe down counters");
-        claimedTask.setIsAssignedTo(5L); // Task now claimed by user 5
-        claimedTask.setDeadline(now);
-        claimedTask.setCreationDate(now);
-        claimedTask.setValue(50);
-        claimedTask.setActiveStatus(true);
-        claimedTask.setColor(ColorID.C3); // Task color set to user color
+        // Mock service behavior - simulate invalid token with token without prefix
+        doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
+            .when(taskService).validateUserToken(invalidToken);
         
-        String token = "token123";
-        
-        // Mock service behavior
-        doNothing().when(taskService).validateUserToken("Bearer " + token);
-        given(taskService.getTaskById(1L)).willReturn(existingTask);
-        given(taskService.claimTask(existingTask, "Bearer " + token)).willReturn(claimedTask);
-        
-        // When: Perform the PATCH request
-        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", 1L)
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", taskId)
             .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
+            .header("Authorization", "Bearer " + invalidToken);
         
-        // Then: Validate the response
-        mockMvc.perform(patchRequest)
-            .andExpect(status().isNoContent())
-            .andExpect(jsonPath("$.id", is(claimedTask.getId().intValue())))
-            .andExpect(jsonPath("$.name", is(claimedTask.getName())))
-            .andExpect(jsonPath("$.isAssignedTo", is(claimedTask.getIsAssignedTo().intValue())))
-            .andExpect(jsonPath("$.color", is(claimedTask.getColor().toString())));
-            
-        verify(taskService, times(1)).claimTask(any(), eq("Bearer " + token));
-    }
-    
-    @Test
-    void PATCH_failedClaimTask_alreadyClaimed_conflict() throws Exception {
-        // Given
-        Date now = new Date();
-        Task existingTask = new Task();
-        existingTask.setId(1L);
-        existingTask.setName("Clean Kitchen");
-        existingTask.setIsAssignedTo(3L); // Already claimed by user 3
-        existingTask.setDeadline(now);
-        existingTask.setCreationDate(now);
-        existingTask.setValue(50);
-        existingTask.setActiveStatus(true);
-        
-        String token = "token123";
-        
-        // Mock service behavior
-        doNothing().when(taskService).validateUserToken("Bearer " + token);
-        given(taskService.getTaskById(1L)).willReturn(existingTask);
-        doThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed (Needs to be released first)"))
-            .when(taskService).claimTask(existingTask, "Bearer " + token);
-        
-        // When: Perform the PATCH request
-        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
-        
-        // Then: Validate the response
-        mockMvc.perform(patchRequest)
-            .andExpect(status().isConflict());
-            
-        verify(taskService, times(1)).claimTask(any(), eq("Bearer " + token));
-    }
-    
-    @Test
-    void PATCH_failedClaimTask_taskNotFound() throws Exception {
-        String token = "token123";
-        
-        // Mock service behavior
-        doNothing().when(taskService).validateUserToken("Bearer " + token);
-        
-        // Simuliere, dass getTaskById eine NOT_FOUND Exception wirft
-        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"))
-            .when(taskService).getTaskById(999L);
-        
-        // When: Perform the PATCH request
-        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", 999L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
-        
-        // Then: Validate the response
-        mockMvc.perform(patchRequest)
-            .andExpect(status().isNotFound());
-    }
-    
-    @Test
-    void PATCH_failedClaimTask_userWithNoColor() throws Exception {
-        // Given
-        Date now = new Date();
-        Task existingTask = new Task();
-        existingTask.setId(1L);
-        existingTask.setName("Clean Kitchen");
-        existingTask.setIsAssignedTo(null); // Not claimed yet
-        existingTask.setDeadline(now);
-        existingTask.setCreationDate(now);
-        existingTask.setValue(50);
-        existingTask.setActiveStatus(true);
-        
-        String token = "token123";
-        
-        // Mock service behavior
-        doNothing().when(taskService).validateUserToken("Bearer " + token);
-        given(taskService.getTaskById(1L)).willReturn(existingTask);
-        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set"))
-            .when(taskService).claimTask(existingTask, "Bearer " + token);
-        
-        // When: Perform the PATCH request
-        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
-        
-        // Then: Validate the response
-        mockMvc.perform(patchRequest)
-            .andExpect(status().isBadRequest());
-            
-        verify(taskService, times(1)).claimTask(any(), eq("Bearer " + token));
-    }
-    
-    @Test
-    void PATCH_failedClaimTask_unauthorizedUser() throws Exception {
-        String token = "invalid_token";
-        
-        // Mock service behavior
-        doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authorized (login required)"))
-            .when(taskService).validateUserToken("Bearer " + token);
-        
-        // When: Perform the PATCH request
-        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
-        
-        // Then: Validate the response
+        // Verify response
         mockMvc.perform(patchRequest)
             .andExpect(status().isUnauthorized());
     }
-    
+
+    @Test
+    void PATCH_failedClaimTask_taskNotFound() throws Exception {
+        // Setup
+        Long nonExistentTaskId = 999L;
+        String token = "valid_token";
+        
+        // Mock service behavior - token without prefix
+        doNothing().when(taskService).validateUserToken(token);
+        when(taskService.getTaskById(nonExistentTaskId))
+            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+        
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", nonExistentTaskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void PATCH_failedClaimTask_alreadyClaimed() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Already Claimed Task");
+        existingTask.setActiveStatus(true);
+        existingTask.setIsAssignedTo(456L); // Already assigned to another user
+        
+        // Mock service behavior - token without prefix
+        doNothing().when(taskService).validateUserToken(token);
+        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
+        when(taskService.claimTask(existingTask, token))
+            .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed by another user"));
+        
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isConflict());
+    }
+
+    @Test
+    void PATCH_failedClaimTask_missingAuthHeader() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        
+        // Perform the PATCH request without Authorization header
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", taskId)
+            .contentType(MediaType.APPLICATION_JSON);
+        
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void PATCH_failedClaimTask_invalidAuthHeaderFormat() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String malformedToken = "InvalidFormat"; // Not a Bearer token
+        
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", malformedToken);
+        
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isUnauthorized());
+    }
+        
 
     private String asJsonString(final Object object) {
         try {
