@@ -26,8 +26,9 @@ public class TaskController {
   }
     @PostMapping("/tasks")
     @ResponseStatus(HttpStatus.CREATED)
-    public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String userToken) {
+    public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
         // Extract the token from the Bearer header
+        String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
         // validate the DTO before converting to catch errors
         taskService.validatePostDto(taskPostDTO);
@@ -43,7 +44,9 @@ public class TaskController {
     @ResponseStatus(HttpStatus.OK)
     public List<TaskGetDTO> getTasks(@RequestParam(required = false) Boolean isActive,
                                         @RequestParam(required = false) String type,
-                                        @RequestHeader("Authorization") String userToken) {
+                                        @RequestHeader("Authorization") String authorizationHeader) {
+        // Validate the user token
+        String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
         // Retrieve all tasks using the service
         List<Task> tasks = taskService.getFilteredTasks(isActive, type);
@@ -57,8 +60,9 @@ public class TaskController {
 
     @GetMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.OK)
-    public TaskGetDTO getTask(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
+    public TaskGetDTO getTask(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token
+        String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
         // Retrieve the task using the service
         Task task = taskService.getTaskById(taskId);
@@ -71,8 +75,9 @@ public class TaskController {
 
     @PutMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String userToken) {
+    public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token
+        String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
         // Checks if user is the creator of the task and if task exists
         taskService.validateCreator(userToken, taskId);
@@ -88,8 +93,9 @@ public class TaskController {
     //decided on Patch since it only requires the update of one singular field
     @PatchMapping("/tasks/{taskId}/claim")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public TaskGetDTO claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
+    public TaskGetDTO claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token        
+        String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
         //Retrieves Task by Id or throws Http error if the task doesn't exist
         Task existingTask = taskService.getTaskById(taskId);
@@ -101,7 +107,7 @@ public class TaskController {
 
     @PutMapping("/tasks/{taskId}/quit")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> quitTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
+    public List<TaskGetDTO> quitTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
 
@@ -109,7 +115,7 @@ public class TaskController {
 
     @PutMapping("/tasks/{taskId}/expire")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> expireTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
+    public List<TaskGetDTO> expireTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
 
@@ -117,7 +123,7 @@ public class TaskController {
 
     @DeleteMapping("/tasks/{taskId}/finish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> finishTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
+    public List<TaskGetDTO> finishTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
 
@@ -125,12 +131,20 @@ public class TaskController {
     
     @DeleteMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteTask(@PathVariable Long taskId, @RequestHeader("Authorization") String userToken) {
+    public void deleteTask(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token
+        String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
         // Checks if user is the creator of the task and if task exists
         taskService.validateCreator(userToken, taskId);
         // Delete the task using the service
         taskService.deleteTask(taskId);
     }
+
+    private String validateAuthorizationHeader(String authorizationHeader) {
+        if (authorizationHeader == null || authorizationHeader.trim().isEmpty() || !authorizationHeader.startsWith("Bearer ")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Missing or invalid Authorization header.");
+        }
+        return authorizationHeader.substring(7);  // Remove "Bearer " prefix
+      }
 }
