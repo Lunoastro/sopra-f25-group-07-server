@@ -167,21 +167,25 @@ class TeamServiceIntegrationTest {
     
     @Test
     void quitTeam_validInput_userQuitTeam() {
+        testUser.setTeamId(testTeam.getId());
+        userRepository.save(testUser);
+        
         assertTrue(testTeam.getMembers().contains(testUser.getId()));
 
         teamService.quitTeam(testUser.getId(), testTeam.getId());
 
         User updatedUser = userRepository.findById(testUser.getId()).orElse(null);
+        assertNotNull(updatedUser, "User should exist after quitting team");
+        assertNull(updatedUser.getTeamId(), "User should not have teamId after quitting");
         
-        assertNotNull(updatedUser);
-        assertNull(updatedUser.getTeamId()); 
-
         Team updatedTeam = teamRepository.findTeamById(testTeam.getId());
-
-        if (updatedUser != null && updatedUser.getTeamId() == null) {
+        
+        if (updatedTeam == null) {
+            // Team was deleted because it had no members left
         } else {
-            assertNotNull(updatedTeam);
-            assertFalse(updatedTeam.getMembers().contains(testUser.getId()));
+            // Team still exists, verify user was removed from members list
+            assertFalse(updatedTeam.getMembers().contains(testUser.getId()), 
+                        "User should be removed from team members");
         }
     }
 

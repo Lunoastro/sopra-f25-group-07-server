@@ -65,7 +65,7 @@ class TaskControllerTest {
         task.setPaused(false);
         task.setPausedDate(null);
         task.setUnpausedDate(null);
-        task.setValue(100);  // Ensure value is set
+        task.setValue(100); 
         task.setColor(ColorID.C1);
         task.setActiveStatus(true);
         task.setFrequency(7);
@@ -410,7 +410,7 @@ class TaskControllerTest {
         
         mockMvc.perform(patchRequest)
             .andExpect(status().isUnauthorized());
-    }
+    } 
         
 
     private String asJsonString(final Object object) {
