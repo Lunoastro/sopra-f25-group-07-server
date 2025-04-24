@@ -176,8 +176,8 @@ public class UserService {
     User user = userRepository.findByToken(token);
     if (user == null) {
       return null;  // Or you can throw an exception or return a specific value
-  }
-// Return the user ID if the user is found
+    }
+    // Return the user ID if the user is found
     return user.getId();
   }
 

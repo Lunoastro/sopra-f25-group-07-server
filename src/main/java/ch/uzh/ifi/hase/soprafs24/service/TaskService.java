@@ -131,8 +131,7 @@ public class TaskService {
         int half = getHalfFrequency(task);
         if (taskPutDTO.getDaysVisible() != null) {
             if (taskPutDTO.getDaysVisible() < half) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
             }
             task.setDaysVisible(taskPutDTO.getDaysVisible());
         }
@@ -144,8 +143,7 @@ public class TaskService {
         }
     }
 
-    public void validateUserToken(String userToken) {
-        String token = UserService.verifyToken(userToken);
+    public void validateUserToken(String token) {
         User user = userRepository.findByToken(token);
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
@@ -159,8 +157,7 @@ public class TaskService {
     }
 
     public void validateCreator(String userToken, Long taskId) {
-        String token = UserService.verifyToken(userToken);
-        User user = userRepository.findByToken(token);
+        User user = userRepository.findByToken(userToken);
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
         }
@@ -170,6 +167,10 @@ public class TaskService {
         }
         if (!task.getcreatorId().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit this task");
+        }
+        Long assignee = task.getIsAssignedTo(); // may be null
+        if (assignee != null && !assignee.equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit: task is currently claimed by another user");
         }
     }
 
@@ -199,7 +200,7 @@ public class TaskService {
         // set the task creation date
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
-        task.setcreatorId(userRepository.findByToken(userToken.substring(7)).getId());
+        task.setcreatorId(userRepository.findByToken(userToken).getId());
         // enforce that the task colour is initially set to white 
         task.setColor(null);
         // store status of the task
@@ -229,7 +230,7 @@ public class TaskService {
         verifyClaimStatus(task);
         validateUserToken(userToken);
         // store the userId of the creator
-        User user = userRepository.findByToken(userToken.substring(7));
+        User user = userRepository.findByToken(userToken);
         task.setIsAssignedTo(user.getId());
         //set the task color to the color of the user who claimed it
         if(user.getColor() != null) {
@@ -339,8 +340,7 @@ public class TaskService {
         String taskType = checkTaskType(task);
         if (recurringTask.equals(taskType) && task.getDaysVisible() < getHalfFrequency(task) && task.getDaysVisible() != 1) {
             // check daysVisible >= half of frequency and special case for frequency = 1
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
         } 
     }
 
