@@ -318,6 +318,190 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         mockMvc.perform(deleteRequest)
                 .andExpect(status().isNotFound()); // 404
     }
+
+    @Test
+    void POST_login_success() throws Exception {
+        // given
+        User user = new User();
+        user.setId(1L);
+        user.setName("user_testUsername");
+        user.setUsername("testUsername");
+        user.setToken("login-token");
+        user.setStatus(UserStatus.ONLINE);
+        
+        UserPostDTO userPostDTO = new UserPostDTO();
+        userPostDTO.setUsername("testUsername");
+        userPostDTO.setPassword("123");
+        
+        given(userService.loginUser(Mockito.any())).willReturn(user);
+    
+        // when/then
+        MockHttpServletRequestBuilder postRequest = post("/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(asJsonString(userPostDTO));
+        
+        mockMvc.perform(postRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id", is(user.getId().intValue())))
+            .andExpect(jsonPath("$.token", is(user.getToken())))
+            .andExpect(jsonPath("$.status", is(user.getStatus().toString())));
+    }
+    
+    @Test
+    void POST_login_failed_invalidCredentials() throws Exception {
+        // given
+        UserPostDTO userPostDTO = new UserPostDTO();
+        userPostDTO.setUsername("wrongUsername");
+        userPostDTO.setPassword("wrongPassword");
+        
+        given(userService.loginUser(Mockito.any()))
+            .willThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
+    
+        // when/then
+        MockHttpServletRequestBuilder postRequest = post("/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(asJsonString(userPostDTO));
+        
+        mockMvc.perform(postRequest)
+            .andExpect(status().isUnauthorized());
+    }
+    
+    @Test
+    void PUT_logoff_success() throws Exception {
+        // given
+        Long userId = 1L;
+        String validToken = "valid-token";
+        
+        UserPutDTO userPutDTO = new UserPutDTO();
+        userPutDTO.setId(userId);
+        
+        when(userService.validateToken(validToken)).thenReturn(true);
+        when(userService.findIDforToken(validToken)).thenReturn(userId);
+        doNothing().when(userService).logoffUser(Mockito.any());
+        
+        // when/then
+        MockHttpServletRequestBuilder putRequest = put("/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(asJsonString(userPutDTO))
+            .header("Authorization", "Bearer " + validToken);
+        
+        mockMvc.perform(putRequest)
+            .andExpect(status().isNoContent());
+    }
+    
+    @Test
+    void PUT_logoff_failed_wrongUserId() throws Exception {
+        // given
+        Long authenticatedUserId = 1L;
+        Long differentUserId = 2L;
+        String validToken = "valid-token";
+        
+        UserPutDTO userPutDTO = new UserPutDTO();
+        userPutDTO.setId(differentUserId);  // Trying to log off a different user
+        
+        when(userService.validateToken(validToken)).thenReturn(true);
+        when(userService.findIDforToken(validToken)).thenReturn(authenticatedUserId);
+        
+        // when/then
+        MockHttpServletRequestBuilder putRequest = put("/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(asJsonString(userPutDTO))
+            .header("Authorization", "Bearer " + validToken);
+        
+        mockMvc.perform(putRequest)
+            .andExpect(status().isForbidden());
+    }
+    
+    @Test
+    void GET_users_unauthorized_invalidToken() throws Exception {
+        // given
+        String invalidToken = "invalid-token";
+        when(userService.validateToken(invalidToken)).thenReturn(false);
+        
+        // when/then
+        MockHttpServletRequestBuilder getRequest = get("/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + invalidToken);
+        
+        mockMvc.perform(getRequest)
+            .andExpect(status().isUnauthorized());
+    }
+    
+    
+    @Test
+    void GET_users_unauthorized_invalidHeaderFormat() throws Exception {
+        // when/then - request with malformed Authorization header
+        MockHttpServletRequestBuilder getRequest = get("/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "InvalidFormat");
+        
+        mockMvc.perform(getRequest)
+            .andExpect(status().isUnauthorized());
+    }
+    
+    @Test
+    void PUT_update_forbidden_differentUser() throws Exception {
+        // given
+        Long userId = 1L;
+        Long differentUserId = 2L;
+        String validToken = "valid-token";
+        
+        User user = new User();
+        user.setId(userId);
+        
+        UserPutDTO userPutDTO = new UserPutDTO();
+        userPutDTO.setUsername("updatedUsername");
+        
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userService.validateToken(validToken)).thenReturn(true);
+        when(userService.findIDforToken(validToken)).thenReturn(differentUserId);  // Token belongs to different user
+        
+        // when/then
+        MockHttpServletRequestBuilder putRequest = put("/users/{userId}", userId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(asJsonString(userPutDTO))
+            .header("Authorization", "Bearer " + validToken);
+        
+        mockMvc.perform(putRequest)
+            .andExpect(status().isForbidden());
+    }
+    
+    @Test
+    void DELETE_user_forbidden_differentUser() throws Exception {
+        // given
+        Long userId = 1L;
+        Long differentUserId = 2L;
+        String validToken = "valid-token";
+        
+        when(userService.validateToken(validToken)).thenReturn(true);
+        when(userService.findIDforToken(validToken)).thenReturn(differentUserId);  // Token belongs to different user
+        
+        // when/then
+        MockHttpServletRequestBuilder deleteRequest = delete("/users/{userId}", userId)
+            .header("Authorization", "Bearer " + validToken);
+        
+        mockMvc.perform(deleteRequest)
+            .andExpect(status().isForbidden());
+    }
+    
+    
+    @Test
+    void GET_emptyUserList() throws Exception {
+        // given
+        given(userService.getUsers()).willReturn(Collections.emptyList());
+        
+        String validToken = "valid-token";
+        given(userService.validateToken(validToken)).willReturn(true);
+        
+        // when/then
+        MockHttpServletRequestBuilder getRequest = get("/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + validToken);
+        
+        mockMvc.perform(getRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+    }
     
 
 
