@@ -53,7 +53,7 @@ class TaskServiceTest {
         testUser.setId(42L);
         testUser.setUsername("testUser");
         testUser.setColor(ColorID.C1);
-        testUser.setToken("Bearer some-valid-token");
+        testUser.setToken("some-valid-token");
 
         // Setup test task (unassigned)
         testTask = new Task();
@@ -70,7 +70,7 @@ class TaskServiceTest {
         Mockito.when(userService.validateToken("some-valid-token")).thenReturn(true); // Mock validateToken
         Mockito.when(taskRepository.save(Mockito.any(Task.class))).thenAnswer(i -> i.getArgument(0));
 
-        Task claimedTask = taskService.claimTask(testTask, "Bearer some-valid-token");
+        Task claimedTask = taskService.claimTask(testTask, "some-valid-token");
 
         // then
         Mockito.verify(taskRepository, Mockito.times(1)).save(Mockito.any(Task.class));
@@ -88,7 +88,7 @@ class TaskServiceTest {
         Mockito.when(userService.validateToken("some-valid-token")).thenReturn(true);
 
         // then
-        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "Bearer some-valid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "some-valid-token"));
     }
 
     @Test
@@ -101,7 +101,7 @@ class TaskServiceTest {
         Mockito.when(userService.validateToken("some-valid-token")).thenReturn(true); // Mock validateToken
 
         // then
-        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "Bearer some-valid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "some-valid-token"));
     }
 
     @Test
@@ -109,7 +109,7 @@ class TaskServiceTest {
         // given an invalid token
         Mockito.when(userRepository.findByToken("invalid-token")).thenReturn(null);
 
-        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "Bearer invalid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "invalid-token"));
     }
 
     @Test
@@ -135,7 +135,7 @@ class TaskServiceTest {
         Mockito.when(taskRepository.save(Mockito.any(Task.class))).thenAnswer(i -> i.getArgument(0));
 
         // when the user is valid and not already assigned
-        Task createdTask = taskService.createTask(validTask, "Bearer some-valid-token");
+        Task createdTask = taskService.createTask(validTask, "some-valid-token");
 
         // then verify the task is created correctly and saved
         assertNotNull(createdTask);
@@ -158,7 +158,7 @@ class TaskServiceTest {
 
         // then
         assertThrows(ResponseStatusException.class,
-                () -> taskService.createTask(existingTask, "Bearer some-valid-token"));
+                () -> taskService.createTask(existingTask, "some-valid-token"));
     }
 
     @Test
@@ -168,7 +168,7 @@ class TaskServiceTest {
                                                                                     // token
 
         // when
-        assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "Bearer invalid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "invalid-token"));
     }
 
     @Test
@@ -306,7 +306,7 @@ class TaskServiceTest {
         // When & Then (no exception should be thrown)
         when(userRepository.findByToken("valid-token")).thenReturn(testUser);
         when(taskRepository.findTaskById(testTask.getId())).thenReturn(testTask);
-        assertDoesNotThrow(() -> taskService.validateCreator("Bearer valid-token", testTask.getId()));
+        assertDoesNotThrow(() -> taskService.validateCreator("valid-token", testTask.getId()));
     }
 
     @Test
@@ -322,7 +322,7 @@ class TaskServiceTest {
 
         // When & Then
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> taskService.validateCreator("Bearer invalid-token", testTask.getId()));
+                () -> taskService.validateCreator("invalid-token", testTask.getId()));
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("User not found", exception.getReason());
     }
@@ -333,7 +333,7 @@ class TaskServiceTest {
         // When & Then
         when(userRepository.findByToken("valid-token")).thenReturn(testUser);
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> taskService.validateCreator("Bearer valid-token", 999L)); // Non-existent task ID
+                () -> taskService.validateCreator("valid-token", 999L)); // Non-existent task ID
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
         assertEquals("Task not found", exception.getReason());
     }
@@ -356,7 +356,7 @@ class TaskServiceTest {
         when(userRepository.findByToken("valid-token")).thenReturn(testUser);
         when(taskRepository.findTaskById(testTask.getId())).thenReturn(testTask);
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> taskService.validateCreator("Bearer valid-token", testTask.getId()));
+                () -> taskService.validateCreator("valid-token", testTask.getId()));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
         assertEquals("Not authorized to edit this task", exception.getReason());
     }

@@ -73,7 +73,7 @@ class TaskServiceIntegrationTest {
         taskRepository.save(testTask);
 
         // When the task is claimed
-        Task claimedTask = taskService.claimTask(testTask, "Bearer valid-token");
+        Task claimedTask = taskService.claimTask(testTask, "valid-token");
 
         // Then the task is assigned to the user and color is set
         assertEquals(testUser.getId(), claimedTask.getIsAssignedTo());
@@ -95,7 +95,7 @@ class TaskServiceIntegrationTest {
         taskRepository.save(testTask);
 
         // When trying to claim the task
-        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "Bearer valid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "valid-token"));
     }
 
     @Test
@@ -117,7 +117,7 @@ class TaskServiceIntegrationTest {
         taskRepository.save(testTask);
 
         // When trying to claim the task
-        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "Bearer valid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "valid-token"));
     }
 
     @Test
@@ -135,7 +135,7 @@ class TaskServiceIntegrationTest {
         taskRepository.save(testTask);
 
         // When trying to claim the task with an invalid token
-        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "Bearer invalid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.claimTask(testTask, "invalid-token"));
     }
 
     @Test
@@ -152,7 +152,7 @@ class TaskServiceIntegrationTest {
         newTask.setcreatorId(testUser.getId()); // Set the creator ID
 
         // When creating the task
-        Task createdTask = taskService.createTask(newTask, "Bearer valid-token");
+        Task createdTask = taskService.createTask(newTask, "valid-token");
 
         // Then verify the task is created correctly
         assertEquals(newTask.getName(), createdTask.getName());
@@ -174,7 +174,7 @@ class TaskServiceIntegrationTest {
         taskRepository.save(testTask);
 
         // When trying to create a task with the same name
-        assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "Bearer valid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "valid-token"));
     }
 
     @Test
@@ -190,7 +190,7 @@ class TaskServiceIntegrationTest {
         testTask.setcreatorId(testUser.getId()); // Set the creator ID
 
         // When trying to create the task with an invalid token
-        assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "Bearer invalid-token"));
+        assertThrows(ResponseStatusException.class, () -> taskService.createTask(testTask, "invalid-token"));
     }
 
     @Test
@@ -213,7 +213,7 @@ class TaskServiceIntegrationTest {
         updatedTask.setDeadline(new Date(System.currentTimeMillis() + 7200 * 1000)); // new deadline
     
         // Simulate update by the creator
-        taskService.validateCreator("Bearer valid-token", task.getId());
+        taskService.validateCreator("valid-token", task.getId());
     
         Task taskToUpdate = taskRepository.findById(task.getId()).orElse(null);
         assertNotNull(taskToUpdate);
@@ -259,7 +259,7 @@ class TaskServiceIntegrationTest {
     
         // Attempt to update the task as anotherUser (not the creator)
         assertThrows(ResponseStatusException.class, 
-            () -> taskService.validateCreator("Bearer another-token", task.getId()));
+            () -> taskService.validateCreator("another-token", task.getId()));
     }
 
     @Test
@@ -276,7 +276,7 @@ class TaskServiceIntegrationTest {
         task = taskRepository.save(task);
     
         // Simulate delete by the creator
-        taskService.validateCreator("Bearer valid-token", task.getId());
+        taskService.validateCreator("valid-token", task.getId());
         taskRepository.deleteById(task.getId());
     
         // Ensure task is deleted
@@ -311,7 +311,7 @@ class TaskServiceIntegrationTest {
     
         // Try to validate delete access with the wrong user
         assertThrows(ResponseStatusException.class, () -> {
-            taskService.validateCreator("Bearer second-token", task.getId());
+            taskService.validateCreator("second-token", task.getId());
         });
     }
     

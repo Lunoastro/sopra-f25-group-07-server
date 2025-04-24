@@ -52,6 +52,8 @@ public class TeamService {
   }
 
   public Team createTeam(Long userId, Team newTeam) {  //works as the registration func as well 
+    User creator = userService.getUserById(userId);
+    checkUserNotInTeam(creator); //check if user is already in a team
     validateTeamName(newTeam.getName()); //check if user's team name is valid
     checkIfTeamExists(newTeam); //check if team name is already in repository
 
@@ -64,15 +66,14 @@ public class TeamService {
     newTeam.getMembers().add(userId); // Add userId to the list
     // saves the given entity but data is only persisted in the database once
     // flush() is called
-
-    User creator = userService.getUserById(userId);
+    newTeam = teamRepository.save(newTeam);
+    teamRepository.flush();
+    
     creator.setTeamId(newTeam.getId()); // Set the teamId for the user
     creator.setColor(ColorID.C1); // Set the color to C1 (default) for the creator
 
     userRepository.save(creator);
-    newTeam = teamRepository.save(newTeam);
     userRepository.flush();
-    teamRepository.flush();
 
     log.debug("Created Information for Team: {}", newTeam);
     return newTeam;

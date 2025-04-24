@@ -28,7 +28,7 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private boolean isPaused;
 
     @Column(nullable = true)
