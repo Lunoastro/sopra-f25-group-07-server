@@ -64,20 +64,24 @@ public class TeamController {
   @PostMapping("/teams/join")
   @ResponseStatus(HttpStatus.CREATED)
   
-  public void joinTeam(@RequestParam String code, @RequestHeader("Authorization") String authorizationHeader) {
+  public void joinTeam(@RequestBody TeamPostDTO teamPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
     // Validate the token
     String token = validateAuthorizationHeader(authorizationHeader);
 
     if (!userService.validateToken(token)) {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
     }
-
     // Get user ID from token
     Long userId = userService.findIDforToken(token);
     if (userId == null) {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
     }
-
+    // Get team code from DTO
+    Team newTeam = DTOMapper.INSTANCE.convertTeamPostDTOtoEntity(teamPostDTO);
+    String code = newTeam.getCode();
+    if (code == null || code.isEmpty()) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing or invalid team code.");
+    }
     // Process team joining
     teamService.joinTeam(userId, code);
   }

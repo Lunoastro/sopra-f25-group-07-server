@@ -20,8 +20,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
@@ -37,6 +39,9 @@ class TaskServiceTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private CalendarService calendarService;
 
     @InjectMocks
     private TaskService taskService;
@@ -472,7 +477,15 @@ class TaskServiceTest {
     void deleteTask_success() {
         // given
         Long taskId = 1L;
+        Task mockTask = new Task();
+        mockTask.setId(taskId);
+        mockTask.setName("Mock Task");
+        mockTask.setcreatorId(42L);
 
+        Mockito.when(taskRepository.findById(taskId)).thenReturn(Optional.of(mockTask));
+
+        Mockito.doNothing().when(calendarService).syncSingleTask(mockTask, mockTask.getcreatorId());
+        
         // when
         taskService.deleteTask(taskId);
 

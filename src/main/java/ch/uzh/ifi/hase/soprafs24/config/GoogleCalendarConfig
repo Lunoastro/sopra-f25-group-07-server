@@ -1,0 +1,42 @@
+package ch.uzh.ifi.hase.soprafs24.config;
+
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.FileDataStoreFactory;
+import com.google.api.services.calendar.CalendarScopes;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.io.*;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+
+@Configuration
+public class GoogleCalendarConfig {
+
+    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+    private static final String TOKENS_DIRECTORY_PATH = System.getProperty("user.home") + "/.taskaway_tokens";
+
+    @Bean
+    public GoogleAuthorizationCodeFlow googleAuthorizationCodeFlow() throws IOException, GeneralSecurityException {
+        NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+
+        // Load client secrets (adjust as necessary if you use env variables instead)
+        InputStream in = new ByteArrayInputStream(System.getenv("GOOGLE_CALENDAR_CREDENTIALS").getBytes());
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+        return new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT,
+                JSON_FACTORY,
+                clientSecrets,
+                Collections.singleton(CalendarScopes.CALENDAR))
+                .setAccessType("offline")
+                .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
+                .build();
+    }
+}

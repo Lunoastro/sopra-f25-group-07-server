@@ -28,14 +28,18 @@ public class TaskService {
     private final Logger log = LoggerFactory.getLogger(TaskService.class);
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final CalendarService calendarService;
     private String recurringTask = "recurring"; 
 
     @Autowired
     public TaskService(@Qualifier("taskRepository") TaskRepository taskRepository,
-            @Qualifier("userRepository") UserRepository userRepository, UserService userService) {
+            @Qualifier("userRepository") UserRepository userRepository, 
+            @Qualifier("userService") UserService userService,
+            @Qualifier("calendarService") CalendarService calendarService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.userService = userService;
+        this.calendarService = calendarService;
     }
 
     // validate PostDTO based on the fields
@@ -221,7 +225,9 @@ public class TaskService {
         else { // if task is additional task
             calculateDaysVisible(task); // set daysVisible to the difference between deadline and creation date -> easy filtering for pinboard
         }
-        return taskRepository.save(task);
+        calendarService.syncSingleTask(task, task.getcreatorId());
+        taskRepository.save(task);
+        return task;
     }
 
     public Task claimTask(Task task, String userToken) {
@@ -250,12 +256,21 @@ public class TaskService {
     }
 
     public void deleteTask(Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+        calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.deleteById(taskId);
     }
 
     public Task updateTask(Task task, Task taskPutDTO) {
         validateToBeEditedFields(task, taskPutDTO);
-        return taskRepository.save(task);
+        calendarService.syncSingleTask(task, task.getcreatorId());
+        taskRepository.save(task);
+        return task;
+    }
+
+    public void saveTask(Task task) {
+        taskRepository.save(task);
     }
     
     public Task getTaskById(Long taskId) {

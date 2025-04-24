@@ -20,4 +20,5 @@ public class TaskGetDTO {
     private String color;
     private Boolean activeStatus;
     private Integer value;
+    private String googleEventId;
 }

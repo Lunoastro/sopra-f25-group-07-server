@@ -98,6 +98,7 @@ public interface DTOMapper {
   @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
   @Mapping(source = "value", target = "value")
+  @Mapping(source = "googleEventId", target = "googleEventId")
   TaskGetDTO convertEntityToTaskGetDTO(Task task);
 
   @Mapping(source = "id", target = "id")
@@ -109,6 +110,7 @@ public interface DTOMapper {
   @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
   @Mapping(source = "value", target = "value")
+  @Mapping(source = "googleEventId", target = "googleEventId")
   Task convertTaskGetDTOtoEntity(TaskGetDTO taskGetDTO);
 
   @Mapping(source = "isAssignedTo", target = "isAssignedTo")

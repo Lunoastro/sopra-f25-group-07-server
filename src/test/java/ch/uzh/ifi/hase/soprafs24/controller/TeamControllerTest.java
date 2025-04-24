@@ -3,6 +3,7 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.team.TeamPostDTO;
+import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +44,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
     @MockBean
     private TeamRepository teamRepository;
+
+    @MockBean
+    private CalendarService calendarService;
 
     private MockMvc mockMvc;
 
@@ -125,9 +129,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         when(teamRepository.findByCode("ABC123")).thenReturn(new Team());
         doNothing().when(teamService).joinTeam(anyLong(), anyString());
 
+        // JSON body
+        String jsonBody = """
+            {
+                "code": "ABC123"
+            }
+        """;
+
         // When & Then
         mockMvc.perform(MockMvcRequestBuilders.post("/teams/join")
-                .param("code", "ABC123")
+                .contentType("application/json")
+                .content(jsonBody)
                 .header("Authorization", authorizationHeader))
                 .andExpect(status().isCreated());
 
@@ -146,11 +158,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found."))
             .when(teamService).joinTeam(anyLong(), eq("INVALID_CODE"));
 
+            // JSON body
+        String jsonBody = """
+            {
+                "code": "INVALID_CODE"
+            }
+        """;
+
         // When & Then
         mockMvc.perform(MockMvcRequestBuilders.post("/teams/join")
-                .param("code", "INVALID_CODE")
+                .contentType("application/json")
+                .content(jsonBody)
                 .header("Authorization", authorizationHeader))
-                .andExpect(status().isNotFound()); // Expect 404 when team not found
+                .andExpect(status().isNotFound()); // ✅ Expect 404
 
         // Verify that the teamService.findByCode method was called
         verify(teamService, times(1)).joinTeam(anyLong(), eq("INVALID_CODE"));
