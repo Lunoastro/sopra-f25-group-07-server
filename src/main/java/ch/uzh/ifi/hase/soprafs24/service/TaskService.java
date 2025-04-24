@@ -204,6 +204,8 @@ public class TaskService {
         task.setcreatorId(userRepository.findByToken(userToken).getId());
         // enforce that the task colour is initially set to white 
         task.setColor(null);
+        // set the task teamId
+        task.setTeamId(userRepository.findByToken(userToken).getTeamId());
         // store status of the task
         task.setActiveStatus(true);
         if (recurringTask.equals(taskType)) { // check if task is recurring
