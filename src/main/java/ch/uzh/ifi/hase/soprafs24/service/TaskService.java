@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.Calendar;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -181,13 +182,13 @@ public class TaskService {
         if (isActive != null) {
             allTasks = allTasks.stream()
                            .filter(task -> isActive.equals(task.getActiveStatus())) // True = active Tasks, False = inactive Tasks
-                           .toList();
+                           .collect(Collectors.toList());
         }
         // Filter by type (recurring)
         if (type != null  && type.equalsIgnoreCase(recurringTask)) {
             allTasks = allTasks.stream()
                             .filter(task -> task.getFrequency() != null) // Check if frequency is null -> additional task
-                            .toList();
+                            .collect(Collectors.toList());
         }
         return allTasks;
     }
