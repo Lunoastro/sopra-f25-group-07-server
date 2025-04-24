@@ -68,6 +68,9 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private Integer daysVisible;
 
+    @Column(nullable = true)
+    private Long teamId;
+
     // Getters and Setters
     public Long getId() {
         return id;
@@ -193,5 +196,11 @@ public class Task implements Serializable {
 
     public void setDaysVisible(Integer daysVisible) {
         this.daysVisible = daysVisible;
+    }
+    public Long getTeamId() {
+        return teamId;
+    }
+    public void setTeamId(Long teamId) {
+        this.teamId = teamId;
     }
 }

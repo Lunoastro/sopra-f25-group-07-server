@@ -9,6 +9,7 @@ import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 
 
 
@@ -18,11 +19,12 @@ import java.util.List;
 public class TaskController {
 
   private final TaskService taskService;
-
+  private final UserRepository userrepository;
   
 
-  TaskController(TaskService taskService) {
+  TaskController(TaskService taskService, UserRepository userrepository) {
     this.taskService = taskService;
+    this.userrepository = userrepository;
   }
     @PostMapping("/tasks")
     @ResponseStatus(HttpStatus.CREATED)
@@ -52,8 +54,11 @@ public class TaskController {
         List<Task> tasks = taskService.getFilteredTasks(isActive, type);
         // Convert the list of entities to a list of DTOs for the response
         List<TaskGetDTO> taskGetDTOs = new ArrayList<>();
+        Long userTeamId = userrepository.findByToken(userToken).getTeamId();
         for (Task task : tasks) {
+            if (task.getTeamId().equals(userTeamId)) {
             taskGetDTOs.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
+            }
         }
         return taskGetDTOs;
     }

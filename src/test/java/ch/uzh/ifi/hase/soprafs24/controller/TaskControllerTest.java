@@ -8,6 +8,8 @@ import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPutDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,7 +52,13 @@ class TaskControllerTest {
     private TaskService taskService;
 
     @MockBean
+    private UserService userService;
+
+    @MockBean
     private TaskRepository taskRepository; 
+
+    @MockBean
+    private UserRepository userRepository;
 
     @Test
     void POST_createTask_validInput_taskCreated() throws Exception {
