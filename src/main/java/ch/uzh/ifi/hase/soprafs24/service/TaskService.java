@@ -171,6 +171,10 @@ public class TaskService {
         if (!task.getcreatorId().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit this task");
         }
+        Long assignee = task.getIsAssignedTo(); // may be null
+        if (assignee != null && !assignee.equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit: task is currently claimed by another user");
+        }
     }
 
     public List<Task> getFilteredTasks(Boolean isActive, String type) {

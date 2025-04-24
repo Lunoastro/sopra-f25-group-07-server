@@ -73,6 +73,21 @@ public class TaskController {
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task);
     }
 
+    @GetMapping("/tasks/{taskId}/isEditable")
+    @ResponseStatus(HttpStatus.OK)
+    public Boolean getIsEditable(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
+        try {
+            // Validate the user token
+            String userToken = validateAuthorizationHeader(authorizationHeader);
+            taskService.validateUserToken(userToken);
+            // Validate whether the user can edit the task
+            taskService.validateCreator(userToken, taskId);
+            return true; // all checks passed
+        } catch (ResponseStatusException e) {
+            return false;
+        }
+    }
+
     @PutMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String authorizationHeader) {
