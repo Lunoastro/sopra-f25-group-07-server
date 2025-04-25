@@ -181,7 +181,7 @@ public class TaskService {
 
     public List<Task> getFilteredTasks(Boolean isActive, String type) {
         // If both filters are null, return all tasks
-        List<Task> allTasks = getAllTasks(); 
+        List<Task> allTasks = getAllTasks();
         // Filter by activeStatus (if active or inactive)
         if (isActive != null) {
             allTasks = allTasks.stream()
@@ -189,9 +189,9 @@ public class TaskService {
                            .collect(Collectors.toList());
         }
         // Filter by type (recurring)
-        if (type != null  && type.equalsIgnoreCase(recurringTask)) {
+        if (type != null) {
             allTasks = allTasks.stream()
-                            .filter(task -> task.getFrequency() != null) // Check if frequency is null -> additional task
+                            .filter(task -> checkTaskType(task).equalsIgnoreCase(type)) // Check if frequency is null -> additional task
                             .collect(Collectors.toList());
         }
         return allTasks;
