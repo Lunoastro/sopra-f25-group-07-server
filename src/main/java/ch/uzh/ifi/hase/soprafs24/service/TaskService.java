@@ -67,14 +67,6 @@ public class TaskService {
         if (dto.getStartDate() != null && dto.getStartDate().before(new Date())) {
             throw new IllegalArgumentException("Invalid or past start date provided.");
         }
-        int half;
-        if (dto.getFrequency() == 1) { // SPECIAL CASE: if frequency is 1, we set half to 1 as daysVisible can never be 0
-            half = 1;
-        } else {
-            half = dto.getFrequency() / 2; // half of the frequency is the default minimum cooldown period 
-        }
-        // if (dto.getDaysVisible() == null && dto.getDaysVisible() > half) { // half also includes 0 and negative values
-        // since the check for > half is not done yet on client just checking if > frequency
         if (dto.getDaysVisible() == null && dto.getDaysVisible() > dto.getFrequency()) { // half also includes 0 and negative values
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task daysVisible cannot be null or greater than half of frequency (exception: if frequency = 1, daysVisible = 1)");
         }
@@ -192,8 +184,6 @@ public class TaskService {
 
     public void validateTaskInTeam(String userToken, Long taskId) {
         Task task = taskRepository.findTaskById(taskId);
-        // verifyTaskExists does throw error if it exists but we want to have a positive result here if it exists
-        //verifyTaskExistence(task);
         Long userTeamId = userRepository.findByToken(userToken).getTeamId();
         if (!task.getTeamId().equals(userTeamId)) { //if task and user are not in the same team
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task does not belong to the team of the user");
