@@ -48,7 +48,10 @@ public class Application {
 
             try {
                 // Retrieve the redirect.uri from the properties file based on the active profile
-                String redirectUri = environment.getProperty("redirect.uri");
+                String redirectUri = environment.getProperty("REDIRECT_URI");
+                if (redirectUri == null) {
+                    redirectUri = environment.getProperty("redirect.uri");
+                }
 
                 if (redirectUri != null) {
                     logger.info("Using redirect URI: {}", redirectUri);

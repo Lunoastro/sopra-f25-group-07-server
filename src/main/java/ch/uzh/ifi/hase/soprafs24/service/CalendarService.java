@@ -40,7 +40,7 @@ public class CalendarService {
     private static final String DATETIME_FIELD = "dateTime";
     private static final String STATUS_FIELD = "status"; // Constant for "status"
 
-    @Value("${redirect.uri}")
+    @Value("${REDIRECT_URI:redirect.uri}")
     private String redirectUri;
 
     private TaskService taskService;
