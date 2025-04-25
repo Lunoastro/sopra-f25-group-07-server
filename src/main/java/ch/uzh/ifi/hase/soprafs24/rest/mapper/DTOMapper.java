@@ -100,6 +100,8 @@ public interface DTOMapper {
   @Mapping(source = "value", target = "value")
   @Mapping(source = "googleEventId", target = "googleEventId")
   @Mapping(source = "daysVisible", target = "daysVisible")
+  @Mapping(source = "startDate", target = "startDate", dateFormat = "yyyy-MM-dd")
+  @Mapping(source = "frequency", target = "frequency")
   TaskGetDTO convertEntityToTaskGetDTO(Task task);
 
   @Mapping(source = "id", target = "id")
@@ -113,6 +115,8 @@ public interface DTOMapper {
   @Mapping(source = "value", target = "value")
   @Mapping(source = "googleEventId", target = "googleEventId")
   @Mapping(source = "daysVisible", target = "daysVisible")
+  @Mapping(source = "frequency", target = "frequency")
+  @Mapping(source = "startDate", target = "startDate", dateFormat = "yyyy-MM-dd")
   Task convertTaskGetDTOtoEntity(TaskGetDTO taskGetDTO);
 
   @Mapping(source = "isAssignedTo", target = "isAssignedTo")

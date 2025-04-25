@@ -135,8 +135,8 @@ public class TaskService {
         }
         int half = getHalfFrequency(task);
         if (taskPutDTO.getDaysVisible() != null) {
-            if (taskPutDTO.getDaysVisible() < half) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
+            if (taskPutDTO.getDaysVisible() < half || taskPutDTO.getDaysVisible() > task.getFrequency()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible must be at least half of the frequency (or 1 if frequency is 1) but not greater than the frequency");
             }
             task.setDaysVisible(taskPutDTO.getDaysVisible());
         }
@@ -176,6 +176,24 @@ public class TaskService {
         Long assignee = task.getIsAssignedTo(); // may be null
         if (assignee != null && !assignee.equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to edit: task is currently claimed by another user");
+        }
+    }
+
+    public void validateRecurringEdit(String userToken, Long taskId) {
+        Task task = taskRepository.findTaskById(taskId);
+        String taskType = checkTaskType(task);
+        if (taskType.equals("additional")) { // if addtional task, validate more
+            validateCreator(userToken, taskId);
+        }
+        //if task is recurring, we dont test anything else
+    }
+
+    public void validateTaskInTeam(String userToken, Long taskId) {
+        Task task = taskRepository.findTaskById(taskId);
+        verifyTaskExistence(task);
+        Long userTeamId = userRepository.findByToken(userToken).getTeamId();
+        if (!task.getTeamId().equals(userTeamId)) { //if task and user are not in the same team
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task does not belong to the team of the user");
         }
     }
 
@@ -304,7 +322,7 @@ public class TaskService {
 
     //-------------------------------------helper functions here-------------------------------------------------
 
-    private String checkTaskType(Task task) {
+    public String checkTaskType(Task task) {
         String taskType;
         if (task.getFrequency() != null) {
             taskType = recurringTask;
@@ -339,7 +357,7 @@ public class TaskService {
     }
 
     private void calculateDeadline(Task task) {
-        // calculate deadline = startDate + frequency days
+        // calculate deadline = startDate + frequency days -> recurring task
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(task.getStartDate());
         calendar.add(Calendar.DATE, task.getFrequency());
@@ -348,7 +366,7 @@ public class TaskService {
     }
 
     private void calculateDaysVisible(Task task) {
-        // calculate daysVisible = deadline - creationDate
+        // calculate daysVisible = deadline - creationDate -> additional task
         long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
         int daysDiff = (int) (millisDiff / (1000 * 60 * 60 * 24));
         task.setDaysVisible(daysDiff);

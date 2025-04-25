@@ -22,4 +22,6 @@ public class TaskGetDTO {
     private Integer value;
     private String googleEventId;
     private Integer daysVisible;
+    private Integer frequency;
+    private String startDate;
 }

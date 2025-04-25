@@ -306,9 +306,14 @@ class TaskControllerTest {
         Long taskId = 1L;
         String token = "token123";
 
+        Task mockTask = new Task();
+        mockTask.setId(taskId);
+
         // Mock service behavior for a valid creator
         doNothing().when(taskService).validateUserToken(token);
         doNothing().when(taskService).validateCreator(token, taskId);
+        when(taskService.getTaskById(taskId)).thenReturn(mockTask);
+        when(taskService.checkTaskType(mockTask)).thenReturn("additional");
 
         // Perform the GET request
         MockHttpServletRequestBuilder getRequest = get("/tasks/{taskId}/isEditable", taskId)
@@ -319,8 +324,10 @@ class TaskControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().string("true"));
 
-        verify(taskService, times(1)).validateUserToken(token);
-        verify(taskService, times(1)).validateCreator(token, taskId);
+        verify(taskService).validateUserToken(token);
+        verify(taskService).validateCreator(token, taskId);
+        verify(taskService).getTaskById(taskId);
+        verify(taskService).checkTaskType(mockTask);
     }
 
     @Test
