@@ -64,7 +64,7 @@ public class TeamController {
   @PostMapping("/teams/join")
   @ResponseStatus(HttpStatus.CREATED)
   
-  public void joinTeam(@RequestBody TeamPostDTO teamPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
+  public Team joinTeam(@RequestBody TeamPostDTO teamPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
     // Validate the token
     String token = validateAuthorizationHeader(authorizationHeader);
 
@@ -84,6 +84,7 @@ public class TeamController {
     }
     // Process team joining
     teamService.joinTeam(userId, code);
+    return teamService.getTeamByCode(code);
   }
 
   @GetMapping("/teams/{teamId}")
