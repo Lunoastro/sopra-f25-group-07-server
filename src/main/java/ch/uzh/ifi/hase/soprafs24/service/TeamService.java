@@ -225,7 +225,7 @@ public class TeamService {
     return teamCode;
   }
 
-  private Team getTeamByCode(String teamCode) {
+  public Team getTeamByCode(String teamCode) {
     // Logic to fetch the team by TeamCode
     Team team = teamRepository.findByCode(teamCode);
     if (team == null) {
