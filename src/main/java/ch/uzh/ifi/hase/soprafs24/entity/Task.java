@@ -22,6 +22,9 @@ public class Task implements Serializable {
     @Column(updatable = false)
     private Long id;
 
+    @Column(name = "google_event_id", nullable = true)
+    private String googleEventId;
+
     @Column(nullable = false)
     private String name;
     
@@ -78,6 +81,14 @@ public class Task implements Serializable {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getGoogleEventId() { 
+        return googleEventId; 
+    }
+    
+    public void setGoogleEventId(String googleEventId) { 
+        this.googleEventId = googleEventId; 
     }
 
     public String getName() {
