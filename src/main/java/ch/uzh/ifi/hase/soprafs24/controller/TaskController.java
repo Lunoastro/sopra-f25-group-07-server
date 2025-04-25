@@ -87,6 +87,10 @@ public class TaskController {
             taskService.validateUserToken(userToken);
             // Validate whether the user can edit the task
             taskService.validateCreator(userToken, taskId);
+            Task task = taskService.getTaskById(taskId);
+            if (!"additional".equals(taskService.checkTaskType(task))) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is not editable");
+            }
             return true; // all checks passed
         } catch (ResponseStatusException e) {
             return false;
@@ -99,8 +103,10 @@ public class TaskController {
         // Validate the user token
         String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
+        // check if task is in the same team as the user
+        taskService.validateTaskInTeam(userToken, taskId);
         // Checks if user is the creator of the task and if task exists
-        taskService.validateCreator(userToken, taskId);
+        taskService.validateRecurringEdit(userToken, taskId);
         // Retrieve the existing task
         Task existingTask = taskService.getTaskById(taskId);
         // convert putDTO to entity
@@ -155,8 +161,10 @@ public class TaskController {
         // Validate the user token
         String userToken = validateAuthorizationHeader(authorizationHeader);
         taskService.validateUserToken(userToken);
+        // check if task is in the same team as the user
+        taskService.validateTaskInTeam(userToken, taskId);
         // Checks if user is the creator of the task and if task exists
-        taskService.validateCreator(userToken, taskId);
+        taskService.validateRecurringEdit(userToken, taskId);
         // Delete the task using the service
         taskService.deleteTask(taskId);
     }

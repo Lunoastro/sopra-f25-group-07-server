@@ -259,4 +259,43 @@ public class CalendarService {
         // Utility method to convert Date to ISO string
         return new DateTime(date).toStringRfc3339();
     }
+
+    public List<Map<String, Object>> getCombinedEvents(Long userId, boolean activeOnly, int limit) throws IOException {
+        List<Map<String, Object>> combinedEvents = new ArrayList<>();
+    
+        // Fetch Google Calendar events
+        List<Event> googleEvents = getUserGoogleCalendarEvents(limit, userId);
+        for (Event ge : googleEvents) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", ge.getId());
+            map.put("summary", ge.getSummary());
+            map.put("description", ge.getDescription());
+            map.put("start", ge.getStart());
+            map.put("end", ge.getEnd());
+            map.put("source", "google");
+            combinedEvents.add(map);
+        }
+    
+        // Fetch tasks (filtered by active status if needed)
+        List<Task> tasks = taskService.getFilteredTasks(activeOnly, null);  // Ensure taskService handles 'activeOnly'
+        for (Task task : tasks) {
+            Map<String, Object> taskEvent = new HashMap<>();
+            taskEvent.put("id", "task-" + task.getId());
+            taskEvent.put("summary", "[TASK] " + task.getName());
+            taskEvent.put("description", task.getDescription());
+    
+            // Convert task deadline to Google Calendar-compatible format
+            taskEvent.put("start", Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
+            taskEvent.put("end", Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
+    
+            // Optional: Add task color
+            taskEvent.put("colorId", task.getColor() != null ? task.getColor().toString() : null);
+            taskEvent.put("source", "task");
+            taskEvent.put(STATUS_FIELD, "active");
+    
+            combinedEvents.add(taskEvent);
+        }
+        return combinedEvents;
+    }
+    
 }

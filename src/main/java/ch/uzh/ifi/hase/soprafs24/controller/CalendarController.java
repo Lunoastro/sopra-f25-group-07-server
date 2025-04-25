@@ -129,38 +129,9 @@ public class CalendarController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
 
-        List<Map<String, Object>> combinedEvents = new ArrayList<>();
-
-        List<Event> googleEvents = calendarService.getUserGoogleCalendarEvents(limit, userId);
-        for (Event ge : googleEvents) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", ge.getId());
-            map.put("summary", ge.getSummary());
-            map.put("description", ge.getDescription());
-            map.put("start", ge.getStart());
-            map.put("end", ge.getEnd());
-            map.put("source", "google");
-            combinedEvents.add(map);
-        }
-
-        List<Task> tasks = taskService.getFilteredTasks(activeOnly, null);
-
-        for (Task task : tasks) {
-            Map<String, Object> taskEvent = new HashMap<>();
-            taskEvent.put("id", "task-" + task.getId());
-            taskEvent.put("summary", "[TASK] " + task.getName());
-            taskEvent.put("description", task.getDescription());
-            taskEvent.put("start", Map.of("dateTime", calendarService.toISOString(task.getDeadline())));
-            taskEvent.put("end", Map.of("dateTime", calendarService.toISOString(task.getDeadline())));
-            taskEvent.put("colorId", task.getColor() != null ? task.getColor().toString() : null);
-            taskEvent.put("source", "task");
-            taskEvent.put("status", "active");
-
-            combinedEvents.add(taskEvent);
-        }
-
-        return combinedEvents;
+        return calendarService.getCombinedEvents(userId, activeOnly, limit);
     }
+
 
     private String validateAuthorizationHeader(String authorizationHeader) {
         if (authorizationHeader == null || authorizationHeader.trim().isEmpty() || !authorizationHeader.startsWith("Bearer ")) {
