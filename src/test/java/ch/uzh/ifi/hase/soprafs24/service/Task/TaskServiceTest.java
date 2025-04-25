@@ -297,37 +297,37 @@ class TaskServiceTest {
     @Test
     void validateCreator_validInputs_success() {
         
-        Task testTask = new Task();
-        testTask.setId(1L);
-        testTask.setName("Test Task");
-        testTask.setCreationDate(new Date());
-        testTask.setcreatorId(testUser.getId());
-        testTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
-        taskRepository.save(testTask);
+        Task testingTask = new Task();
+        testingTask.setId(1L);
+        testingTask.setName("Test Task");
+        testingTask.setCreationDate(new Date());
+        testingTask.setcreatorId(testUser.getId());
+        testingTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        taskRepository.save(testingTask);
         taskRepository.flush(); // Ensure the task is saved before validation
         // No mocking needed; rely on the actual repository behavior
         
         // Save the task to the repository
         // When & Then (no exception should be thrown)
         when(userRepository.findByToken("valid-token")).thenReturn(testUser);
-        when(taskRepository.findTaskById(testTask.getId())).thenReturn(testTask);
-        assertDoesNotThrow(() -> taskService.validateCreator("valid-token", testTask.getId()));
+        when(taskRepository.findTaskById(testingTask.getId())).thenReturn(testingTask);
+        assertDoesNotThrow(() -> taskService.validateCreator("valid-token", testingTask.getId()));
     }
 
     @Test
     void validateCreator_userNotFound_throwsUnauthorizedException() {
         // Given a task but no user
-        Task testTask = new Task();
-        testTask.setId(1L);
-        testTask.setName("Test Task");
-        testTask.setCreationDate(new Date());
-        testTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
-        testTask.setcreatorId(1L);
-        taskRepository.save(testTask);
+        Task testingTask = new Task();
+        testingTask.setId(1L);
+        testingTask.setName("Test Task");
+        testingTask.setCreationDate(new Date());
+        testingTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        testingTask.setcreatorId(1L);
+        taskRepository.save(testingTask);
 
         // When & Then
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> taskService.validateCreator("invalid-token", testTask.getId()));
+                () -> taskService.validateCreator("invalid-token", testingTask.getId()));
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("User not found", exception.getReason());
     }
@@ -348,20 +348,20 @@ class TaskServiceTest {
         testUser.setStatus(UserStatus.OFFLINE);
         userRepository.save(testUser);
         
-        Task testTask = new Task();
-        testTask.setId(1L);
-        testTask.setName("Test Task");
-        testTask.setCreationDate(new Date());
-        testTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
-        testTask.setcreatorId(2L); // Different creator ID
-        taskRepository.save(testTask);
+        Task testingTask = new Task();
+        testingTask.setId(1L);
+        testingTask.setName("Test Task");
+        testingTask.setCreationDate(new Date());
+        testingTask.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        testingTask.setcreatorId(2L); // Different creator ID
+        taskRepository.save(testingTask);
 
         // When & Then
         
         when(userRepository.findByToken("valid-token")).thenReturn(testUser);
-        when(taskRepository.findTaskById(testTask.getId())).thenReturn(testTask);
+        when(taskRepository.findTaskById(testingTask.getId())).thenReturn(testingTask);
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> taskService.validateCreator("valid-token", testTask.getId()));
+                () -> taskService.validateCreator("valid-token", testingTask.getId()));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
         assertEquals("Not authorized to edit this task", exception.getReason());
     }
@@ -433,34 +433,34 @@ class TaskServiceTest {
     @Test
     void updateAllTaskColors_success() {
         // given
-        User testUser = new User();
-        testUser.setId(42L);
-        testUser.setUsername("testUser");
-        testUser.setColor(ColorID.C1);
+        User testingUser = new User();
+        testingUser.setId(42L);
+        testingUser.setUsername("testingUser");
+        testingUser.setColor(ColorID.C1);
 
         // Create a list of tasks assigned to this user
         Task task1 = new Task();
         task1.setId(1L);
         task1.setName("Task 1");
-        task1.setIsAssignedTo(testUser.getId());
+        task1.setIsAssignedTo(testingUser.getId());
         task1.setColor(ColorID.C2); // Different color initially
 
         Task task2 = new Task();
         task2.setId(2L);
         task2.setName("Task 2");
-        task2.setIsAssignedTo(testUser.getId());
+        task2.setIsAssignedTo(testingUser.getId());
         task2.setColor(ColorID.C3); // Different color initially
 
         List<Task> userTasks = List.of(task1, task2);
 
         // when
-        when(taskRepository.findTaskByIsAssignedTo(testUser.getId())).thenReturn(userTasks);
+        when(taskRepository.findTaskByIsAssignedTo(testingUser.getId())).thenReturn(userTasks);
         when(taskRepository.saveAll(Mockito.anyList())).thenReturn(userTasks);
 
-        taskService.updateAllTaskColors(testUser);
+        taskService.updateAllTaskColors(testingUser);
 
         // then
-        Mockito.verify(taskRepository).findTaskByIsAssignedTo(testUser.getId());
+        Mockito.verify(taskRepository).findTaskByIsAssignedTo(testingUser.getId());
         Mockito.verify(taskRepository).saveAll(Mockito.anyList());
 
         // Verify that both tasks now have the user's color

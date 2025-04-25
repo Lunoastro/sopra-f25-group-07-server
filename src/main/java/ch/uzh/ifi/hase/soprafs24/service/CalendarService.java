@@ -143,9 +143,9 @@ public class CalendarService {
 
     public String generateAuthUrl(Long userId) throws CalendarAuthorizationException {
         try {
-            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+            final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
             flow = new GoogleAuthorizationCodeFlow.Builder(
-                    HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), Collections.singletonList(CalendarScopes.CALENDAR))
+                    httpTransport, JSON_FACTORY, getClientSecrets(), Collections.singletonList(CalendarScopes.CALENDAR))
                     .setAccessType(OFFLINE)  // Using constant "offline"
                     .build();
 
@@ -159,11 +159,11 @@ public class CalendarService {
     }
 
     public void handleOAuthCallback(String code, Long userId) throws Exception {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
 
         if (flow == null) {
             flow = new GoogleAuthorizationCodeFlow.Builder(
-                    HTTP_TRANSPORT, JSON_FACTORY, getClientSecrets(), Collections.singletonList(CalendarScopes.CALENDAR))
+                    httpTransport, JSON_FACTORY, getClientSecrets(), Collections.singletonList(CalendarScopes.CALENDAR))
                     .setAccessType(OFFLINE)  // Using constant "offline"
                     .build();
         }
@@ -199,9 +199,7 @@ public class CalendarService {
         throw new FileNotFoundException("Environment variable GOOGLE_CALENDAR_CREDENTIALS is not set.");
     }
 
-    public Credential getUserCredentials(Long userId) throws IOException, GeneralSecurityException {
-        NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-
+    public Credential getUserCredentials(Long userId) throws IOException {
         // Retrieve the token from DB
         GoogleToken googleToken = googleTokenRepository.findById(userId)
                 .orElseThrow(() -> new IOException("No credentials found for user: " + userId));
@@ -213,7 +211,7 @@ public class CalendarService {
                 .setExpirationTimeMilliseconds(googleToken.getExpirationTime());
     }
 
-    public Credential refreshUserCredentials(Long userId) throws IOException, GeneralSecurityException {
+    public Credential refreshUserCredentials(Long userId) throws IOException {
         GoogleToken googleToken = googleTokenRepository.findById(userId)
                 .orElseThrow(() -> new IOException("No credentials found for user: " + userId));
     
@@ -244,9 +242,9 @@ public class CalendarService {
     
 
     private Calendar getCalendarServiceForUser(Long userId) throws IOException, GeneralSecurityException {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         Credential credential = getUserCredentials(userId);  // Loads user's stored credentials
-        return new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
+        return new Calendar.Builder(httpTransport, JSON_FACTORY, credential)
               .setApplicationName(APPLICATION_NAME)
               .build();
     }

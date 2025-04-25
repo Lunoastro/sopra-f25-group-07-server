@@ -10,7 +10,6 @@ import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +21,6 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
 
@@ -98,7 +96,7 @@ class TeamServiceIntegrationTest {
         assertNotNull(createdTeam.getId());
         assertEquals("New Test Team", createdTeam.getName());
         assertNotNull(createdTeam.getCode()); 
-        assertTrue(createdTeam.getCode().length() == 6);
+        assertEquals(6, createdTeam.getCode().length());
     }
 
     @Test
