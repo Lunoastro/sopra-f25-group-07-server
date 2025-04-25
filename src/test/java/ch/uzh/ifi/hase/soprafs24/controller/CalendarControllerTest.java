@@ -4,7 +4,6 @@ import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -13,13 +12,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import com.google.api.services.calendar.model.Event;
-import ch.uzh.ifi.hase.soprafs24.entity.Task; // Import the Task class
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -41,7 +38,6 @@ class CalendarControllerTest {
     @MockBean
     private CalendarService calendarService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final String validToken = "valid_token";
     private String bearer(String token) {
         return "Bearer " + token;

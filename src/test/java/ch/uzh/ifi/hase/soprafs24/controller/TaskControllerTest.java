@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
@@ -27,9 +28,14 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Date;
+import java.util.Collections;
+import java.util.List;
+import java.util.Arrays;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -163,6 +169,233 @@ class TaskControllerTest {
             .andExpect(jsonPath("$.isAssignedTo", is(task.getIsAssignedTo().intValue())))
             .andExpect(jsonPath("$.deadline").exists()); //should we check for the exact date?
     
+    }
+
+
+    @Test
+    void GET_getTasks_noParameters_tasksReturned() throws Exception {
+        // Setup test data
+        Date now = new Date();
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Task 1");
+        task1.setDescription("Description 1");
+        task1.setIsAssignedTo(5L);
+        task1.setTeamId(10L);
+        task1.setDeadline(now);
+        task1.setCreationDate(now);
+        task1.setActiveStatus(true);
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Task 2");
+        task2.setDescription("Description 2");
+        task2.setIsAssignedTo(6L);
+        task2.setTeamId(10L);
+        task2.setDeadline(now);
+        task2.setCreationDate(now);
+        task2.setActiveStatus(false);
+
+        // Create a list of tasks for the mock response
+        List<Task> tasks = Arrays.asList(task1, task2);
+
+        // Mock user for token validation
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+
+        String token = "token123";
+
+        // Mock service behavior
+        doNothing().when(taskService).validateUserToken(token);
+        when(taskService.getFilteredTasks(null, null)).thenReturn(tasks);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+
+        // Perform the GET request
+        MockHttpServletRequestBuilder getRequest = get("/tasks")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(getRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].id", is(task1.getId().intValue())))
+            .andExpect(jsonPath("$[0].name", is(task1.getName())))
+            .andExpect(jsonPath("$[1].id", is(task2.getId().intValue())))
+            .andExpect(jsonPath("$[1].name", is(task2.getName())));
+
+        // Verify that the service methods were called
+        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).getFilteredTasks(null, null);
+        verify(userRepository, times(1)).findByToken(token);
+    }
+
+    @Test
+    void GET_getTasks_withParameters_filteredTasksReturned() throws Exception {
+        // Setup test data
+        Date now = new Date();
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Task 1");
+        task1.setDescription("Description 1");
+        task1.setIsAssignedTo(5L);
+        task1.setTeamId(10L);
+        task1.setDeadline(now);
+        task1.setCreationDate(now);
+        task1.setActiveStatus(true);
+
+        // Create a list of tasks for the mock response - only active tasks
+        List<Task> activeTasks = Collections.singletonList(task1);
+
+        // Mock user for token validation
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+
+        String token = "token123";
+        Boolean isActive = true;
+        String type = "personal";
+
+        // Mock service behavior
+        doNothing().when(taskService).validateUserToken(token);
+        when(taskService.getFilteredTasks(isActive, type)).thenReturn(activeTasks);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+
+        // Perform the GET request with parameters
+        MockHttpServletRequestBuilder getRequest = get("/tasks")
+            .param("isActive", isActive.toString())
+            .param("type", type)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(getRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id", is(task1.getId().intValue())))
+            .andExpect(jsonPath("$[0].name", is(task1.getName())))
+            .andExpect(jsonPath("$[0].activeStatus", is(true)));
+
+        // Verify that the service methods were called with correct parameters
+        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).getFilteredTasks(isActive, type);
+        verify(userRepository, times(1)).findByToken(token);
+    }
+
+    @Test
+    void GET_getTasks_unauthorized_returnsUnauthorized() throws Exception {
+        String token = "invalid-token";
+        
+        // Mock service to throw exception for invalid token
+        doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
+            .when(taskService).validateUserToken(token);
+
+        // Perform the GET request with invalid token
+        MockHttpServletRequestBuilder getRequest = get("/tasks")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(getRequest)
+            .andExpect(status().isUnauthorized());
+
+        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(0)).getFilteredTasks(any(), any());
+    }
+
+    @Test
+    void GET_isEditable_userIsCreator_returnsTrue() throws Exception {
+        Long taskId = 1L;
+        String token = "token123";
+
+        Task mockTask = new Task();
+        mockTask.setId(taskId);
+
+        // Mock service behavior for a valid creator
+        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateCreator(token, taskId);
+        when(taskService.getTaskById(taskId)).thenReturn(mockTask);
+        when(taskService.checkTaskType(mockTask)).thenReturn("additional");
+
+        // Perform the GET request
+        MockHttpServletRequestBuilder getRequest = get("/tasks/{taskId}/isEditable", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(getRequest)
+            .andExpect(status().isOk())
+            .andExpect(content().string("true"));
+
+        verify(taskService).validateUserToken(token);
+        verify(taskService).validateCreator(token, taskId);
+        verify(taskService).getTaskById(taskId);
+        verify(taskService).checkTaskType(mockTask);
+    }
+
+    @Test
+    void GET_isEditable_userNotCreator_returnsFalse() throws Exception {
+        Long taskId = 1L;
+        String token = "token123";
+
+        // Mock service behavior for an invalid creator
+        doNothing().when(taskService).validateUserToken(token);
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not the creator"))
+            .when(taskService).validateCreator(token, taskId);
+
+        // Perform the GET request
+        MockHttpServletRequestBuilder getRequest = get("/tasks/{taskId}/isEditable", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(getRequest)
+            .andExpect(status().isOk())
+            .andExpect(content().string("false"));
+
+        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateCreator(token, taskId);
+    }
+
+    @Test
+    void GET_isEditable_invalidToken_returnsFalse() throws Exception {
+        Long taskId = 1L;
+        String token = "invalid-token";
+
+        // Mock service behavior for an invalid token
+        doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
+            .when(taskService).validateUserToken(token);
+
+        // Perform the GET request
+        MockHttpServletRequestBuilder getRequest = get("/tasks/{taskId}/isEditable", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(getRequest)
+            .andExpect(status().isOk())
+            .andExpect(content().string("false"));
+
+        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(0)).validateCreator(anyString(), anyLong());
+    }
+
+    @Test
+    void GET_isEditable_taskNotFound_returnsFalse() throws Exception {
+        Long nonExistentTaskId = 999L;
+        String token = "token123";
+
+        // Mock service behavior for a non-existent task
+        doNothing().when(taskService).validateUserToken(token);
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"))
+            .when(taskService).validateCreator(token, nonExistentTaskId);
+
+        // Perform the GET request
+        MockHttpServletRequestBuilder getRequest = get("/tasks/{taskId}/isEditable", nonExistentTaskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(getRequest)
+            .andExpect(status().isOk())
+            .andExpect(content().string("false"));
+
+        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateCreator(token, nonExistentTaskId);
     }
 
     @Test
