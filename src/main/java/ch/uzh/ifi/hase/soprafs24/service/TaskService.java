@@ -73,8 +73,10 @@ public class TaskService {
         } else {
             half = dto.getFrequency() / 2; // half of the frequency is the default minimum cooldown period 
         }
-        if (dto.getDaysVisible() != null && dto.getDaysVisible() < half) { // half also includes 0 and negative values
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task daysVisible cannot be null or less than half of frequency (exception: if frequency = 1, daysVisible = 1)");
+        // if (dto.getDaysVisible() == null && dto.getDaysVisible() > half) { // half also includes 0 and negative values
+        // since the check for > half is not done yet on client just checking if > frequency
+        if (dto.getDaysVisible() == null && dto.getDaysVisible() > dto.getFrequency()) { // half also includes 0 and negative values
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task daysVisible cannot be null or greater than half of frequency (exception: if frequency = 1, daysVisible = 1)");
         }
     }
 
@@ -190,7 +192,8 @@ public class TaskService {
 
     public void validateTaskInTeam(String userToken, Long taskId) {
         Task task = taskRepository.findTaskById(taskId);
-        verifyTaskExistence(task);
+        // verifyTaskExists does throw error if it exists but we want to have a positive result here if it exists
+        //verifyTaskExistence(task);
         Long userTeamId = userRepository.findByToken(userToken).getTeamId();
         if (!task.getTeamId().equals(userTeamId)) { //if task and user are not in the same team
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task does not belong to the team of the user");
