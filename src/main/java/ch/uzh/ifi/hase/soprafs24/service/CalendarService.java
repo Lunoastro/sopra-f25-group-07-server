@@ -17,6 +17,7 @@ import com.google.api.services.calendar.model.Events;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import ch.uzh.ifi.hase.soprafs24.repository.GoogleTokenRepository;
@@ -46,7 +47,7 @@ public class CalendarService {
     private GoogleAuthorizationCodeFlow flow;
     private final GoogleTokenRepository googleTokenRepository;
 
-    public CalendarService(TaskService taskService, GoogleAuthorizationCodeFlow flow, GoogleTokenRepository googleTokenRepository) {
+    public CalendarService(@Lazy TaskService taskService, @Lazy GoogleAuthorizationCodeFlow flow, GoogleTokenRepository googleTokenRepository) {
         this.taskService = taskService;
         this.flow = flow;
         this.googleTokenRepository = googleTokenRepository;
