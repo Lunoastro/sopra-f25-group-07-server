@@ -21,4 +21,5 @@ public class TaskGetDTO {
     private Boolean activeStatus;
     private Integer value;
     private String googleEventId;
+    private Integer daysVisible;
 }
