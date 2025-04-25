@@ -71,6 +71,8 @@ jobs:
           echo "  SPRING_DATASOURCE_USERNAME: '${{ secrets.SPRING_DATASOURCE_USERNAME }}'" >> app.yaml
           echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_PASSWORD }}'" >> app.yaml
           echo "  REDIRECT_URI: '${{ secrets.REDIRECT_URI }}'" >> app.yaml
+      - name: Show generated app.yaml
+        run: cat app.yaml
       - name: Checkout
         uses: actions/checkout@v2
 
