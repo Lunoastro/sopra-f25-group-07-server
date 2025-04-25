@@ -14,6 +14,19 @@ jobs:
       GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
       REDIRECT_URI_LOCAL: "http://localhost:8080/Callback" # Defined with a different name
     steps:
+      - name: Generate app.yaml
+        run: |
+          echo "runtime: java17" > app.yaml
+          echo "instance_class: F2" >> app.yaml
+          echo "" >> app.yaml
+          echo "env_variables:" >> app.yaml
+          echo "  SPRING_PROFILES_ACTIVE: prod" >> app.yaml
+          echo "  SPRING_DATASOURCE_URL: '${{ secrets.SPRING_DATASOURCE_URL }}'" >> app.yaml
+          echo "  SPRING_DATASOURCE_USERNAME: '${{ secrets.SPRING_DATASOURCE_USERNAME }}'" >> app.yaml
+          echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_PASSWORD }}'" >> app.yaml
+          echo "  REDIRECT_URI: '${{ secrets.REDIRECT_URI }}'" >> app.yaml
+      - name: Show generated app.yaml
+        run: cat app.yaml
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
@@ -71,6 +84,8 @@ jobs:
           echo "  SPRING_DATASOURCE_USERNAME: '${{ secrets.SPRING_DATASOURCE_USERNAME }}'" >> app.yaml
           echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_PASSWORD }}'" >> app.yaml
           echo "  REDIRECT_URI: '${{ secrets.REDIRECT_URI }}'" >> app.yaml
+      - name: Show generated app.yaml
+        run: cat app.yaml
       - name: Checkout
         uses: actions/checkout@v2
 
