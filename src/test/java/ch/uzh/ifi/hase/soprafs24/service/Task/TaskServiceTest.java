@@ -12,6 +12,8 @@ import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Calendar;
+import java.util.Date;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -732,4 +736,263 @@ class TaskServiceTest {
         assertFalse(result.contains(task3));
         assertFalse(result.contains(task4));
     }
+    
+    @Test
+    void validateRecurringPostDto_validInput_success() {
+        // given
+        TaskPostDTO validTaskPostDTO = new TaskPostDTO();
+        validTaskPostDTO.setName("Valid Recurring Task");
+        validTaskPostDTO.setValue(10);
+        validTaskPostDTO.setFrequency(7); // Weekly
+        validTaskPostDTO.setStartDate(new Date(System.currentTimeMillis() + 86400000)); // Tomorrow
+        validTaskPostDTO.setDaysVisible(4); // More than half of frequency
+
+        // when & then
+        assertDoesNotThrow(() -> taskService.validatePostDto(validTaskPostDTO));
+    }
+
+    @Test
+    void validateRecurringPostDto_nullFrequency_throwsBadRequestException() {
+        // given
+        TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
+        invalidTaskPostDTO.setName("Invalid Recurring Task");
+        invalidTaskPostDTO.setValue(10);
+        invalidTaskPostDTO.setFrequency(null); // Null frequency
+        invalidTaskPostDTO.setStartDate(new Date(System.currentTimeMillis() + 86400000));
+        invalidTaskPostDTO.setDaysVisible(4);
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validatePostDto(invalidTaskPostDTO));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("Task frequency cannot be null or less than or equal to 0", exception.getReason());
+    }
+
+    @Test
+    void validateRecurringPostDto_zeroFrequency_throwsBadRequestException() {
+        // given
+        TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
+        invalidTaskPostDTO.setName("Invalid Recurring Task");
+        invalidTaskPostDTO.setValue(10);
+        invalidTaskPostDTO.setFrequency(0); // Zero frequency
+        invalidTaskPostDTO.setStartDate(new Date(System.currentTimeMillis() + 86400000));
+        invalidTaskPostDTO.setDaysVisible(4);
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validatePostDto(invalidTaskPostDTO));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("Task frequency cannot be null or less than or equal to 0", exception.getReason());
+    }
+
+    @Test
+    void validateRecurringPostDto_pastStartDate_throwsIllegalArgumentException() {
+        // given
+        TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
+        invalidTaskPostDTO.setName("Invalid Recurring Task");
+        invalidTaskPostDTO.setValue(10);
+        invalidTaskPostDTO.setFrequency(7);
+        invalidTaskPostDTO.setStartDate(new Date(System.currentTimeMillis() - 86400000)); // Yesterday
+        invalidTaskPostDTO.setDaysVisible(4);
+
+        // when & then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> taskService.validatePostDto(invalidTaskPostDTO));
+        assertEquals("Invalid or past start date provided.", exception.getMessage());
+    }
+
+    // Tests for validateRecurringPutDto(Task, Task)
+    @Test
+    void validateRecurringPutDto_validUpdate_success() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Original Recurring Task");
+        existingTask.setFrequency(14); // Bi-weekly
+        existingTask.setDaysVisible(7);
+        existingTask.setStartDate(new Date(System.currentTimeMillis() + 86400000));
+        existingTask.setActiveStatus(true);
+
+        Task updatedTask = new Task();
+        updatedTask.setFrequency(7); // Change to weekly
+        updatedTask.setDaysVisible(4); // Valid days visible
+        updatedTask.setActiveStatus(false); // Change to inactive
+
+        // when
+        taskService.validateToBeEditedFields(existingTask, updatedTask);
+
+        // then
+        assertEquals(7, existingTask.getFrequency());
+        assertEquals(4, existingTask.getDaysVisible());
+        assertFalse(existingTask.getActiveStatus());
+    }
+
+    @Test
+    void validateRecurringPutDto_zeroFrequency_throwsBadRequestException() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Original Recurring Task");
+        existingTask.setFrequency(14);
+        existingTask.setDaysVisible(7);
+        existingTask.setStartDate(new Date(System.currentTimeMillis() + 86400000));
+
+        Task updatedTask = new Task();
+        updatedTask.setFrequency(0); // Invalid frequency
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateToBeEditedFields(existingTask, updatedTask));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("Frequency must be greater than 0", exception.getReason());
+    }
+
+    @Test
+    void validateRecurringPutDto_invalidDaysVisible_tooLarge_throwsBadRequestException() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Original Recurring Task");
+        existingTask.setFrequency(14);
+        existingTask.setDaysVisible(7);
+        existingTask.setStartDate(new Date(System.currentTimeMillis() + 86400000));
+
+        Task updatedTask = new Task();
+        updatedTask.setDaysVisible(15); // Greater than frequency
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateToBeEditedFields(existingTask, updatedTask));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("daysVisible must be at least half of the frequency (or 1 if frequency is 1) but not greater than the frequency", exception.getReason());
+    }
+
+    @Test
+    void validateRecurringPutDto_pastStartDate_throwsBadRequestException() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Original Recurring Task");
+        existingTask.setFrequency(14);
+        existingTask.setDaysVisible(7);
+        existingTask.setStartDate(new Date(System.currentTimeMillis() + 86400000));
+
+        Task updatedTask = new Task();
+        updatedTask.setStartDate(new Date(System.currentTimeMillis() - 86400000)); // Past date
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateToBeEditedFields(existingTask, updatedTask));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("Start date must be in the future", exception.getReason());
+    }
+
+    // Tests for validateTaskInTeam(String, Long)
+    @Test
+    void validateTaskInTeam_sameTeam_success() {
+        // given
+        Task task = new Task();
+        task.setId(1L);
+        task.setTeamId(1L); // Same team as user
+
+        User user = new User();
+        user.setId(42L);
+        user.setTeamId(1L);
+        user.setToken("team-token");
+
+        // when
+        when(taskRepository.findTaskById(1L)).thenReturn(task);
+        when(userRepository.findByToken("team-token")).thenReturn(user);
+
+        // then - no exception should be thrown
+        assertDoesNotThrow(() -> taskService.validateTaskInTeam("team-token", 1L));
+    }
+
+    @Test
+    void validateTaskInTeam_differentTeam_throwsForbiddenException() {
+        // given
+        Task task = new Task();
+        task.setId(1L);
+        task.setTeamId(2L); // Different team from user
+
+        User user = new User();
+        user.setId(42L);
+        user.setTeamId(1L);
+        user.setToken("team-token");
+
+        // when
+        when(taskRepository.findTaskById(1L)).thenReturn(task);
+        when(userRepository.findByToken("team-token")).thenReturn(user);
+
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateTaskInTeam("team-token", 1L));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Task does not belong to the team of the user", exception.getReason());
+    }
+
+
+    // Tests for validateRecurringEdit(String, Long)
+    @Test
+    void validateRecurringEdit_recurringTask_success() {
+        // given
+        Task recurringTask = new Task();
+        recurringTask.setId(1L);
+        recurringTask.setFrequency(7); // This makes it a recurring task
+
+        // when
+        when(taskRepository.findTaskById(1L)).thenReturn(recurringTask);
+
+        // then - no exception should be thrown
+        assertDoesNotThrow(() -> taskService.validateRecurringEdit("valid-token", 1L));
+    }
+
+    @Test
+    void validateRecurringEdit_additionalTask_callsValidateCreator() {
+        // given
+        Task additionalTask = new Task();
+        additionalTask.setId(1L);
+        additionalTask.setFrequency(null); // This makes it an additional task
+        additionalTask.setcreatorId(42L);
+
+        User user = new User();
+        user.setId(42L);
+        user.setToken("valid-token");
+
+        // when
+        when(taskRepository.findTaskById(1L)).thenReturn(additionalTask);
+        when(userRepository.findByToken("valid-token")).thenReturn(user);
+
+        // Create a spy of the taskService to verify that validateCreator is called
+        TaskService spyTaskService = spy(taskService);
+        doNothing().when(spyTaskService).validateCreator("valid-token", 1L);
+
+        // then
+        spyTaskService.validateRecurringEdit("valid-token", 1L);
+        verify(spyTaskService).validateCreator("valid-token", 1L);
+    }
+
+    @Test
+    void validateRecurringEdit_additionalTask_notCreator_throwsForbiddenException() {
+        // given
+        Task additionalTask = new Task();
+        additionalTask.setId(1L);
+        additionalTask.setFrequency(null); // This makes it an additional task
+        additionalTask.setcreatorId(99L); // Different creator
+
+        User user = new User();
+        user.setId(42L);
+        user.setToken("valid-token");
+
+        // when
+        when(taskRepository.findTaskById(1L)).thenReturn(additionalTask);
+        when(userRepository.findByToken("valid-token")).thenReturn(user);
+
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.validateRecurringEdit("valid-token", 1L));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Not authorized to edit this task", exception.getReason());
+    }
+
 }
