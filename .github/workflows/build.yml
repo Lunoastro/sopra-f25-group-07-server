@@ -70,8 +70,6 @@ jobs:
           echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_PASSWORD }}'" >> app.yaml
           echo "  GOOGLE_CALENDAR_CREDENTIALS: '${{ secrets.CALENDAR }}'" >> app.yaml
           echo "  REDIRECT_URI: '${{ secrets.REDIRECT_URI }}'" >> app.yaml
-      - name: Show generated app.yaml
-        run: cat app.yaml
       - name: Deploy to App Engine
         id: deploy
         uses: google-github-actions/deploy-appengine@v0.2.0
