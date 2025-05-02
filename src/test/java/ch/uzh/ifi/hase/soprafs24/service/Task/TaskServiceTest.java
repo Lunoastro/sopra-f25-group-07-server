@@ -12,8 +12,6 @@ import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import java.util.Date;
 import java.util.List;
-import java.util.Calendar;
-import java.util.Date;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -736,7 +734,6 @@ class TaskServiceTest {
         assertFalse(result.contains(task3));
         assertFalse(result.contains(task4));
     }
-    
     @Test
     void validateRecurringPostDto_validInput_success() {
         // given
@@ -994,5 +991,4 @@ class TaskServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
         assertEquals("Not authorized to edit this task", exception.getReason());
     }
-
 }
