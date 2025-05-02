@@ -63,11 +63,11 @@ jobs:
       - name: Generate app.yaml
         run: |
           sed -i 's|__SPRING_PROFILES_ACTIVE__|prod|g' app.yaml
-          sed -i 's|__SPRING_DATASOURCE_URL__|${{ secrets.SPRING_DATASOURCE_URL }}|g' app.yaml
-          sed -i 's|__SPRING_DATASOURCE_USERNAME__|${{ secrets.SPRING_DATASOURCE_USERNAME }}|g' app.yaml
-          sed -i 's|__SPRING_DATASOURCE_PASSWORD__|${{ secrets.SPRING_DATASOURCE_PASSWORD }}|g' app.yaml
-          sed -i 's|__GOOGLE_CALENDAR_CREDENTIALS__|${{ secrets.CALENDAR }}|g' app.yaml
-          sed -i 's|__REDIRECT_URI__|${{ secrets.REDIRECT_URI }}|g' app.yaml
+          sed -i 's|__SPRING_DATASOURCE_URL__|'${{ secrets.SPRING_DATASOURCE_URL }}'|g' app.yaml
+          sed -i 's|__SPRING_DATASOURCE_USERNAME__|'${{ secrets.SPRING_DATASOURCE_USERNAME }}'|g' app.yaml
+          sed -i 's|__SPRING_DATASOURCE_PASSWORD__|'${{ secrets.SPRING_DATASOURCE_PASSWORD }}'|g' app.yaml
+          sed -i 's|__GOOGLE_CALENDAR_CREDENTIALS__|'${{ secrets.CALENDAR }}'|g' app.yaml
+          sed -i 's|__REDIRECT_URI__|'${{ secrets.REDIRECT_URI }}'|g' app.yaml
       - name: Show generated app.yaml
         run: cat app.yaml
       - name: Deploy to App Engine
