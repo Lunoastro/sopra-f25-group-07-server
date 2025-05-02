@@ -62,12 +62,14 @@ jobs:
         uses: actions/checkout@v2
       - name: Generate app.yaml
         run: |
-          sed -i 's|__SPRING_PROFILES_ACTIVE__|prod|g' app.yaml
-          sed -i 's|__SPRING_DATASOURCE_URL__|'${{ secrets.SPRING_DATASOURCE_URL }}'|g' app.yaml
-          sed -i 's|__SPRING_DATASOURCE_USERNAME__|'${{ secrets.SPRING_DATASOURCE_USERNAME }}'|g' app.yaml
-          sed -i 's|__SPRING_DATASOURCE_PASSWORD__|'${{ secrets.SPRING_DATASOURCE_PASSWORD }}'|g' app.yaml
-          sed -i 's|__GOOGLE_CALENDAR_CREDENTIALS__|'${{ secrets.CALENDAR }}'|g' app.yaml
-          sed -i 's|__REDIRECT_URI__|'${{ secrets.REDIRECT_URI }}'|g' app.yaml
+          echo "" >> app.yaml
+          echo "env_variables:" >> app.yaml
+          echo "  SPRING_PROFILES_ACTIVE: prod" >> app.yaml
+          echo "  SPRING_DATASOURCE_URL: '${{ secrets.SPRING_DATASOURCE_URL }}'" >> app.yaml
+          echo "  SPRING_DATASOURCE_USERNAME: '${{ secrets.SPRING_DATASOURCE_USERNAME }}'" >> app.yaml
+          echo "  SPRING_DATASOURCE_PASSWORD: '${{ secrets.SPRING_DATASOURCE_PASSWORD }}'" >> app.yaml
+          echo "  GOOGLE_CALENDAR_CREDENTIALS: '${{ secrets.CALENDAR }}'" >> app.yaml
+          echo "  REDIRECT_URI: '${{ secrets.REDIRECT_URI }}'" >> app.yaml
       - name: Show generated app.yaml
         run: cat app.yaml
       - name: Deploy to App Engine
