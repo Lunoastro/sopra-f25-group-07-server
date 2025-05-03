@@ -12,7 +12,6 @@ import org.springframework.web.server.ResponseStatusException;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 
 
-
 import java.util.ArrayList;
 import java.util.List;
 @RestController
@@ -31,7 +30,7 @@ public class TaskController {
     public TaskGetDTO createTask(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
         // Extract the token from the Bearer header
         String userToken = validateAuthorizationHeader(authorizationHeader);
-        taskService.validateUserToken(userToken);
+        taskService.validateTeamPaused(userToken);
         // validate the DTO before converting to catch errors
         taskService.validatePostDto(taskPostDTO);
         // Convert the incoming DTO to an entity
@@ -49,7 +48,7 @@ public class TaskController {
                                         @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token
         String userToken = validateAuthorizationHeader(authorizationHeader);
-        taskService.validateUserToken(userToken);
+        taskService.validateTeamPaused(userToken);
         // Retrieve all tasks using the service
         List<Task> tasks = taskService.getFilteredTasks(isActive, type);
         // Convert the list of entities to a list of DTOs for the response
@@ -68,7 +67,7 @@ public class TaskController {
     public TaskGetDTO getTask(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token
         String userToken = validateAuthorizationHeader(authorizationHeader);
-        taskService.validateUserToken(userToken);
+        taskService.validateTeamPaused(userToken);
         // Retrieve the task using the service
         Task task = taskService.getTaskById(taskId);
         if (task == null) {
@@ -84,7 +83,7 @@ public class TaskController {
         try {
             // Validate the user token
             String userToken = validateAuthorizationHeader(authorizationHeader);
-            taskService.validateUserToken(userToken);
+            taskService.validateTeamPaused(userToken);
             // Validate whether the user can edit the task
             taskService.validateCreator(userToken, taskId);
             Task task = taskService.getTaskById(taskId);
@@ -102,7 +101,7 @@ public class TaskController {
     public TaskGetDTO updateTask(@PathVariable Long taskId, @RequestBody TaskPutDTO taskPutDTO, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token
         String userToken = validateAuthorizationHeader(authorizationHeader);
-        taskService.validateUserToken(userToken);
+        taskService.validateTeamPaused(userToken);
         // check if task is in the same team as the user
         taskService.validateTaskInTeam(userToken, taskId);
         // Checks if user is the creator of the task and if task exists
@@ -122,7 +121,7 @@ public class TaskController {
     public TaskGetDTO claimTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token        
         String userToken = validateAuthorizationHeader(authorizationHeader);
-        taskService.validateUserToken(userToken);
+        taskService.validateTeamPaused(userToken);
         //Retrieves Task by Id or throws Http error if the task doesn't exist
         Task existingTask = taskService.getTaskById(taskId);
         //Claims the task for the user and assigns the user to the correct field 
@@ -160,7 +159,7 @@ public class TaskController {
     public void deleteTask(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
         // Validate the user token
         String userToken = validateAuthorizationHeader(authorizationHeader);
-        taskService.validateUserToken(userToken);
+        taskService.validateTeamPaused(userToken);
         // check if task is in the same team as the user
         taskService.validateTaskInTeam(userToken, taskId);
         // Checks if user is the creator of the task and if task exists

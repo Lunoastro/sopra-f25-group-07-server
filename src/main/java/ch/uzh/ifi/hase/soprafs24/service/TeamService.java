@@ -41,14 +41,17 @@ public class TeamService {
   private final TeamRepository teamRepository;
   private final UserRepository userRepository;
   private final UserService userService;
+  private final TaskService taskService;
 
   @Autowired
   public TeamService(@Qualifier("teamRepository") TeamRepository teamRepository,
                      @Qualifier("userRepository") UserRepository userRepository,
-                     @Qualifier("userService") UserService userService) {
+                     @Qualifier("userService") UserService userService, 
+                     @Qualifier("taskService") TaskService taskService) {
     this.teamRepository = teamRepository;
     this.userRepository = userRepository;
     this.userService = userService;
+    this.taskService = taskService;
   }
 
   public Team createTeam(Long userId, Team newTeam) {  //works as the registration func as well 
@@ -60,6 +63,7 @@ public class TeamService {
     newTeam.setXp(0);
     newTeam.setLevel(1);
     newTeam.setCode(generateUniqueTeamCode()); //generate a unique team code
+    newTeam.setIsPaused(false); // Set the team to not paused by default
     if (newTeam.getMembers() == null) {
         newTeam.setMembers(new ArrayList<>());  // Initialize the list if null
     }
@@ -171,6 +175,25 @@ public class TeamService {
     } else {
         return team;
     }
+  }
+
+  public void pauseTeam(Long teamId, Long userId) {
+    // Find the team
+    Team team = getTeamById(teamId);
+    // Check if user is a member of the team
+    checkUserIsTeamMember(team, userId);
+    // Check if the team is already paused
+    if (Boolean.TRUE.equals(team.getIsPaused())) {
+      // Unpause the team
+      team.setIsPaused(false);
+      taskService.unpauseAllTasksInTeam();
+    } else {
+      // Pause the team
+      team.setIsPaused(true);
+      taskService.pauseAllTasksInTeam();
+    }
+    teamRepository.save(team);
+    teamRepository.flush();
   }
   
   /**

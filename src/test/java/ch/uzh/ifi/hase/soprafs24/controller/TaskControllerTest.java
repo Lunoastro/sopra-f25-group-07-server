@@ -9,6 +9,7 @@ import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPutDTO;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -64,6 +65,9 @@ class TaskControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+
+    @MockBean
+    private TeamRepository teamRepository;
 
     @Test
     void POST_createTask_validInput_taskCreated() throws Exception {
@@ -207,7 +211,7 @@ class TaskControllerTest {
         String token = "token123";
 
         // Mock service behavior
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         when(taskService.getFilteredTasks(null, null)).thenReturn(tasks);
         when(userRepository.findByToken(token)).thenReturn(mockUser);
 
@@ -225,7 +229,7 @@ class TaskControllerTest {
             .andExpect(jsonPath("$[1].name", is(task2.getName())));
 
         // Verify that the service methods were called
-        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateTeamPaused(token);
         verify(taskService, times(1)).getFilteredTasks(null, null);
         verify(userRepository, times(1)).findByToken(token);
     }
@@ -257,7 +261,7 @@ class TaskControllerTest {
         String type = "personal";
 
         // Mock service behavior
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         when(taskService.getFilteredTasks(isActive, type)).thenReturn(activeTasks);
         when(userRepository.findByToken(token)).thenReturn(mockUser);
 
@@ -276,7 +280,7 @@ class TaskControllerTest {
             .andExpect(jsonPath("$[0].activeStatus", is(true)));
 
         // Verify that the service methods were called with correct parameters
-        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateTeamPaused(token);
         verify(taskService, times(1)).getFilteredTasks(isActive, type);
         verify(userRepository, times(1)).findByToken(token);
     }
@@ -287,7 +291,7 @@ class TaskControllerTest {
         
         // Mock service to throw exception for invalid token
         doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
-            .when(taskService).validateUserToken(token);
+            .when(taskService).validateTeamPaused(token);
 
         // Perform the GET request with invalid token
         MockHttpServletRequestBuilder getRequest = get("/tasks")
@@ -297,7 +301,7 @@ class TaskControllerTest {
         mockMvc.perform(getRequest)
             .andExpect(status().isUnauthorized());
 
-        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateTeamPaused(token);
         verify(taskService, times(0)).getFilteredTasks(any(), any());
     }
 
@@ -310,7 +314,7 @@ class TaskControllerTest {
         mockTask.setId(taskId);
 
         // Mock service behavior for a valid creator
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         doNothing().when(taskService).validateCreator(token, taskId);
         when(taskService.getTaskById(taskId)).thenReturn(mockTask);
         when(taskService.checkTaskType(mockTask)).thenReturn("additional");
@@ -324,7 +328,7 @@ class TaskControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().string("true"));
 
-        verify(taskService).validateUserToken(token);
+        verify(taskService).validateTeamPaused(token);
         verify(taskService).validateCreator(token, taskId);
         verify(taskService).getTaskById(taskId);
         verify(taskService).checkTaskType(mockTask);
@@ -336,7 +340,7 @@ class TaskControllerTest {
         String token = "token123";
 
         // Mock service behavior for an invalid creator
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not the creator"))
             .when(taskService).validateCreator(token, taskId);
 
@@ -349,7 +353,7 @@ class TaskControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().string("false"));
 
-        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateTeamPaused(token);
         verify(taskService, times(1)).validateCreator(token, taskId);
     }
 
@@ -360,7 +364,7 @@ class TaskControllerTest {
 
         // Mock service behavior for an invalid token
         doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
-            .when(taskService).validateUserToken(token);
+            .when(taskService).validateTeamPaused(token);
 
         // Perform the GET request
         MockHttpServletRequestBuilder getRequest = get("/tasks/{taskId}/isEditable", taskId)
@@ -371,7 +375,7 @@ class TaskControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().string("false"));
 
-        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateTeamPaused(token);
         verify(taskService, times(0)).validateCreator(anyString(), anyLong());
     }
 
@@ -381,7 +385,7 @@ class TaskControllerTest {
         String token = "token123";
 
         // Mock service behavior for a non-existent task
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"))
             .when(taskService).validateCreator(token, nonExistentTaskId);
 
@@ -394,14 +398,14 @@ class TaskControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().string("false"));
 
-        verify(taskService, times(1)).validateUserToken(token);
+        verify(taskService, times(1)).validateTeamPaused(token);
         verify(taskService, times(1)).validateCreator(token, nonExistentTaskId);
     }
 
     @Test
     void GET_getTaskById_invalidTaskId_taskNotFound() throws Exception {
         // Mock service behavior for invalid task ID (task not found)
-        doNothing().when(taskService).validateUserToken(anyString());
+        doNothing().when(taskService).validateTeamPaused(anyString());
         given(taskService.getTaskById(999L)).willReturn(null); // or throw an exception, depending on how your service handles this
 
         MockHttpServletRequestBuilder getRequest = get("/tasks/{taskId}", 999L)
@@ -486,7 +490,7 @@ class TaskControllerTest {
     @Test
     void DELETE_deleteTask_validInput_taskDeleted() throws Exception {
         doNothing().when(taskService).deleteTask(1L); 
-        doNothing().when(taskService).validateUserToken(anyString());
+        doNothing().when(taskService).validateTeamPaused(anyString());
         doNothing().when(taskService).validateCreator(anyString(), eq(1L));
 
         MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}", 1L)
@@ -500,7 +504,7 @@ class TaskControllerTest {
 
     @Test
     void DELETE_failedDeleteTask_invalidTaskId_taskNotFound() throws Exception {
-        doNothing().when(taskService).validateUserToken(anyString());
+        doNothing().when(taskService).validateTeamPaused(anyString());
         doNothing().when(taskService).validateCreator(anyString(), eq(1L));
         doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task with ID 1 does not exist")).when(taskService).deleteTask(1L);
 
@@ -536,7 +540,7 @@ class TaskControllerTest {
         claimedTaskDTO.setName("Test Task");
         claimedTaskDTO.setIsAssignedTo(123L);
         
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         when(taskService.getTaskById(taskId)).thenReturn(existingTask);
         when(taskService.claimTask(existingTask, token)).thenReturn(claimedTask);
         
@@ -550,7 +554,7 @@ class TaskControllerTest {
             .andExpect(status().isNoContent());
             
         // Verify that the service methods were called correctly
-        verify(taskService).validateUserToken(token);
+        verify(taskService).validateTeamPaused(token);
         verify(taskService).getTaskById(taskId);
         verify(taskService).claimTask(existingTask, token);
     }
@@ -563,7 +567,7 @@ class TaskControllerTest {
         
         // Mock service behavior - simulate invalid token with token without prefix
         doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
-            .when(taskService).validateUserToken(invalidToken);
+            .when(taskService).validateTeamPaused(invalidToken);
         
         // Perform the PATCH request
         MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/claim", taskId)
@@ -582,7 +586,7 @@ class TaskControllerTest {
         String token = "valid_token";
         
         // Mock service behavior - token without prefix
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         when(taskService.getTaskById(nonExistentTaskId))
             .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
         
@@ -609,7 +613,7 @@ class TaskControllerTest {
         existingTask.setIsAssignedTo(456L); // Already assigned to another user
         
         // Mock service behavior - token without prefix
-        doNothing().when(taskService).validateUserToken(token);
+        doNothing().when(taskService).validateTeamPaused(token);
         when(taskService.getTaskById(taskId)).thenReturn(existingTask);
         when(taskService.claimTask(existingTask, token))
             .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Task already claimed by another user"));

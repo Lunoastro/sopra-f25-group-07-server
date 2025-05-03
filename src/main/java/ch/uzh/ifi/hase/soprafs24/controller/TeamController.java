@@ -157,8 +157,22 @@ public class TeamController {
   @PutMapping("/teams/{teamId}/paused")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void pauseTeam(@PathVariable Long teamId, @RequestHeader("Authorization") String authorizationHeader) {
-    
-    throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Pause team functionality not implemented yet.");
+    // Extract and validate the token
+    String token = validateAuthorizationHeader(authorizationHeader);
+
+    if (!userService.validateToken(token)) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
+    }
+
+    // Get authenticated user ID
+    Long userId = userService.findIDforToken(token);
+    if (userId == null) {
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
+    }
+
+    teamService.pauseTeam(teamId, userId);
+
+
 
   }
 
