@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,11 +21,13 @@ public class CalendarController {
 
     private final CalendarService calendarService;
     private final UserService userService;
+    private final TaskService taskService;
 
     @Autowired
-    public CalendarController(CalendarService calendarService, UserService userService) {
+    public CalendarController(CalendarService calendarService, UserService userService, TaskService taskService) {
         this.calendarService = calendarService;
         this.userService = userService;
+        this.taskService = taskService;
     }
     
 
@@ -35,6 +38,8 @@ public class CalendarController {
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
         }
+        // Validate if the team is paused
+        taskService.validateTeamPaused(token);
         // Get authenticated user ID
         Long userId = userService.findIDforToken(token);
         if (userId == null) {
