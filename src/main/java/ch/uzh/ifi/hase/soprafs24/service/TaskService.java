@@ -1,8 +1,10 @@
 package ch.uzh.ifi.hase.soprafs24.service;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 
@@ -29,16 +31,20 @@ public class TaskService {
     private final Logger log = LoggerFactory.getLogger(TaskService.class);
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final TeamRepository teamRepository;
     private final CalendarService calendarService;
     private String recurringTask = "recurring"; 
+    private String additionalTask = "additional"; 
 
     @Autowired
     public TaskService(@Qualifier("taskRepository") TaskRepository taskRepository,
             @Qualifier("userRepository") UserRepository userRepository, 
             @Qualifier("userService") UserService userService,
-            @Qualifier("calendarService") CalendarService calendarService) {
+            @Qualifier("calendarService") CalendarService calendarService,
+            @Qualifier("teamRepository") TeamRepository teamRepository) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.teamRepository = teamRepository;
         this.userService = userService;
         this.calendarService = calendarService;
     }
@@ -176,7 +182,7 @@ public class TaskService {
     public void validateRecurringEdit(String userToken, Long taskId) {
         Task task = taskRepository.findTaskById(taskId);
         String taskType = checkTaskType(task);
-        if (taskType.equals("additional")) { // if addtional task, validate more
+        if (taskType.equals(additionalTask)) { // if addtional task, validate more
             validateCreator(userToken, taskId);
         }
         //if task is recurring, we dont test anything else
@@ -208,9 +214,77 @@ public class TaskService {
         return allTasks;
     }
 
+    public void validateTeamPaused(String userToken) {
+        validateUserToken(userToken);
+    
+        User user = userRepository.findByToken(userToken);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user token");
+        }
+    
+        Long teamId = user.getTeamId();
+        Team team = teamRepository.findTeamById(teamId);
+        if (team == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
+        }
+        if (Boolean.TRUE.equals(team.getIsPaused())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused");
+        }
+    }
+
+    public void pauseAllTasksInTeam() {
+        List<Task> tasks = getAllTasks();
+        for (Task task : tasks) {
+            task.setPaused(true);
+            task.setPausedDate(new Date());
+        }
+        taskRepository.saveAll(tasks);
+    }
+
+    public void unpauseAllTasksInTeam() {
+        List<Task> tasks = getAllTasks();
+        for (Task task : tasks) {
+            task.setPaused(false);
+            task.setUnpausedDate(new Date());
+            newDeadline(task); // update the deadline based on the paused time
+        }
+        taskRepository.saveAll(tasks);
+    }
+
+    private void newDeadline(Task task) {
+        // Calculate paused time in milliseconds
+        long pausedTimeMillis = task.getUnpausedDate().getTime() - task.getPausedDate().getTime();
+        
+        // Convert to days (as double), then round up to next full day
+        double pausedDays = (double) pausedTimeMillis / (1000 * 60 * 60 * 24);
+        int daysToAdd = (int) Math.ceil(pausedDays);
+    
+        // Add the rounded-up number of days to the deadline
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(task.getDeadline());
+        calendar.add(Calendar.DAY_OF_MONTH, daysToAdd);
+        task.setDeadline(calendar.getTime());
+
+        // Recalculate daysVisible based on the new deadline (only for additional tasks)
+        String type = checkTaskType(task);
+        if (additionalTask.equals(type)) {
+            calculateDaysVisible(task); // recalculate daysVisible
+        }
+    }
+    
+    public void checkIsPaused(Task task) { // check if task is paused
+        if (task == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task cannot be null");
+        }
+        if (task.isPaused()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is paused");
+        }
+    }
+
     public Task createTask(Task task, String userToken) {
         verifyTaskExistence(task);
         validateUserToken(userToken);
+        checkIsPaused(task);
         String taskType = checkTaskType(task);
         log.debug("Creating a new task with name: {}", task.getName());
         // set the task creation date
@@ -249,6 +323,7 @@ public class TaskService {
         // verify that the task has not yet been claimed
         verifyClaimStatus(task);
         validateUserToken(userToken);
+        checkIsPaused(task);
         // store the userId of the creator
         User user = userRepository.findByToken(userToken);
         task.setIsAssignedTo(user.getId());
@@ -272,11 +347,13 @@ public class TaskService {
     public void deleteTask(Long taskId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+        checkIsPaused(task);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.deleteById(taskId);
     }
 
     public Task updateTask(Task task, Task taskPutDTO) {
+        checkIsPaused(task);
         validateToBeEditedFields(task, taskPutDTO);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.save(task);
@@ -320,7 +397,7 @@ public class TaskService {
         if (task.getFrequency() != null) {
             taskType = recurringTask;
         } else {
-            taskType = "additional";
+            taskType = additionalTask;
         }
         return taskType;
     }
@@ -359,12 +436,12 @@ public class TaskService {
     }
 
     private void calculateDaysVisible(Task task) {
-        // calculate daysVisible = deadline - creationDate -> additional task
         long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
-        int daysDiff = (int) (millisDiff / (1000 * 60 * 60 * 24));
+        double diffInDays = (double) millisDiff / (1000 * 60 * 60 * 24);
+        int daysDiff = (int) Math.ceil(diffInDays);
         task.setDaysVisible(daysDiff);
     }
-
+    
     private void checkDaysVisible(Task task) {
         String taskType = checkTaskType(task);
         if (recurringTask.equals(taskType) && task.getDaysVisible() < getHalfFrequency(task) && task.getDaysVisible() != 1) {

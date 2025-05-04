@@ -40,6 +40,8 @@ public class Team implements Serializable {
     @ElementCollection
     private List<Long> tasks = new ArrayList<>(); // Storing task IDs of the all tasks (additional and recurring tasks)
 
+    @Column(nullable = false)
+    private Boolean isPaused;
 
     // Getters and Setters
     public Long getId() {
@@ -96,6 +98,14 @@ public class Team implements Serializable {
     
     public void setTasks(List<Long> tasks) {
         this.tasks = tasks;
+    }
+
+    public Boolean getIsPaused() {
+        return isPaused;
+    }
+
+    public void setIsPaused(Boolean isPaused) {
+        this.isPaused = isPaused;
     }
 }
 

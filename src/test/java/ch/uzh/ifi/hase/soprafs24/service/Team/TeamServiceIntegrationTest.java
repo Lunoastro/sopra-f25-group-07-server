@@ -73,6 +73,7 @@ class TeamServiceIntegrationTest {
         testTeam.setCode("ABC123");
         testTeam.setXp(0);
         testTeam.setLevel(1);
+        testTeam.setIsPaused(false);
 
         teamRepository.save(testTeam);
 

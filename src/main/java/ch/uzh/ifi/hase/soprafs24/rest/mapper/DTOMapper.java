@@ -72,6 +72,7 @@ public interface DTOMapper {
   @Mapping(source = "code", target = "code")
   @Mapping(source = "members", target = "members")
   @Mapping(source = "tasks", target = "tasks")
+  @Mapping(source = "isPaused", target = "isPaused")
   TeamGetDTO convertEntityToTeamGetDTO(Team team);
 
   @Mapping(source = "name", target = "name")

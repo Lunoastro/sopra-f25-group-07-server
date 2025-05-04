@@ -1,9 +1,8 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
-import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
-import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,11 +10,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.security.GeneralSecurityException;
 import java.util.Map;
 import java.util.List;
-import java.util.ArrayList;
 import com.google.api.services.calendar.model.Event;
 
 @RestController
@@ -27,10 +24,10 @@ public class CalendarController {
     private final TaskService taskService;
 
     @Autowired
-    public CalendarController(CalendarService calendarService, TaskService taskService, UserService userService) {
+    public CalendarController(CalendarService calendarService, UserService userService, TaskService taskService) {
         this.calendarService = calendarService;
-        this.taskService = taskService;
         this.userService = userService;
+        this.taskService = taskService;
     }
     
 
@@ -41,6 +38,8 @@ public class CalendarController {
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
         }
+        // Validate if the team is paused
+        taskService.validateTeamPaused(token);
         // Get authenticated user ID
         Long userId = userService.findIDforToken(token);
         if (userId == null) {
@@ -51,7 +50,6 @@ public class CalendarController {
 
         return "All active tasks synced to Google Calendar successfully!";
     }
-
 
     @GetMapping("/auth-url")
     @ResponseStatus(HttpStatus.OK)

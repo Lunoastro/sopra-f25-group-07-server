@@ -19,4 +19,5 @@ public class TeamGetDTO {
     private String code;
     private List<Long> members;
     private List<Long> tasks;
+    private Boolean isPaused;
 }
