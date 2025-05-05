@@ -321,6 +321,31 @@ class TaskServiceIntegrationTest {
     }
 
     @Test
+    void unassignTask_success() {
+        // Given a task assigned to a user
+        Task task = new Task();
+        task.setName("Assigned Task");
+        task.setCreationDate(new Date());
+        task.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        task.setValue(10);
+        task.setActiveStatus(true);
+        task.setPaused(false);
+        task.setcreatorId(testUser.getId());
+        task.setIsAssignedTo(testUser.getId());
+        task.setColor(testUser.getColor());
+        task = taskRepository.save(task);
+
+        // When unassigning the task
+        taskService.unassignTask(task);
+
+        // Then the task should no longer be assigned
+        Task unassignedTask = taskRepository.findById(task.getId()).orElse(null);
+        assertNotNull(unassignedTask);
+        assertNull(unassignedTask.getIsAssignedTo());
+        assertNull(unassignedTask.getColor());
+    }
+
+    @Test
     void quitTask_success() {
         // Given a task assigned to the test user
         Task task = new Task();
