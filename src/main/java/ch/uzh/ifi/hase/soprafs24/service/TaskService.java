@@ -279,9 +279,6 @@ public class TaskService {
         // If checks pass, unassign the task
         unassignTask(task);
         log.info("User {} successfully quit task {}", userId, taskId);
-
-        // Optionally sync with calendar after quitting
-        calendarService.syncSingleTask(task, task.getcreatorId()); // Update event (maybe remove color?)
     }
     public void updateAllTaskColors(User user) { // update all tasks of a user with the color of the user -> FUTURE USE ONCE WE HAVE WEBSOCKET
         List<Task> userTasks = taskRepository.findTaskByIsAssignedTo(user.getId());

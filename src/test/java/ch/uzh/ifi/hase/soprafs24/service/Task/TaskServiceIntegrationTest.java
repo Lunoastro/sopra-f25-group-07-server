@@ -18,6 +18,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.util.Date;
 import static org.junit.jupiter.api.Assertions.*;
@@ -210,32 +211,31 @@ class TaskServiceIntegrationTest {
         task.setPaused(false);
         task.setcreatorId(testUser.getId());
         task = taskRepository.save(task);
-    
+
         // Update fields
         Task updatedTask = new Task();
         updatedTask.setName("Updated Task Name");
         updatedTask.setValue(25);
         updatedTask.setDeadline(new Date(System.currentTimeMillis() + 7200 * 1000)); // new deadline
-    
+
         // Simulate update by the creator
         taskService.validateCreator("valid-token", task.getId());
-    
+
         Task taskToUpdate = taskRepository.findById(task.getId()).orElse(null);
         assertNotNull(taskToUpdate);
         taskToUpdate.setName(updatedTask.getName());
         taskToUpdate.setValue(updatedTask.getValue());
         taskToUpdate.setDeadline(updatedTask.getDeadline());
-    
+
         taskRepository.save(taskToUpdate);
-    
+
         // Verify the update was successful
         Task fetchedTask = taskRepository.findById(task.getId()).orElse(null);
         assertNotNull(fetchedTask);
         assertEquals("Updated Task Name", fetchedTask.getName());
         assertEquals(25, fetchedTask.getValue());
     }
-    
-    
+
     @Test
     void updateTask_notCreator_throwsForbiddenException() {
         // Create a second user (not the creator)
@@ -250,7 +250,7 @@ class TaskServiceIntegrationTest {
         anotherUser.setToken("another-token");
         anotherUser.setCreationDate(new Date());
         userRepository.save(anotherUser);
-    
+
         // Create a task with testUser as the creator
         Task task = new Task();
         task.setName("Original Task");
@@ -261,10 +261,10 @@ class TaskServiceIntegrationTest {
         task.setPaused(false);
         task.setcreatorId(testUser.getId());
         taskRepository.save(task);
-    
+
         // Attempt to update the task as anotherUser (not the creator)
-        assertThrows(ResponseStatusException.class, 
-            () -> taskService.validateCreator("another-token", task.getId()));
+        assertThrows(ResponseStatusException.class,
+                () -> taskService.validateCreator("another-token", task.getId()));
     }
 
     @Test
@@ -279,11 +279,11 @@ class TaskServiceIntegrationTest {
         task.setPaused(false);
         task.setcreatorId(testUser.getId());
         task = taskRepository.save(task);
-    
+
         // Simulate delete by the creator
         taskService.validateCreator("valid-token", task.getId());
         taskRepository.deleteById(task.getId());
-    
+
         // Ensure task is deleted
         assertFalse(taskRepository.findById(task.getId()).isPresent());
     }
@@ -302,7 +302,7 @@ class TaskServiceIntegrationTest {
         anotherUser.setToken("second-token");
         anotherUser.setCreationDate(new Date());
         userRepository.save(anotherUser);
-    
+
         // Create a task owned by testUser
         Task task = new Task();
         task.setName("Task to Delete");
@@ -313,12 +313,89 @@ class TaskServiceIntegrationTest {
         task.setPaused(false);
         task.setcreatorId(testUser.getId());
         taskRepository.save(task);
-    
+
         // Try to validate delete access with the wrong user
         assertThrows(ResponseStatusException.class, () -> {
             taskService.validateCreator("second-token", task.getId());
         });
     }
-    
-    
+
+    @Test
+    void quitTask_success() {
+        // Given a task assigned to the test user
+        Task task = new Task();
+        task.setName("Task to Quit");
+        task.setCreationDate(new Date());
+        task.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        task.setValue(10);
+        task.setActiveStatus(true);
+        task.setPaused(false);
+        task.setcreatorId(testUser.getId());
+        task.setIsAssignedTo(testUser.getId());
+        task.setColor(testUser.getColor());
+        task = taskRepository.save(task);
+
+        // When the user quits the task
+        taskService.quitTask(task.getId(), testUser.getId());
+
+        // Then the task should no longer be assigned
+        Task updatedTask = taskRepository.findById(task.getId()).orElse(null);
+        assertNotNull(updatedTask);
+        assertNull(updatedTask.getIsAssignedTo());
+        assertNull(updatedTask.getColor());
+    }
+
+    @Test
+    void quitTask_taskNotAssigned_throwsBadRequestException() {
+        // Given a task that is not assigned
+        Task task = new Task();
+        task.setName("Unassigned Task");
+        task.setCreationDate(new Date());
+        task.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        task.setValue(10);
+        task.setActiveStatus(true);
+        task.setPaused(false);
+        task.setcreatorId(testUser.getId());
+        task.setIsAssignedTo(null); // Task is not assigned
+        taskRepository.save(task);
+
+        // When trying to quit the task
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.quitTask(task.getId(), testUser.getId()));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("Task is not currently assigned.", exception.getReason());
+    }
+
+    @Test
+    void quitTask_userNotAssignedToTask_throwsForbiddenException() {
+        // Given a task assigned to another user
+        User anotherUser = new User();
+        anotherUser.setUsername("anotherUser");
+        anotherUser.setName("Another User");
+        anotherUser.setPassword("password123");
+        anotherUser.setColor(ColorID.C2);
+        anotherUser.setXp(0);
+        anotherUser.setLevel(1);
+        anotherUser.setStatus(UserStatus.ONLINE);
+        anotherUser.setToken("another-token");
+        anotherUser.setCreationDate(new Date());
+        userRepository.save(anotherUser);
+
+        Task task = new Task();
+        task.setName("Task Assigned to Another User");
+        task.setCreationDate(new Date());
+        task.setDeadline(new Date(System.currentTimeMillis() + 3600 * 1000));
+        task.setValue(10);
+        task.setActiveStatus(true);
+        task.setPaused(false);
+        task.setcreatorId(testUser.getId());
+        task.setIsAssignedTo(anotherUser.getId()); // Task is assigned to another user
+        taskRepository.save(task);
+
+        // When trying to quit the task
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.quitTask(task.getId(), testUser.getId()));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("You are not assigned to this task, so you cannot quit it.", exception.getReason());
+    }
 }
