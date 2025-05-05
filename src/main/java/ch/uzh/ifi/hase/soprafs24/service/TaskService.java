@@ -21,6 +21,7 @@ import java.util.Calendar;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 
 @Service
@@ -336,6 +337,24 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
+    public void quitTask(Long taskId, Long userId) {
+        log.debug("User {} attempting to quit task {}", userId, taskId);
+        Task task = getTaskById(taskId); // Throws 404 if not found
+
+        // Check if the task is actually assigned
+        if (task.getIsAssignedTo() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task is not currently assigned.");
+        }
+        // Check if the user is the one assigned to the task
+        if (!Objects.equals(task.getIsAssignedTo(), userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not assigned to this task, so you cannot quit it.");
+        }
+
+
+        // If checks pass, unassign the task
+        unassignTask(task);
+        log.info("User {} successfully quit task {}", userId, taskId);
+    }
     public void updateAllTaskColors(User user) { // update all tasks of a user with the color of the user -> FUTURE USE ONCE WE HAVE WEBSOCKET
         List<Task> userTasks = taskRepository.findTaskByIsAssignedTo(user.getId());
         for (Task task : userTasks) {
@@ -387,6 +406,7 @@ public class TaskService {
     }
     public void unassignTask(Task task) {
         task.setIsAssignedTo(null);
+        task.setColor(null); // Reset color to default when unassigned
         taskRepository.save(task);
     }
 

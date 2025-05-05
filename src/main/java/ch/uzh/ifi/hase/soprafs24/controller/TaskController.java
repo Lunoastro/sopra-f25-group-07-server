@@ -130,12 +130,21 @@ public class TaskController {
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(claimed);
     }
 
-    @PutMapping("/tasks/{taskId}/quit")
+    @PatchMapping("/tasks/{taskId}/quit")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> quitTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
+    public void quitTasks(@PathVariable Long taskId, 
+                                      @RequestHeader("Authorization") String authorizationHeader){
         
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
-
+        // Validate the user token
+        String userToken = validateAuthorizationHeader(authorizationHeader);
+        taskService.validateUserToken(userToken);
+        // check if task is in the same team as the user
+        taskService.validateTaskInTeam(userToken, taskId);
+        // Checks if user is the creator of the task and if task exists
+        taskService.validateRecurringEdit(userToken, taskId); 
+        // Unclaims the task for the user and assigns the user to the correct field
+        Long userId = userrepository.findByToken(userToken).getId();
+        taskService.quitTask(taskId, userId);
     }
 
     @PutMapping("/tasks/{taskId}/expire")
