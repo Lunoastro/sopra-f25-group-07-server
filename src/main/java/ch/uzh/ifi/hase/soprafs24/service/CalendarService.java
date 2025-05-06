@@ -39,6 +39,11 @@ public class CalendarService {
     private static final String OFFLINE = "offline";  // Constant for "offline"
     private static final String DATETIME_FIELD = "dateTime";
     private static final String STATUS_FIELD = "status"; // Constant for "status"
+    private static final String START = "start"; // Constant for "start"
+    private static final String END = "end"; // Constant for "end"
+    private static final String SOURCE = "source"; // Constant for "source"
+    private static final String SUMMARY = "summary"; // Constant for "summary"
+    private static final String DESCRIPTION = "description"; // Constant for "description"
 
     @Value("${REDIRECT_URI:redirect.uri}")
     private String redirectUri;
@@ -112,12 +117,12 @@ public class CalendarService {
         try {
             Calendar userCalendar = getCalendarServiceForUser(userId);
 
-            if ("task".equals(taskEvent.get("source"))) {
+            if ("task".equals(taskEvent.get(SOURCE))) {
                 Event event = new Event()
-                        .setSummary((String) taskEvent.get("summary"))
-                        .setDescription((String) taskEvent.get("description"))
-                        .setStart(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get("start")).get(DATETIME_FIELD))))
-                        .setEnd(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get("end")).get(DATETIME_FIELD))));
+                        .setSummary((String) taskEvent.get(SUMMARY))
+                        .setDescription((String) taskEvent.get(DESCRIPTION))
+                        .setStart(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get(START)).get(DATETIME_FIELD))))
+                        .setEnd(new EventDateTime().setDateTime(new DateTime((String) ((Map<?, ?>) taskEvent.get(END)).get(DATETIME_FIELD))));
 
                 if ("active".equals(taskEvent.get(STATUS_FIELD))) {
                     Event inserted = userCalendar.events().insert(PRIMARY, event).execute();
@@ -268,11 +273,11 @@ public class CalendarService {
         for (Event ge : googleEvents) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", ge.getId());
-            map.put("summary", ge.getSummary());
-            map.put("description", ge.getDescription());
-            map.put("start", ge.getStart());
-            map.put("end", ge.getEnd());
-            map.put("source", "google");
+            map.put(SUMMARY, ge.getSummary());
+            map.put(DESCRIPTION, ge.getDescription());
+            map.put(START, ge.getStart());
+            map.put(END, ge.getEnd());
+            map.put(SOURCE, "google");
             combinedEvents.add(map);
         }
     
@@ -281,16 +286,16 @@ public class CalendarService {
         for (Task task : tasks) {
             Map<String, Object> taskEvent = new HashMap<>();
             taskEvent.put("id", "task-" + task.getId());
-            taskEvent.put("summary", "[TASK] " + task.getName());
-            taskEvent.put("description", task.getDescription());
+            taskEvent.put(SUMMARY, "[TASK] " + task.getName());
+            taskEvent.put(DESCRIPTION, task.getDescription());
     
             // Convert task deadline to Google Calendar-compatible format
-            taskEvent.put("start", Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
-            taskEvent.put("end", Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
+            taskEvent.put(START, Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
+            taskEvent.put(END, Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
     
             // Optional: Add task color
             taskEvent.put("colorId", task.getColor() != null ? task.getColor().toString() : null);
-            taskEvent.put("source", "task");
+            taskEvent.put(SOURCE, "task");
             taskEvent.put(STATUS_FIELD, "active");
     
             combinedEvents.add(taskEvent);

@@ -195,6 +195,24 @@ public class TeamService {
     teamRepository.save(team);
     teamRepository.flush();
   }
+
+  public void validateTeamPaused(String userToken) {
+    taskService.validateUserToken(userToken);
+
+    User user = userRepository.findByToken(userToken);
+    if (user == null) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user token");
+    }
+
+    Long teamId = user.getTeamId();
+    Team team = teamRepository.findTeamById(teamId);
+    if (team == null) {
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
+    }
+    if (Boolean.TRUE.equals(team.getIsPaused())) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused");
+    }
+}
   
   /**
    * This is a helper method that will check the uniqueness criteria of the

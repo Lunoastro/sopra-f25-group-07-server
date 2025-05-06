@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
+import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,9 @@ class CalendarControllerTest {
 
     @MockBean
     private TaskService taskService;
+
+    @MockBean
+    private TeamService teamService;
 
     @MockBean
     private CalendarService calendarService;

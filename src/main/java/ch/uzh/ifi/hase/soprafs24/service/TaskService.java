@@ -1,10 +1,8 @@
 package ch.uzh.ifi.hase.soprafs24.service;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
-import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
-import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 
@@ -32,7 +30,6 @@ public class TaskService {
     private final Logger log = LoggerFactory.getLogger(TaskService.class);
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
-    private final TeamRepository teamRepository;
     private final CalendarService calendarService;
     private String recurringTask = "recurring"; 
     private String additionalTask = "additional"; 
@@ -41,11 +38,9 @@ public class TaskService {
     public TaskService(@Qualifier("taskRepository") TaskRepository taskRepository,
             @Qualifier("userRepository") UserRepository userRepository, 
             @Qualifier("userService") UserService userService,
-            @Qualifier("calendarService") CalendarService calendarService,
-            @Qualifier("teamRepository") TeamRepository teamRepository) {
+            @Qualifier("calendarService") CalendarService calendarService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
-        this.teamRepository = teamRepository;
         this.userService = userService;
         this.calendarService = calendarService;
     }
@@ -213,24 +208,6 @@ public class TaskService {
                             .collect(Collectors.toList());
         }
         return allTasks;
-    }
-
-    public void validateTeamPaused(String userToken) {
-        validateUserToken(userToken);
-    
-        User user = userRepository.findByToken(userToken);
-        if (user == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user token");
-        }
-    
-        Long teamId = user.getTeamId();
-        Team team = teamRepository.findTeamById(teamId);
-        if (team == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
-        }
-        if (Boolean.TRUE.equals(team.getIsPaused())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused");
-        }
     }
 
     public void pauseAllTasksInTeam() {
