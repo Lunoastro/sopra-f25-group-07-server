@@ -124,7 +124,7 @@ public class TaskService {
         }
     }
 
-    private void validateRecurringPutDto(Task task, Task taskPutDTO) {
+    public void validateRecurringPutDto(Task task, Task taskPutDTO) {
         if (taskPutDTO.getActiveStatus() != null && !taskPutDTO.getActiveStatus().equals(task.getActiveStatus())) {
             task.setActiveStatus(taskPutDTO.getActiveStatus());
         }

@@ -179,6 +179,86 @@ class TaskServiceTest {
     }
 
     @Test
+void createTask_setsDefaultStartDateIfNull() {
+    // given
+    Task task = new Task();
+    task.setCreationDate(new Date());
+    task.setFrequency(7); // Recurring task
+    task.setStartDate(null); // Start date not provided
+
+    User user = new User();
+    user.setId(42L);
+    user.setTeamId(1L);
+    user.setToken("valid-token");
+    user.setStatus(UserStatus.ONLINE);
+
+    // when
+    when(userService.validateToken("valid-token")).thenReturn(true);
+    when(userRepository.findByToken("valid-token")).thenReturn(user);
+    when(taskRepository.save(Mockito.any(Task.class))).thenAnswer(i -> i.getArgument(0));
+
+    taskService.createTask(task, "valid-token");
+
+    // then
+    assertEquals(task.getCreationDate(), task.getStartDate(), "Default startDate should be set to creationDate");
+    verify(taskRepository, Mockito.times(1)).save(task);
+}
+
+@Test
+void createTask_setsDefaultDaysVisibleIfNull() {
+    // given
+    Task task = new Task();
+    task.setCreationDate(new Date());
+    task.setFrequency(7); // Recurring task
+    task.setDaysVisible(null); // Days visible not provided
+
+    User user = new User();
+    user.setId(42L);
+    user.setTeamId(1L);
+    user.setToken("valid-token");
+    user.setStatus(UserStatus.ONLINE);
+
+    // when
+    when(userService.validateToken("valid-token")).thenReturn(true);
+    when(userRepository.findByToken("valid-token")).thenReturn(user);
+    when(taskRepository.save(Mockito.any(Task.class))).thenAnswer(i -> i.getArgument(0));
+
+    taskService.createTask(task, "valid-token");
+
+    // then
+    assertEquals(3, task.getDaysVisible(), "Default daysVisible should be half of the frequency");
+    verify(taskRepository, Mockito.times(1)).save(task);
+}
+
+@Test
+void createTask_noDefaultValuesNeeded() {
+    // given
+    Task task = new Task();
+    task.setCreationDate(new Date());
+    task.setStartDate(new Date());
+    task.setDaysVisible(5); // Already set
+    task.setFrequency(10); // Recurring task
+
+    User user = new User();
+    user.setId(42L);
+    user.setStatus(UserStatus.ONLINE);
+    user.setTeamId(1L);
+    user.setToken("valid-token");
+
+    // when
+    when(userService.validateToken("valid-token")).thenReturn(true);
+    when(userRepository.findByToken("valid-token")).thenReturn(user);
+    when(taskRepository.save(Mockito.any(Task.class))).thenAnswer(i -> i.getArgument(0));
+
+    taskService.createTask(task, "valid-token");
+
+    // then
+    assertEquals(5, task.getDaysVisible(), "daysVisible should remain unchanged");
+    assertNotNull(task.getStartDate(), "startDate should remain unchanged");
+    verify(taskRepository, Mockito.times(1)).save(task);
+}
+
+    @Test
     void validatePostDto_validInput_success() {
         // given
         TaskPostDTO validTaskPostDTO = new TaskPostDTO();
@@ -991,4 +1071,81 @@ class TaskServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
         assertEquals("Not authorized to edit this task", exception.getReason());
     }
+@Test
+void validateRecurringPutDto_validInputs_success() {
+    // given
+    Task existingTask = new Task();
+    existingTask.setFrequency(10);
+    existingTask.setDaysVisible(5);
+    existingTask.setStartDate(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future start date
+    existingTask.setActiveStatus(true);
+
+    Task updatedTask = new Task();
+    updatedTask.setFrequency(15);
+    updatedTask.setDaysVisible(10);
+    updatedTask.setStartDate(new Date(System.currentTimeMillis() + 7200 * 1000)); // Future start date
+    updatedTask.setActiveStatus(false);
+
+    // when
+    taskService.validateRecurringPutDto(existingTask, updatedTask);
+
+    // then
+    assertEquals(15, existingTask.getFrequency());
+    assertEquals(10, existingTask.getDaysVisible());
+    assertEquals(updatedTask.getStartDate(), existingTask.getStartDate());
+    assertFalse(existingTask.getActiveStatus());
+}
+
+@Test
+void validateRecurringPutDto_invalidFrequency_throwsBadRequestException() {
+    // given
+    Task existingTask = new Task();
+    existingTask.setFrequency(10);
+
+    Task updatedTask = new Task();
+    updatedTask.setFrequency(0); // Invalid frequency
+
+    // when & then
+    ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> taskService.validateRecurringPutDto(existingTask, updatedTask));
+    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+    assertEquals("Frequency must be greater than 0", exception.getReason());
+}
+
+@Test
+void validateRecurringPutDto_invalidDaysVisible_throwsBadRequestException() {
+    // given
+    Task existingTask = new Task();
+    existingTask.setFrequency(10);
+
+    Task updatedTask = new Task();
+    updatedTask.setDaysVisible(3); // Invalid daysVisible (less than half of frequency)
+
+    // when & then
+    ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> taskService.validateRecurringPutDto(existingTask, updatedTask));
+    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+    assertEquals("daysVisible must be at least half of the frequency (or 1 if frequency is 1) but not greater than the frequency", exception.getReason());
+}
+
+@Test
+void validateRecurringPutDto_nullFields_noChanges() {
+    // given
+    Task existingTask = new Task();
+    existingTask.setFrequency(10);
+    existingTask.setDaysVisible(5);
+    existingTask.setStartDate(new Date(System.currentTimeMillis() + 3600 * 1000)); // Future start date
+    existingTask.setActiveStatus(true);
+
+    Task updatedTask = new Task(); // All fields are null
+
+    // when
+    taskService.validateRecurringPutDto(existingTask, updatedTask);
+
+    // then
+    assertEquals(10, existingTask.getFrequency());
+    assertEquals(5, existingTask.getDaysVisible());
+    assertNotNull(existingTask.getStartDate());
+    assertTrue(existingTask.getActiveStatus());
+}
 }
