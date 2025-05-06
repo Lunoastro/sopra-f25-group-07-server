@@ -101,18 +101,16 @@ public class UserController {
 
   @PutMapping("/logout")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void logoff(@RequestBody UserPutDTO userPutDTO, @RequestHeader("Authorization") String authorizationHeader) {
+  public void logoff(@RequestHeader("Authorization") String authorizationHeader) {
     String token = validateAuthorizationHeader(authorizationHeader);
     if (!userService.validateToken(token)) {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
     }
     Long authenticatedUserId = userService.findIDforToken(token);
-    // Ensure the user ID in the request matches the authenticated user ID
-    if (!authenticatedUserId.equals(userPutDTO.getId())) {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: You can only log off your own account.");
-    }
-    User userInput = DTOMapper.INSTANCE.convertUserPutDTOtoEntity(userPutDTO);
-    userService.logoffUser(userInput);
+    
+    User user = userService.getUserById(authenticatedUserId);
+
+    userService.logoffUser(user);
   }
 
   @PutMapping("/users/{userId}")

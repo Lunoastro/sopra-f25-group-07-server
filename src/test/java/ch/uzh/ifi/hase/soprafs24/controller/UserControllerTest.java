@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -390,26 +391,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     }
     
     @Test
-    void PUT_logoff_failed_wrongUserId() throws Exception {
-        // given
-        Long authenticatedUserId = 1L;
-        Long differentUserId = 2L;
-        String validToken = "valid-token";
-        
-        UserPutDTO userPutDTO = new UserPutDTO();
-        userPutDTO.setId(differentUserId);  // Trying to log off a different user
-        
-        when(userService.validateToken(validToken)).thenReturn(true);
-        when(userService.findIDforToken(validToken)).thenReturn(authenticatedUserId);
-        
-        // when/then
-        MockHttpServletRequestBuilder putRequest = put("/logout")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(asJsonString(userPutDTO))
-            .header("Authorization", "Bearer " + validToken);
-        
-        mockMvc.perform(putRequest)
-            .andExpect(status().isForbidden());
+    void PUT_logoff_failed_invalidToken() throws Exception {
+    // given
+    String invalidToken = "invalid-token";
+    
+    when(userService.validateToken(invalidToken)).thenReturn(false);
+    
+    // when/then
+    mockMvc.perform(put("/logout")
+            .header("Authorization", "Bearer " + invalidToken))
+        .andExpect(status().isUnauthorized());
     }
     
     @Test
