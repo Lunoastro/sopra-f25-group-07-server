@@ -78,12 +78,12 @@ public class UserService {
   public User loginUser(User registeredUser) { //login for already created/registered users
     User user = userRepository.findByUsername(registeredUser.getUsername());
     if (user == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid Username");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid password or inexistent user");
   }
   
   // Check if the provided password matches the stored password
     if (!(registeredUser.getPassword().equals(user.getPassword()))) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Password");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid password or inexistent user");
   }
 
     user.setStatus(UserStatus.ONLINE);
@@ -102,7 +102,7 @@ public class UserService {
       
   }
 
-  public void updateUser(User userInput) {
+  public User updateUser(User userInput) {
     User user = getUserById(userInput.getId()); // get existing user details
 
     if (userInput.getUsername() != null && !userInput.getUsername().equals(user.getUsername())) {
@@ -126,6 +126,7 @@ public class UserService {
 
     userRepository.save(user);
     userRepository.flush();
+    return user;
   }
 
   public void deleteUser(Long userId) {

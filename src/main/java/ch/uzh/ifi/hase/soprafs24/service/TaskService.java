@@ -50,6 +50,9 @@ public class TaskService {
         if (dto.getName() == null || dto.getName().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
         }
+        if (taskRepository.findTaskByName(dto.getName()) != null && !dto.getName().equals(taskRepository.findTaskByName(dto.getName()).getName())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task name already exists");
+        }
         if (dto.getValue() == null || dto.getValue() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task value cannot be null or less than or equal to 0");
         }
