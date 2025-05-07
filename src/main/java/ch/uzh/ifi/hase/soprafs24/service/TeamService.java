@@ -212,7 +212,7 @@ public class TeamService {
     if (Boolean.TRUE.equals(team.getIsPaused())) {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused");
     }
-}
+  }
   
   /**
    * This is a helper method that will check the uniqueness criteria of the

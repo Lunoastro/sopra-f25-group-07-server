@@ -6,6 +6,7 @@ import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
   @MockBean
   private UserRepository userRepository;
 
+  @MockBean
+  private TaskService taskService;
 
   @Test
    void GET_givenUsers_whenGetUsers_thenReturnJsonArray() throws Exception { //./gradlew test --tests "ch.uzh.ifi.hase.soprafs24.controller.UserControllerTest.GET_givenUsers_whenGetUsers_thenReturnJsonArray"
@@ -241,8 +244,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // specifying that the updateUser function will succeed and return nothing
         when(userService.validateToken(validToken)).thenReturn(true);  // Mock token validation to return true
         when(userService.findIDforToken(validToken)).thenReturn(1L); // Mock user ID for valid token
-        doNothing().when(userService).updateUser(Mockito.any());  // Mock updateUser to do nothing (successful update)
-
+        when(userService.updateUser(Mockito.any())).thenReturn(user);
+        doNothing().when(taskService).updateAllTaskColors(Mockito.any()); // Mock updateAllTaskColors to do nothing
         // when
         // executing a mock put request.
         MockHttpServletRequestBuilder putRequest = put("/users/{userId}", user.getId())

@@ -6,6 +6,7 @@ import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserPutDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -28,12 +29,14 @@ public class UserController {
 
   private final UserService userService;
   private final UserRepository userRepository;
+  private final TaskService taskService;
 
   
 
-  UserController(UserService userService, UserRepository userRepository) {
+  UserController(UserService userService, UserRepository userRepository, TaskService taskService) {
     this.userService = userService;
     this.userRepository = userRepository;
+    this.taskService = taskService;
   }
 
   @PostMapping("/users")
@@ -136,7 +139,8 @@ public class UserController {
     User userInput = DTOMapper.INSTANCE.convertUserPutDTOtoEntity(userPutDTO);
     userInput.setId(userId);
       //update user information
-    userService.updateUser(userInput);
+    User user = userService.updateUser(userInput);
+    taskService.updateAllTaskColors(user);
   }
 
   @DeleteMapping("/users/{userId}")
