@@ -64,6 +64,7 @@ public class UserService {
     newUser.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
     newUser.setToken(UUID.randomUUID().toString());
     newUser.setStatus(UserStatus.ONLINE);
+    newUser.setLevel(1);
     checkIfUserExists(newUser);
     // saves the given entity but data is only persisted in the database once
     // flush() is called
@@ -78,12 +79,12 @@ public class UserService {
   public User loginUser(User registeredUser) { //login for already created/registered users
     User user = userRepository.findByUsername(registeredUser.getUsername());
     if (user == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid Username");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid password or inexistent user");
   }
   
   // Check if the provided password matches the stored password
     if (!(registeredUser.getPassword().equals(user.getPassword()))) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Password");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid password or inexistent user");
   }
 
     user.setStatus(UserStatus.ONLINE);
@@ -102,7 +103,7 @@ public class UserService {
       
   }
 
-  public void updateUser(User userInput) {
+  public User updateUser(User userInput) {
     User user = getUserById(userInput.getId()); // get existing user details
 
     if (userInput.getUsername() != null && !userInput.getUsername().equals(user.getUsername())) {
@@ -126,6 +127,7 @@ public class UserService {
 
     userRepository.save(user);
     userRepository.flush();
+    return user;
   }
 
   public void deleteUser(Long userId) {
@@ -133,6 +135,69 @@ public class UserService {
     userRepository.delete(user);
     userRepository.flush();
 }
+
+  public void addExperiencePoints(Long userId, int points) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+    user.setXp(user.getXp() + points);
+    checkLevelUp(user); 
+    userRepository.save(user);
+    userRepository.flush();
+
+  }
+
+  private void checkLevelUp(User user) {
+    int currentXP = user.getXp();
+    int currentLevel = user.getLevel();
+    int nextLevelXP = getXpForLevel(currentLevel + 1);
+
+    while (currentXP >= nextLevelXP) {
+        user.setLevel(currentLevel + 1);
+        currentLevel++;
+        nextLevelXP = getXpForLevel(currentLevel + 1);
+    }
+}
+
+  private int getXpForLevel(int level) {
+      int baseXP = 100;
+      double exponent = 1.5;
+      return (int)(baseXP * Math.pow(level, exponent));
+  }
+
+  public void deductExperiencePoints(Long userId, int points) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+    // Calculate new XP, ensuring it doesn't go below 0
+    int newXp = Math.max(0, user.getXp() - points);
+    user.setXp(newXp);
+    
+    // Check if level needs to be adjusted
+    adjustLevelAfterXpDeduction(user);
+    
+    userRepository.save(user);
+    userRepository.flush();
+}
+
+  private void adjustLevelAfterXpDeduction(User user) {
+      int currentXP = user.getXp();
+      int currentLevel = user.getLevel();
+      
+      // If user's level is already 1, no need to check further as 1 is the minimum level
+      if (currentLevel <= 1) {
+          user.setLevel(1);
+          return;
+      }
+      
+      // Check if current XP is less than what's required for the current level
+      while (currentLevel > 1 && currentXP < getXpForLevel(currentLevel)) {
+          currentLevel--;
+          user.setLevel(currentLevel);
+      }
+  }
+
+   
 
 public User getUserByToken(String token) {
   User user = userRepository.findByToken(token); 

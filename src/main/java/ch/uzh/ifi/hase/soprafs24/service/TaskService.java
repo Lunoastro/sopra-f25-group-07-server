@@ -56,6 +56,9 @@ public class TaskService {
         if (dto.getName() == null || dto.getName().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
         }
+        if (taskRepository.findTaskByName(dto.getName()) != null && !dto.getName().equals(taskRepository.findTaskByName(dto.getName()).getName())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task name already exists");
+        }
         if (dto.getValue() == null || dto.getValue() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task value cannot be null or less than or equal to 0");
         }
@@ -440,7 +443,7 @@ public class TaskService {
         return half;
     }
 
-    private void calculateDeadline(Task task) {
+    public void calculateDeadline(Task task) {
         // calculate deadline = startDate + frequency days -> recurring task
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(task.getStartDate());
@@ -449,7 +452,7 @@ public class TaskService {
         task.setDeadline(deadline);
     }
 
-    private void calculateDaysVisible(Task task) {
+    public void calculateDaysVisible(Task task) {
         long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
         double diffInDays = (double) millisDiff / (1000 * 60 * 60 * 24);
         int daysDiff = (int) Math.ceil(diffInDays);

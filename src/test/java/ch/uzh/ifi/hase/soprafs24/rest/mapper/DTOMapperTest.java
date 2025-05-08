@@ -59,6 +59,8 @@ import java.util.List;
     user.setToken("1");
     user.setCreationDate(now);
     user.setBirthDate(null);
+    user.setXp(150); 
+    user.setLevel(3);
     
 
     // MAP -> Create UserGetDTO
@@ -72,6 +74,8 @@ import java.util.List;
     assertEquals(user.getStatus(), userGetDTO.getStatus());
     assertEquals(user.getCreationDate(), userGetDTO.getCreationDate());
     assertEquals(user.getBirthDate(), userGetDTO.getBirthDate());
+    assertEquals(user.getXp(), userGetDTO.getXp());
+    assertEquals(user.getLevel(), userGetDTO.getLevel());
   }
 
   @Test

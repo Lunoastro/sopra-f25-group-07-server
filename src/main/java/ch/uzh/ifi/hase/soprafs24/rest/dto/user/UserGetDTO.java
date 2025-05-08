@@ -24,4 +24,6 @@ public class UserGetDTO {
   private Date creationDate;
   private Date birthDate;
   private Long teamId;
+  private int xp;
+  private int level;
 }
