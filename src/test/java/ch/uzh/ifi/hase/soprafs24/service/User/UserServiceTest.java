@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 class UserServiceTest {
 
@@ -38,6 +39,9 @@ class UserServiceTest {
         testUser.setName("user_testUsername");
         testUser.setUsername("testUsername");
         testUser.setPassword("12345");
+        testUser.setStatus(UserStatus.ONLINE);
+        testUser.setXp(0);
+        testUser.setLevel(1);
 
         // when -> any object is being saved in the userRepository -> return the dummy
         // testUser
@@ -299,5 +303,190 @@ class UserServiceTest {
 
         // then
         assertNull(result);
+    }
+
+    @Test
+    void addExperiencePoints_userFound_success() {
+        // given
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // when
+        userService.addExperiencePoints(testUser.getId(), 50);
+        
+        // then
+        assertEquals(50, testUser.getXp());
+        assertEquals(1, testUser.getLevel()); // Should still be level 1
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void addExperiencePoints_userNotFound_throwsException() {
+        // given
+        Long nonExistentUserId = 999L;
+        Mockito.when(userRepository.findById(nonExistentUserId)).thenReturn(Optional.empty());
+        
+        // when/then
+        assertThrows(ResponseStatusException.class, () -> userService.addExperiencePoints(nonExistentUserId, 50));
+    }
+
+    @Test
+    void addExperiencePoints_enoughForLevelUp_success() {
+        // given
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // Level 2 requires 100*2^1.5 = ~283 XP
+        int xpForLevelUp = 300;
+        
+        // when
+        userService.addExperiencePoints(testUser.getId(), xpForLevelUp);
+        
+        // then
+        assertEquals(xpForLevelUp, testUser.getXp());
+        assertEquals(2, testUser.getLevel()); // Should level up to 2
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void addExperiencePoints_enoughForMultipleLevelUps_success() {
+        // given
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // Add enough XP for multiple level ups (to level 4)
+        // Level 2: ~283 XP
+        // Level 3: ~520 XP
+        // Level 4: ~800 XP
+        int xpForMultipleLevelUps = 900;
+        
+        // when
+        userService.addExperiencePoints(testUser.getId(), xpForMultipleLevelUps);
+        
+        // then
+        assertEquals(xpForMultipleLevelUps, testUser.getXp());
+        assertEquals(4, testUser.getLevel()); // Should level up to 4
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void deductExperiencePoints_userFound_success() {
+        // given
+        testUser.setXp(100); // Start with some XP
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // when
+        userService.deductExperiencePoints(testUser.getId(), 50);
+        
+        // then
+        assertEquals(50, testUser.getXp());
+        assertEquals(1, testUser.getLevel()); // Level should remain the same
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void deductExperiencePoints_userNotFound_throwsException() {
+        // given
+        Long nonExistentUserId = 999L;
+        Mockito.when(userRepository.findById(nonExistentUserId)).thenReturn(Optional.empty());
+        
+        // when/then
+        assertThrows(ResponseStatusException.class, () -> userService.deductExperiencePoints(nonExistentUserId, 50));
+    }
+
+    @Test
+    void deductExperiencePoints_preventNegativeXp_success() {
+        // given
+        testUser.setXp(30);
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // when - try to deduct more than available
+        userService.deductExperiencePoints(testUser.getId(), 50);
+        
+        // then - should be capped at 0
+        assertEquals(0, testUser.getXp());
+        assertEquals(1, testUser.getLevel()); // Minimum level
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void deductExperiencePoints_causesLevelDown_success() {
+        // given
+        // Set user to level 3 with just enough XP for level 3
+        testUser.setLevel(3);
+        int xpForLevel3 = 520; // Approximate based on the formula
+        testUser.setXp(xpForLevel3);
+        
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // when - deduct enough to drop to level 2
+        userService.deductExperiencePoints(testUser.getId(), 300);
+        
+        assertTrue(testUser.getXp() < xpForLevel3);
+        assertEquals(1, testUser.getLevel()); 
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void deductExperiencePoints_causeMultipleLevelDowns_success() {
+        // given
+        // Set user to level 4 with just enough XP for level 4
+        testUser.setLevel(4);
+        int xpForLevel4 = 800; // Approximate based on the formula
+        testUser.setXp(xpForLevel4);
+        
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // when - deduct enough XP to drop to level 1
+        userService.deductExperiencePoints(testUser.getId(), 750);
+        
+        // then
+        assertEquals(xpForLevel4 - 750, testUser.getXp());
+        assertEquals(1, testUser.getLevel()); // Should drop to level 1
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void deductExperiencePoints_levelCannotGoBelowOne_success() {
+        // given
+        testUser.setXp(50);
+        testUser.setLevel(1);
+        
+        Mockito.when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        
+        // when - deduct all XP
+        userService.deductExperiencePoints(testUser.getId(), 50);
+        
+        // then
+        assertEquals(0, testUser.getXp());
+        assertEquals(1, testUser.getLevel()); // Level should stay at 1
+        Mockito.verify(userRepository, Mockito.times(1)).save(testUser);
+        Mockito.verify(userRepository, Mockito.times(1)).flush();
+    }
+
+    @Test
+    void getXpForLevel_calculatesCorrectly() {
+        // This is testing a private method through reflection
+        try {
+            java.lang.reflect.Method method = UserService.class.getDeclaredMethod("getXpForLevel", int.class);
+            method.setAccessible(true);
+            
+            // Calculate expected values using the formula: baseXP * level^exponent
+            int baseXP = 100;
+            double exponent = 1.5;
+            
+            // Test for multiple levels
+            for (int level = 1; level <= 5; level++) {
+                int expected = (int)(baseXP * Math.pow(level, exponent));
+                int actual = (int) method.invoke(userService, level);
+                assertEquals(expected, actual, "XP calculation for level " + level + " is incorrect");
+            }
+        } catch (Exception e) {
+            fail("Exception while testing private method: " + e.getMessage());
+        }
     }
 }
