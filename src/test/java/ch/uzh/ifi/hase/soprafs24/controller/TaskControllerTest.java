@@ -942,8 +942,6 @@ void DELETE_successfulFinishTask_recurringTask_taskRescheduled() throws Exceptio
     updatedTaskDTO.setName("Recurring Task");
     updatedTaskDTO.setIsAssignedTo(null); // Should be unassigned after completion
     
-    //List<TaskGetDTO> updatedTasks = Collections.singletonList(updatedTaskDTO);
-    
     doNothing().when(teamService).validateTeamPaused(token);
     doNothing().when(taskService).validateTaskInTeam(token, taskId);
     when(taskService.getTaskById(taskId)).thenReturn(existingTask);
