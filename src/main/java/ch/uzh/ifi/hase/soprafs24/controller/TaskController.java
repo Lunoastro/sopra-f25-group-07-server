@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
-
+import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import java.util.Date;
+import java.util.Calendar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,12 +23,14 @@ public class TaskController {
   private final TaskService taskService;
   private final UserRepository userrepository;
   private final TeamService teamService;
+  private final UserService userService;
   
 
-  TaskController(TaskService taskService, UserRepository userrepository, TeamService teamService) {
+  TaskController(TaskService taskService, UserRepository userrepository, TeamService teamService, UserService userService) {
     this.taskService = taskService;
     this.userrepository = userrepository;
     this.teamService = teamService;
+    this.userService = userService;
   }
     @PostMapping("/tasks")
     @ResponseStatus(HttpStatus.CREATED)
@@ -150,21 +154,93 @@ public class TaskController {
         taskService.quitTask(taskId, userId);
     }
 
+
     @PutMapping("/tasks/{taskId}/expire")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public List<TaskGetDTO> expireTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
+        // Validate the user token
+        String userToken = validateAuthorizationHeader(authorizationHeader);
+        teamService.validateTeamPaused(userToken);
         
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
-
+        // Check if task is in the same team as the user
+        taskService.validateTaskInTeam(userToken, taskId);
+        
+        // Get the task by ID
+        Task task = taskService.getTaskById(taskId);
+        
+        // Create list to hold updated tasks
+        List<TaskGetDTO> updatedTasks = new ArrayList<>();
+        
+        // Check if the task has been claimed by someone
+        if (task.getIsAssignedTo() != null) {
+            // Deduct experience points based on the task value
+            userService.deductExperiencePoints(task.getIsAssignedTo(), task.getValue());
+        }
+        
+        // Record the old deadline (which was missed) as the new start date
+        Date oldDeadline = task.getDeadline();
+        task.setStartDate(oldDeadline);
+        
+        String taskType = taskService.checkTaskType(task);
+        if ("additional".equals(taskType)) {
+            // For additional tasks: directly use the known daysVisible to calculate new deadline
+            int daysVisible = task.getDaysVisible();
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(task.getStartDate());
+            calendar.add(Calendar.DATE, daysVisible);
+            task.setDeadline(calendar.getTime());
+        } else {
+            // For recurring tasks: use existing logic to calculate the next deadline
+            taskService.calculateDeadline(task);
+        }
+        
+        // Save the updated task
+        taskService.saveTask(task);
+        
+        // Add the updated task to the response list
+        updatedTasks.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
+        
+        return updatedTasks;
     }
 
     @DeleteMapping("/tasks/{taskId}/finish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public List<TaskGetDTO> finishTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
+        // Validate the user token
+        String userToken = validateAuthorizationHeader(authorizationHeader);
+        teamService.validateTeamPaused(userToken);
         
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Not implemented yet");
-
+        // Check if task is in the same team as the user
+        taskService.validateTaskInTeam(userToken, taskId);
+        
+        // Get the task by ID
+        Task task = taskService.getTaskById(taskId);
+        
+        Long userId = userrepository.findByToken(userToken).getId();
+        if (task.getIsAssignedTo() == null || !task.getIsAssignedTo().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only finish tasks that you have claimed");
+        }
+        userService.addExperiencePoints(userId, task.getValue());
+        
+        List<TaskGetDTO> updatedTasks = new ArrayList<>();
+        
+        String taskType = taskService.checkTaskType(task);
+        if ("additional".equals(taskType)) {
+            taskService.deleteTask(taskId);
+        } else {
+        task.setStartDate(task.getDeadline());
+        
+        taskService.calculateDeadline(task);
+        
+        taskService.unassignTask(task);
+        
+        taskService.saveTask(task);
+        
+        updatedTasks.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
     }
+    
+    return updatedTasks;
+}
     
     @DeleteMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
