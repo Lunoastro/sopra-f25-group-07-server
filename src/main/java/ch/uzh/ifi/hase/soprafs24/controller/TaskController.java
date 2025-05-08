@@ -24,6 +24,7 @@ public class TaskController {
   private final UserRepository userrepository;
   private final TeamService teamService;
   private final UserService userService;
+  private String additionalTask = "additional"; 
   
 
   TaskController(TaskService taskService, UserRepository userrepository, TeamService teamService, UserService userService) {
@@ -94,7 +95,7 @@ public class TaskController {
             // Validate whether the user can edit the task
             taskService.validateCreator(userToken, taskId);
             Task task = taskService.getTaskById(taskId);
-            if (!"additional".equals(taskService.checkTaskType(task))) {
+            if (!additionalTask.equals(taskService.checkTaskType(task))) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is not editable");
             }
             return true; // all checks passed
@@ -182,7 +183,7 @@ public class TaskController {
         task.setStartDate(oldDeadline);
         
         String taskType = taskService.checkTaskType(task);
-        if ("additional".equals(taskType)) {
+        if (additionalTask.equals(taskType)) {
             // For additional tasks: directly use the known daysVisible to calculate new deadline
             int daysVisible = task.getDaysVisible();
             Calendar calendar = Calendar.getInstance();
@@ -225,7 +226,7 @@ public class TaskController {
         List<TaskGetDTO> updatedTasks = new ArrayList<>();
         
         String taskType = taskService.checkTaskType(task);
-        if ("additional".equals(taskType)) {
+        if (additionalTask.equals(taskType)) {
             taskService.deleteTask(taskId);
         } else {
         task.setStartDate(task.getDeadline());

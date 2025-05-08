@@ -800,9 +800,7 @@ void PUT_successfulExpireTask_taskExpired() throws Exception {
     TaskGetDTO updatedTaskDTO = new TaskGetDTO();
     updatedTaskDTO.setId(taskId);
     updatedTaskDTO.setName("Expired Task");
-    updatedTaskDTO.setIsAssignedTo(123L);
-    
-    List<TaskGetDTO> updatedTasks = Collections.singletonList(updatedTaskDTO);
+    updatedTaskDTO.setIsAssignedTo(123L);    
     
     doNothing().when(teamService).validateTeamPaused(token);
     doNothing().when(taskService).validateTaskInTeam(token, taskId);
