@@ -44,6 +44,9 @@ dependencies {
     implementation 'com.google.apis:google-api-services-calendar:v3-rev20220715-2.0.0'
     
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework:spring-websocket'
+
 
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'org.postgresql:postgresql:42.2.18'

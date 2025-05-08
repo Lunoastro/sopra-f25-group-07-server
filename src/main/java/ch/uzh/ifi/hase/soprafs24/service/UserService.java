@@ -134,7 +134,13 @@ public class UserService {
     userRepository.flush();
 }
 
-
+public User getUserByToken(String token) {
+  User user = userRepository.findByToken(token); 
+  if (user == null) {
+      log.warn("User not found for token: {}", token);
+  }
+  return user;
+}
 
   /**
    * This is a helper method that will check the uniqueness criteria of the
