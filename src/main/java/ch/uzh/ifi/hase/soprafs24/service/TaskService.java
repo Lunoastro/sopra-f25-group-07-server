@@ -426,7 +426,7 @@ public class TaskService {
         return half;
     }
 
-    private void calculateDeadline(Task task) {
+    public void calculateDeadline(Task task) {
         // calculate deadline = startDate + frequency days -> recurring task
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(task.getStartDate());
@@ -435,7 +435,7 @@ public class TaskService {
         task.setDeadline(deadline);
     }
 
-    private void calculateDaysVisible(Task task) {
+    public void calculateDaysVisible(Task task) {
         long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
         double diffInDays = (double) millisDiff / (1000 * 60 * 60 * 24);
         int daysDiff = (int) Math.ceil(diffInDays);
