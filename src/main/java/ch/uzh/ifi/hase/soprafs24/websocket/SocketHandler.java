@@ -1,9 +1,16 @@
 package ch.uzh.ifi.hase.soprafs24.websocket;
 
+import ch.uzh.ifi.hase.soprafs24.entity.Team;
+import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
+import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -21,30 +28,112 @@ public class SocketHandler extends TextWebSocketHandler {
     private final List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final ObjectMapper objectMapper;
 
-    public SocketHandler() {
+    private final UserService userService;
+    private final TeamRepository teamRepository;
+
+    @Autowired
+    public SocketHandler(UserService userService, TeamRepository teamRepository) {
+        this.userService = userService;
+        this.teamRepository = teamRepository;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // Session attributes (userId, teamIds) should be set by the HandshakeInterceptor
         sessions.add(session);
-        log.info("Plain WebSocket connection established: {} from {} with attributes: {}",
-                session.getId(), session.getRemoteAddress(), session.getAttributes());
+        log.info("Plain WebSocket connection established: {} from {}. Awaiting authentication message.",
+                session.getId(), session.getRemoteAddress());
     }
-
-    // handleTextMessage, afterConnectionClosed, handleTransportError remain the same as before
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        log.info("Received plain text message: '{}' from session: {}", message.getPayload(), session.getId());
+        Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
+
+        if (authenticated == null || !authenticated) {
+            tryAuthenticate(session, message);
+        } else {
+            log.info("Received regular message from authenticated session {}: '{}'", session.getId(), message.getPayload());
+        }
+    }
+
+    private void tryAuthenticate(WebSocketSession session, TextMessage message) throws IOException {
+        String payload = message.getPayload();
+        log.debug("Attempting to authenticate session {} with payload: {}", session.getId(), payload);
+
+        try {
+            JsonNode jsonNode = objectMapper.readTree(payload);
+            if (jsonNode.has("type") && "auth".equalsIgnoreCase(jsonNode.get("type").asText()) && jsonNode.has("token")) {
+                String rawToken = jsonNode.get("token").asText();
+                String token = null;
+
+                if (rawToken != null && rawToken.toLowerCase().startsWith("bearer ")) {
+                    token = rawToken.substring(7);
+                } else {
+                    log.warn("Auth message for session {} received without 'Bearer ' prefix. Assuming raw token.", session.getId());
+                    token = rawToken; // Use the raw token if "Bearer " is missing
+                }
+
+                if (token != null && !token.isEmpty()) {
+                    // Use UserService.validateToken for authentication
+                    if (userService.validateToken(token)) {
+                        User user = userService.getUserByToken(token); // We know user exists and is online from validateToken
+                        if (user != null) { // Should always be true if validateToken passed, but good practice to check
+                            session.getAttributes().put("userId", user.getId());
+                            if (user.getTeamId() != null) {
+                                Team userTeam = teamRepository.findTeamById(user.getTeamId());
+                                if (userTeam != null) {
+                                    session.getAttributes().put("teamId", userTeam.getId());
+                                    log.info("WebSocket session {} authenticated for user: {}, userId: {}, teamId: {}",
+                                            session.getId(), user.getUsername(), user.getId(), userTeam.getId());
+                                } else {
+                                    log.warn("WebSocket session {} authenticated for user: {}, userId: {}. TeamId {} on user, but team entity not found.",
+                                            session.getId(), user.getUsername(), user.getId(), user.getTeamId());
+                                }
+                            } else {
+                                log.info("WebSocket session {} authenticated for user: {}, userId: {}. User is not in any team.",
+                                        session.getId(), user.getUsername(), user.getId());
+                            }
+                            session.getAttributes().put("authenticated", true);
+                            session.sendMessage(new TextMessage("{\"type\":\"auth_success\",\"message\":\"Authentication successful\"}"));
+                            return;
+                        } else {
+                            // This case should ideally not be reached if validateToken works correctly
+                            log.error("WebSocket authentication inconsistency for session {}: validateToken passed but getUserByToken failed for token: {}", session.getId(), token);
+                            session.sendMessage(new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Authentication inconsistency\"}"));
+                            session.close(CloseStatus.SERVER_ERROR.withReason("Authentication inconsistency"));
+                        }
+                    } else {
+                        log.warn("WebSocket authentication failed for session {}: Invalid or offline user token.", session.getId());
+                        session.sendMessage(new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Invalid token or user offline\"}"));
+                        session.close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token or user offline"));
+                    }
+                } else {
+                    log.warn("WebSocket authentication failed for session {}: Token was missing or empty in auth message.", session.getId());
+                    session.sendMessage(new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token missing or empty\"}"));
+                    session.close(CloseStatus.POLICY_VIOLATION.withReason("Token missing or empty"));
+                }
+            } else {
+                log.warn("Received non-authentication message from unauthenticated session {}. Payload: {}", session.getId(), payload);
+                session.sendMessage(new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Authentication required\"}"));
+                session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required as first message"));
+            }
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to parse auth message from session {}. Payload: {}. Error: {}", session.getId(), payload, e.getMessage());
+            session.sendMessage(new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Invalid auth message format\"}"));
+            session.close(CloseStatus.BAD_DATA.withReason("Invalid auth message format"));
+        } catch (Exception e) {
+            log.error("Error during WebSocket authentication for session {}: {}", session.getId(), e.getMessage(), e);
+            session.sendMessage(new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Authentication error\"}"));
+            session.close(CloseStatus.SERVER_ERROR.withReason("Authentication error"));
+        }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         sessions.remove(session);
-        log.info("Plain WebSocket connection closed: {} with status: {} - {}", session.getId(), status.getCode(), status.getReason());
+        log.info("Plain WebSocket connection closed: {} with status: {} - {} - Authenticated: {}",
+                session.getId(), status.getCode(), status.getReason(), session.getAttributes().get("authenticated"));
     }
 
     @Override
@@ -56,14 +145,23 @@ public class SocketHandler extends TextWebSocketHandler {
         sessions.remove(session);
     }
 
-
-    // Renamed old broadcastMessage to broadcastMessageToAll
     public void broadcastMessageToAll(Object dataPayload) {
         if (dataPayload == null) {
             log.warn("Attempted to broadcast a null payload to all. Skipping.");
             return;
         }
-        sendMessageToSessions(this.sessions, dataPayload);
+        List<WebSocketSession> authenticatedSessions = new CopyOnWriteArrayList<>();
+        for (WebSocketSession session : this.sessions) {
+            Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
+            if (session.isOpen() && Boolean.TRUE.equals(authenticated)) {
+                authenticatedSessions.add(session);
+            }
+        }
+        if (!authenticatedSessions.isEmpty()) {
+            sendMessageToSessions(authenticatedSessions, dataPayload);
+        } else {
+            log.info("No authenticated WebSocket sessions found to broadcast message to all.");
+        }
     }
 
     public void broadcastMessageToTeam(Long teamId, Object dataPayload) {
@@ -71,29 +169,23 @@ public class SocketHandler extends TextWebSocketHandler {
             log.warn("Attempted to broadcast to team with null teamId or payload. Skipping. TeamId: {}", teamId);
             return;
         }
-        List<WebSocketSession> teamSessions = new CopyOnWriteArrayList<>(); // Use a temporary list for iteration
-        var iterator = this.sessions.iterator();
-        while (iterator.hasNext()) {
-            WebSocketSession session = iterator.next();
-            if (session.isOpen()) {
+        List<WebSocketSession> teamSessions = new CopyOnWriteArrayList<>();
+        for (WebSocketSession session : this.sessions) {
+            Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
+            if (session.isOpen() && Boolean.TRUE.equals(authenticated)) {
                 Long sessionTeamId = (Long) session.getAttributes().get("teamId");
-
-                if (sessionTeamId == null) {
-                    log.warn("Session {} does not have a teamId attribute. Skipping.", session.getId());
-                    continue;
-                }
                 if (teamId.equals(sessionTeamId)) {
                     teamSessions.add(session);
                 }
-            } else {
-                iterator.remove(); // Clean up closed sessions safely
+            } else if (!session.isOpen()) {
+                this.sessions.remove(session);
             }
         }
         if (!teamSessions.isEmpty()) {
-            log.info("Broadcasting message to {} members of teamId {}. Payload: {}", teamSessions.size(), teamId, dataPayload.getClass().getSimpleName());
+            log.info("Broadcasting message to {} authenticated members of teamId {}. Payload: {}", teamSessions.size(), teamId, dataPayload.getClass().getSimpleName());
             sendMessageToSessions(teamSessions, dataPayload);
         } else {
-            log.info("No active WebSocket sessions found for teamId {} to send message.", teamId);
+            log.info("No active and authenticated WebSocket sessions found for teamId {} to send message.", teamId);
         }
     }
 
@@ -101,50 +193,34 @@ public class SocketHandler extends TextWebSocketHandler {
         try {
             String messageJson = objectMapper.writeValueAsString(dataPayload);
             TextMessage textMessage = new TextMessage(messageJson);
-            int sentCount = sendMessagesToOpenSessions(targetSessions, textMessage);
+            int sentCount = 0;
 
+            for (WebSocketSession session : targetSessions) {
+                if (session.isOpen()) {
+                    try {
+                        synchronized (session) {
+                            session.sendMessage(textMessage);
+                        }
+                        sentCount++;
+                    } catch (IOException e) {
+                        log.error("Failed to send message to session {}: {}", session.getId(), e.getMessage());
+                    } catch (IllegalStateException e) {
+                        log.error("Illegal state for session {} (likely already closing): {}", session.getId(), e.getMessage());
+                        if (this.sessions.contains(session)) {
+                            this.sessions.remove(session);
+                        }
+                    }
+                } else {
+                    if (this.sessions.contains(session)) {
+                        this.sessions.remove(session);
+                    }
+                }
+            }
             if (sentCount > 0) {
                 log.info("Sent message to {} session(s): Message starts with: {}", sentCount, messageJson.substring(0, Math.min(messageJson.length(), 100)));
             }
         } catch (IOException e) {
             log.error("Failed to serialize data payload for WebSocket broadcast: {}", dataPayload, e);
-        }
-    }
-
-    private int sendMessagesToOpenSessions(List<WebSocketSession> targetSessions, TextMessage textMessage) {
-        int sentCount = 0;
-
-        for (WebSocketSession session : targetSessions) {
-            if (session.isOpen()) {
-                if (sendMessageToSession(session, textMessage)) {
-                    sentCount++;
-                }
-            } else {
-                removeClosedSession(session);
-            }
-        }
-
-        return sentCount;
-    }
-
-    private boolean sendMessageToSession(WebSocketSession session, TextMessage textMessage) {
-        try {
-            synchronized (this) {
-                session.sendMessage(textMessage);
-            }
-            return true;
-        } catch (IOException e) {
-            log.error("Failed to send message to session {}: {}", session.getId(), e.getMessage());
-        } catch (IllegalStateException e) {
-            log.error("Illegal state for session {} (likely already closing): {}", session.getId(), e.getMessage());
-            removeClosedSession(session);
-        }
-        return false;
-    }
-
-    private void removeClosedSession(WebSocketSession session) {
-        if (this.sessions.contains(session)) {
-            this.sessions.remove(session);
         }
     }
 }
