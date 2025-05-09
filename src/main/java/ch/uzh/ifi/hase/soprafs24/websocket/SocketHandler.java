@@ -72,14 +72,21 @@ public class SocketHandler extends TextWebSocketHandler {
             return;
         }
         List<WebSocketSession> teamSessions = new CopyOnWriteArrayList<>(); // Use a temporary list for iteration
-        for (WebSocketSession session : this.sessions) {
+        var iterator = this.sessions.iterator();
+        while (iterator.hasNext()) {
+            WebSocketSession session = iterator.next();
             if (session.isOpen()) {
-                List<Long> sessionTeamIds = (List<Long>) session.getAttributes().get("teamIds");
-                if (sessionTeamIds != null && sessionTeamIds.contains(teamId)) {
+                Long sessionTeamId = (Long) session.getAttributes().get("teamId");
+
+                if (sessionTeamId == null) {
+                    log.warn("Session {} does not have a teamId attribute. Skipping.", session.getId());
+                    continue;
+                }
+                if (teamId.equals(sessionTeamId)) {
                     teamSessions.add(session);
                 }
             } else {
-                this.sessions.remove(session); // Clean up closed sessions
+                iterator.remove(); // Clean up closed sessions safely
             }
         }
         if (!teamSessions.isEmpty()) {
@@ -94,39 +101,50 @@ public class SocketHandler extends TextWebSocketHandler {
         try {
             String messageJson = objectMapper.writeValueAsString(dataPayload);
             TextMessage textMessage = new TextMessage(messageJson);
-            int sentCount = 0;
+            int sentCount = sendMessagesToOpenSessions(targetSessions, textMessage);
 
-            for (WebSocketSession session : targetSessions) { // Iterate over the passed list
-                if (session.isOpen()) {
-                    try {
-                        synchronized(session) {
-                             session.sendMessage(textMessage);
-                        }
-                        sentCount++;
-                    } catch (IOException e) {
-                        log.error("Failed to send message to session {}: {}", session.getId(), e.getMessage());
-                    } catch (IllegalStateException e) {
-                        log.error("Illegal state for session {} (likely already closing): {}", session.getId(), e.getMessage());
-                        // This session might be in the process of closing, consider removing from main list if applicable
-                        // but be careful with concurrent modification if targetSessions is 'this.sessions'
-                        if (this.sessions.contains(session)) { // Check if it's from the main list
-                           this.sessions.remove(session);
-                        }
-                    }
-                } else {
-                     // If iterating over 'this.sessions' directly, remove here.
-                     // If iterating a copy, removing from 'this.sessions' is still good practice.
-                    if (this.sessions.contains(session)) {
-                       this.sessions.remove(session);
-                    }
-                }
-            }
             if (sentCount > 0) {
-                 log.info("Sent message to {} session(s): Message starts with: {}", sentCount, messageJson.substring(0, Math.min(messageJson.length(), 100)));
+                log.info("Sent message to {} session(s): Message starts with: {}", sentCount, messageJson.substring(0, Math.min(messageJson.length(), 100)));
             }
-
         } catch (IOException e) {
             log.error("Failed to serialize data payload for WebSocket broadcast: {}", dataPayload, e);
+        }
+    }
+
+    private int sendMessagesToOpenSessions(List<WebSocketSession> targetSessions, TextMessage textMessage) {
+        int sentCount = 0;
+
+        for (WebSocketSession session : targetSessions) {
+            if (session.isOpen()) {
+                if (sendMessageToSession(session, textMessage)) {
+                    sentCount++;
+                }
+            } else {
+                removeClosedSession(session);
+            }
+        }
+
+        return sentCount;
+    }
+
+    private boolean sendMessageToSession(WebSocketSession session, TextMessage textMessage) {
+        try {
+            synchronized (this) {
+                session.sendMessage(textMessage);
+            }
+            return true;
+        } catch (IOException e) {
+            log.error("Failed to send message to session {}: {}", session.getId(), e.getMessage());
+        } catch (IllegalStateException e) {
+            log.error("Illegal state for session {} (likely already closing): {}", session.getId(), e.getMessage());
+            removeClosedSession(session);
+        }
+        return false;
+    }
+
+    private void removeClosedSession(WebSocketSession session) {
+        if (this.sessions.contains(session)) {
+            this.sessions.remove(session);
         }
     }
 }

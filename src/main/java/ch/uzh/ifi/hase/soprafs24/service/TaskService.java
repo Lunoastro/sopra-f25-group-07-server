@@ -373,6 +373,16 @@ public class TaskService {
         validateToBeEditedFields(task, taskPutDTO);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.save(task);
+        // Notify all users in the team about the updated task
+        TaskGetDTO taskGetDTO = DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task);
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", taskGetDTO);
+        // Notify the creator about the updated task
+        notificationService.notifyTeamMembers(task.getcreatorId(), "task", taskGetDTO);
+        // Notify the assignee about the updated task if it is already assigned
+        if (task.getIsAssignedTo() != null) {
+            notificationService.notifyTeamMembers(task.getIsAssignedTo(), "task", taskGetDTO);
+        }
+        log.info("Task with name: {} updated successfully", task.getName());
         return task;
     }
 
