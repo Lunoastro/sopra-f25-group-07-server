@@ -12,7 +12,7 @@ import lombok.Setter;
 @Builder
 public class DatabaseChangeEventDTO<T> {
     private String entityType; // e.g., "task", "user", "team"
-    private T payload;         // The actual data (e.g., TaskGetDTO, UserGetDTO)
+    private T payload;         // payload data e.g a list of all tasks
 
     @Override
     public String toString() {

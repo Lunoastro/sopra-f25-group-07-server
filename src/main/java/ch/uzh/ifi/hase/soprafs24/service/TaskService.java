@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.stream.Collectors;
 import java.util.Objects;
+import java.util.Collections;
 
 
 @Service
@@ -208,13 +209,13 @@ public class TaskService {
         if (isActive != null) {
             allTasks = allTasks.stream()
                            .filter(task -> isActive.equals(task.getActiveStatus())) // True = active Tasks, False = inactive Tasks
-                           .collect(Collectors.toList());
+                        .toList();
         }
         // Filter by type (recurring)
         if (type != null) {
             allTasks = allTasks.stream()
                             .filter(task -> checkTaskType(task).equalsIgnoreCase(type)) // Check if frequency is null -> additional task
-                            .collect(Collectors.toList());
+                            .toList();
         }
         return allTasks;
     }
@@ -303,15 +304,8 @@ public class TaskService {
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.save(task);
         taskRepository.flush();
-        TaskGetDTO taskGetDTO = DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task);
         // Notify all users in the team about the new task
-        notificationService.notifyTeamMembers(task.getTeamId(), "task", taskGetDTO);
-        // Notify the creator about the new task
-        notificationService.notifyTeamMembers(task.getcreatorId(), "task", taskGetDTO);
-        // Notify the assignee about the new task if it is already assigned
-        if (task.getIsAssignedTo() != null) {
-            notificationService.notifyTeamMembers(task.getIsAssignedTo(), "task", taskGetDTO);
-        }
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
         log.info("Task with name: {} created successfully", task.getName());
         return task;
     }
@@ -418,6 +412,18 @@ public class TaskService {
     }
 
     //-------------------------------------helper functions here-------------------------------------------------
+    private List<TaskGetDTO> getCurrentTasksForTeamDTO(Long teamId) {
+        if (teamId == null) {
+            return Collections.emptyList();
+        }
+        List<Task> teamTasks = taskRepository.findAll().stream()
+                                    .filter(t -> teamId.equals(t.getTeamId()))
+                                    .toList();
+    
+        return teamTasks.stream()
+                        .map(DTOMapper.INSTANCE::convertEntityToTaskGetDTO)
+                        .toList();
+    }
 
     public String checkTaskType(Task task) {
         String taskType;
