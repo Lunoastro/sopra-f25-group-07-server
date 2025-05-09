@@ -21,7 +21,6 @@ import java.util.Date;
 import java.util.Calendar;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.Collections;
 
@@ -325,7 +324,12 @@ public class TaskService {
         } else{
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set");
         }
-        return taskRepository.save(task);
+        taskRepository.save(task);
+        taskRepository.flush();
+        // Notify all users in the team about the claimed task
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        log.info("Task with name: {} claimed successfully by user with id: {}", task.getName(), user.getId());
+        return task;
     }
 
     public void quitTask(Long taskId, Long userId) {
@@ -360,6 +364,10 @@ public class TaskService {
         checkIsPaused(task);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.deleteById(taskId);
+        taskRepository.flush();
+        // Notify all users in the team about the deleted task
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        log.info("Task with id: {} deleted successfully", taskId);
     }
 
     public Task updateTask(Task task, Task taskPutDTO) {
@@ -367,15 +375,9 @@ public class TaskService {
         validateToBeEditedFields(task, taskPutDTO);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.save(task);
+        taskRepository.flush();
         // Notify all users in the team about the updated task
-        TaskGetDTO taskGetDTO = DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task);
-        notificationService.notifyTeamMembers(task.getTeamId(), "task", taskGetDTO);
-        // Notify the creator about the updated task
-        notificationService.notifyTeamMembers(task.getcreatorId(), "task", taskGetDTO);
-        // Notify the assignee about the updated task if it is already assigned
-        if (task.getIsAssignedTo() != null) {
-            notificationService.notifyTeamMembers(task.getIsAssignedTo(), "task", taskGetDTO);
-        }
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
         log.info("Task with name: {} updated successfully", task.getName());
         return task;
     }
