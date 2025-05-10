@@ -5,6 +5,7 @@ import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,12 +43,15 @@ public class TeamService {
   private final UserRepository userRepository;
   private final UserService userService;
   private final TaskService taskService;
+  private final SocketHandler socketHandler;
 
   @Autowired
   public TeamService(@Qualifier("teamRepository") TeamRepository teamRepository,
                      @Qualifier("userRepository") UserRepository userRepository,
                      @Qualifier("userService") UserService userService, 
-                     @Qualifier("taskService") TaskService taskService) {
+                     @Qualifier("taskService") TaskService taskService,
+                     @Qualifier("socketHandler") SocketHandler socketHandler) {
+    this.socketHandler = socketHandler;
     this.teamRepository = teamRepository;
     this.userRepository = userRepository;
     this.userService = userService;
@@ -78,6 +82,11 @@ public class TeamService {
 
     userRepository.save(creator);
     userRepository.flush();
+
+    // Associate the socket session with the team
+    socketHandler.associateSessionWithTeam(userId, newTeam.getId());
+    // Notify the user about the successful creation
+    log.debug("User {} created team {}", userId, newTeam.getId());
 
     log.debug("Created Information for Team: {}", newTeam);
     return newTeam;
@@ -112,8 +121,12 @@ public class TeamService {
     // Save updates
     userRepository.save(user);
     teamRepository.save(team);
+    socketHandler.associateSessionWithTeam(userId, team.getId());
+    // Notify the user about the successful join
+    log.debug("User {} joined team {}", userId, team.getId());
     userRepository.flush();
     teamRepository.flush();
+    
   }
   
   public void updateTeamName(Long teamId, Long userId, String newTeamName) {
