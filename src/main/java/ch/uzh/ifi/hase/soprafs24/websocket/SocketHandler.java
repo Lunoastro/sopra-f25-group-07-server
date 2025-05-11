@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Map;
+import java.util.Iterator;
 
 @Component
 public class SocketHandler extends TextWebSocketHandler {
@@ -40,6 +41,14 @@ public class SocketHandler extends TextWebSocketHandler {
         this.teamRepository = teamRepository;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
+    }
+
+    public List<WebSocketSession> getSessionsForTesting() {
+        return sessions;
+    }
+
+    public Map<Long, WebSocketSession> getPendingSessionsMapForTesting() {
+        return pendingSessionsMap;
     }
 
     @Override
@@ -226,7 +235,9 @@ public class SocketHandler extends TextWebSocketHandler {
             return;
         }
         List<WebSocketSession> teamSessions = new CopyOnWriteArrayList<>();
-        for (WebSocketSession session : this.sessions) {
+        Iterator<WebSocketSession> iterator = this.sessions.iterator();
+        while (iterator.hasNext()) {
+            WebSocketSession session = iterator.next();
             Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
             if (session.isOpen() && Boolean.TRUE.equals(authenticated)) {
                 Long sessionTeamId = (Long) session.getAttributes().get("teamId");
@@ -234,7 +245,7 @@ public class SocketHandler extends TextWebSocketHandler {
                     teamSessions.add(session);
                 }
             } else if (!session.isOpen()) {
-                this.sessions.remove(session);
+                iterator.remove();
             }
         }
         if (!teamSessions.isEmpty()) {
