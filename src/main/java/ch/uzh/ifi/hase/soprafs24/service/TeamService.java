@@ -5,6 +5,7 @@ import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Collections;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
 
 import java.util.List;
 import java.util.UUID;
@@ -42,12 +46,18 @@ public class TeamService {
   private final UserRepository userRepository;
   private final UserService userService;
   private final TaskService taskService;
+  private final SocketHandler socketHandler;
+  private final WebSocketNotificationService notificationService;
 
   @Autowired
   public TeamService(@Qualifier("teamRepository") TeamRepository teamRepository,
                      @Qualifier("userRepository") UserRepository userRepository,
                      @Qualifier("userService") UserService userService, 
-                     @Qualifier("taskService") TaskService taskService) {
+                     @Qualifier("taskService") TaskService taskService,
+                     @Qualifier("socketHandler") SocketHandler socketHandler,
+                     @Qualifier("webSocketNotificationService") WebSocketNotificationService notificationService) {
+    this.notificationService = notificationService;
+    this.socketHandler = socketHandler;
     this.teamRepository = teamRepository;
     this.userRepository = userRepository;
     this.userService = userService;
@@ -78,6 +88,11 @@ public class TeamService {
 
     userRepository.save(creator);
     userRepository.flush();
+
+    // Associate the socket session with the team
+    socketHandler.associateSessionWithTeam(userId, newTeam.getId());
+    // Notify the user about the successful creation
+    log.debug("User {} created team {}", userId, newTeam.getId());
 
     log.debug("Created Information for Team: {}", newTeam);
     return newTeam;
@@ -112,8 +127,13 @@ public class TeamService {
     // Save updates
     userRepository.save(user);
     teamRepository.save(team);
+    socketHandler.associateSessionWithTeam(userId, team.getId());
     userRepository.flush();
     teamRepository.flush();
+    // Notify the team about the new member
+    List<UserGetDTO> currentMembers = getCurrentMembersForTeamDTO(team.getId());
+    notificationService.notifyTeamMembers(team.getId(), "Team", currentMembers);
+
   }
   
   public void updateTeamName(Long teamId, Long userId, String newTeamName) {
@@ -296,4 +316,39 @@ public class TeamService {
           HttpStatus.CONFLICT,
           "All team colours are already in use for team " + team.getId());
   }
-}
+
+  // Helper function to get current members of a team as UserGetDTOs
+  public List<UserGetDTO> getCurrentMembersForTeamDTO(Long teamId) {
+    if (teamId == null) {
+        log.warn("getCurrentMembersForTeamDTO called with null teamId.");
+        return Collections.emptyList();
+    }
+    Team team;
+    try {
+        team = getTeamById(teamId); // Uses existing method which throws if not found
+    } catch (ResponseStatusException e) {
+        log.warn("Team not found with id {} while trying to get current members DTO.", teamId);
+        return Collections.emptyList(); // Or re-throw if that's preferred
+    }
+    
+    List<Long> memberIds = team.getMembers();
+
+    if (memberIds == null || memberIds.isEmpty()) {
+        return Collections.emptyList();
+    }
+
+    return memberIds.stream()
+            .map(memberId -> {
+                try {
+                    return userService.getUserById(memberId); // Fetch User entity for each ID
+                } catch (ResponseStatusException e) {
+                    log.warn("User with ID {} not found while fetching members for team {}. Skipping.", memberId, teamId);
+                    return null; // Skip if a user ID in the list is somehow invalid
+                }
+            })
+            .filter(Objects::nonNull) // Filter out null users if any were skipped
+            .map(user -> DTOMapper.INSTANCE.convertEntityToUserGetDTO(user)) // Convert User to UserGetDTO
+            .collect(Collectors.toList());
+  }
+  }
+

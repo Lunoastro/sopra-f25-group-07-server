@@ -6,7 +6,8 @@ import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
-
+import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
+import ch.uzh.ifi.hase.soprafs24.service.WebSocketNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -30,6 +31,12 @@ class TeamServiceTest {
 
     @Mock
     private UserService userService; // Inject the UserService
+
+    @Mock
+    private SocketHandler socketHandler;
+
+    @Mock
+    private WebSocketNotificationService webSocketNotificationService;
 
     @InjectMocks
     private TeamService teamService;

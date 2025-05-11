@@ -3,8 +3,11 @@ package ch.uzh.ifi.hase.soprafs24.service;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +21,9 @@ import java.util.Date;
 import java.util.Calendar;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.stream.Collectors;
 import java.util.Objects;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -31,6 +35,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final CalendarService calendarService;
+    private final WebSocketNotificationService notificationService;
     private String recurringTask = "recurring"; 
     private String additionalTask = "additional"; 
 
@@ -38,11 +43,13 @@ public class TaskService {
     public TaskService(@Qualifier("taskRepository") TaskRepository taskRepository,
             @Qualifier("userRepository") UserRepository userRepository, 
             @Qualifier("userService") UserService userService,
-            @Qualifier("calendarService") CalendarService calendarService) {
+            @Qualifier("calendarService") CalendarService calendarService,
+            @Qualifier("webSocketNotificationService") WebSocketNotificationService notificationService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.userService = userService;
         this.calendarService = calendarService;
+        this.notificationService = notificationService;
     }
 
     // validate PostDTO based on the fields
@@ -202,7 +209,7 @@ public class TaskService {
         if (isActive != null) {
             allTasks = allTasks.stream()
                            .filter(task -> isActive.equals(task.getActiveStatus())) // True = active Tasks, False = inactive Tasks
-                           .collect(Collectors.toList());
+                        .collect(Collectors.toList());
         }
         // Filter by type (recurring)
         if (type != null) {
@@ -319,6 +326,10 @@ public class TaskService {
         }
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.save(task);
+        taskRepository.flush();
+        // Notify all users in the team about the new task
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        log.info("Task with name: {} created successfully", task.getName());
         return task;
     }
 
@@ -337,7 +348,12 @@ public class TaskService {
         } else{
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User has no color set");
         }
-        return taskRepository.save(task);
+        taskRepository.save(task);
+        taskRepository.flush();
+        // Notify all users in the team about the claimed task
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        log.info("Task with name: {} claimed successfully by user with id: {}", task.getName(), user.getId());
+        return task;
     }
 
     public void quitTask(Long taskId, Long userId) {
@@ -373,6 +389,10 @@ public class TaskService {
         verifyLuckyDraw(task);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.deleteById(taskId);
+        taskRepository.flush();
+        // Notify all users in the team about the deleted task
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        log.info("Task with id: {} deleted successfully", taskId);
     }
 
     public Task updateTask(Task task, Task taskPutDTO) {
@@ -380,6 +400,10 @@ public class TaskService {
         validateToBeEditedFields(task, taskPutDTO);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.save(task);
+        taskRepository.flush();
+        // Notify all users in the team about the updated task
+        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        log.info("Task with name: {} updated successfully", task.getName());
         return task;
     }
 
@@ -415,6 +439,18 @@ public class TaskService {
     }
 
     //-------------------------------------helper functions here-------------------------------------------------
+    private List<TaskGetDTO> getCurrentTasksForTeamDTO(Long teamId) {
+        if (teamId == null) {
+            return Collections.emptyList();
+        }
+        List<Task> teamTasks = taskRepository.findAll().stream()
+                                    .filter(t -> teamId.equals(t.getTeamId()))
+                                    .toList();
+    
+        return teamTasks.stream()
+                        .map(DTOMapper.INSTANCE::convertEntityToTaskGetDTO)
+                        .toList();
+    }
 
     public String checkTaskType(Task task) {
         String taskType;

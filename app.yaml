@@ -3,3 +3,31 @@
 
 runtime: java17
 instance_class: F2
+env: flex
+
+
+network:
+  #ensures a client stays connected to the same instance
+  session_affinity: true
+
+readiness_check:
+  path: "/actuator/health/readiness" 
+  check_interval_sec: 60            
+  timeout_sec: 5                    # Seconds before a check times out
+  failure_threshold: 3              # Consecutive failures to mark instance unhealthy
+  success_threshold: 1              # Consecutive successes to mark instance healthy
+  app_start_timeout_sec: 600        # Max time (seconds) for app to start before first check (10 minutes)
+
+liveness_check:
+  path: "/actuator/health/liveness"   
+  check_interval_sec: 60
+  timeout_sec: 5
+  failure_threshold: 4              # Consecutive failures before instance is restarted
+  success_threshold: 1
+
+automatic_scaling:
+  min_num_instances: 0    
+  cool_down_period_sec: 300
+  cpu_utilization:
+    target_utilization: 0.7 # Target CPU utilization (70%) to trigger scaling up/down
+  max_concurrent_requests: 1000
