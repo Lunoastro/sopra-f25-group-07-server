@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Objects;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -208,13 +209,13 @@ public class TaskService {
         if (isActive != null) {
             allTasks = allTasks.stream()
                            .filter(task -> isActive.equals(task.getActiveStatus())) // True = active Tasks, False = inactive Tasks
-                        .toList();
+                        .collect(Collectors.toList());
         }
         // Filter by type (recurring)
         if (type != null) {
             allTasks = allTasks.stream()
                             .filter(task -> checkTaskType(task).equalsIgnoreCase(type)) // Check if frequency is null -> additional task
-                            .toList();
+                            .collect(Collectors.toList());
         }
         return allTasks;
     }
