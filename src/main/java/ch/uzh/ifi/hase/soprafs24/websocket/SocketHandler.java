@@ -65,15 +65,13 @@ public class SocketHandler extends TextWebSocketHandler {
         if (authenticated == null || !authenticated) {
             tryAuthenticate(session, message);
         } else {
-            log.info("Received regular message from authenticated session {}: '{}'", session.getId(),
-                    message.getPayload());
+            log.info("Received regular message from an authenticated session.");
         }
     }
 
     private void tryAuthenticate(WebSocketSession session, TextMessage message) throws IOException {
         String payload = message.getPayload();
-        log.debug("Attempting to authenticate session {} with payload: {}", session.getId(), payload);
-
+        log.debug("Attempting to authenticate a session.");
         try {
             JsonNode jsonNode = objectMapper.readTree(payload);
             if (jsonNode.has("type") && "auth".equalsIgnoreCase(jsonNode.get("type").asText())
@@ -84,9 +82,7 @@ public class SocketHandler extends TextWebSocketHandler {
                 if (rawToken != null && rawToken.toLowerCase().startsWith("bearer ")) {
                     token = rawToken.substring(7);
                 } else {
-                    log.warn("Auth message for session {} received without 'Bearer ' prefix. Assuming raw token.",
-                            session.getId());
-                    token = rawToken;
+                    log.warn("Auth message received without 'Bearer ' prefix.");
                 }
 
                 if (token != null && !token.isEmpty()) {
@@ -123,7 +119,6 @@ public class SocketHandler extends TextWebSocketHandler {
                             session.getAttributes().put("authenticated", true);
                             session.sendMessage(new TextMessage(
                                     "{\"type\":\"auth_success\",\"message\":\"Authentication successful\"}"));
-                            return;
                         } else {
                             // This case should ideally not be reached if validateToken works correctly
                             log.error(
@@ -149,10 +144,7 @@ public class SocketHandler extends TextWebSocketHandler {
                     session.close(CloseStatus.POLICY_VIOLATION.withReason("Token missing or empty"));
                 }
             } else {
-                log.warn("Received non-authentication message from unauthenticated session {}. Payload: {}",
-                        session.getId(), payload);
-                session.sendMessage(
-                        new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Authentication required\"}"));
+                log.warn("Received non-authentication message from unauthenticated session {}.", session.getId());
                 session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required as first message"));
             }
         } catch (JsonProcessingException e) {
@@ -261,36 +253,52 @@ public class SocketHandler extends TextWebSocketHandler {
         try {
             String messageJson = objectMapper.writeValueAsString(dataPayload);
             TextMessage textMessage = new TextMessage(messageJson);
-            int sentCount = 0;
-
-            for (WebSocketSession session : targetSessions) {
-                if (session.isOpen()) {
-                    try {
-                        synchronized (session) {
-                            session.sendMessage(textMessage);
-                        }
-                        sentCount++;
-                    } catch (IOException e) {
-                        log.error("Failed to send message to session {}: {}", session.getId(), e.getMessage());
-                    } catch (IllegalStateException e) {
-                        log.error("Illegal state for session {} (likely already closing): {}", session.getId(),
-                                e.getMessage());
-                        if (this.sessions.contains(session)) {
-                            this.sessions.remove(session);
-                        }
-                    }
-                } else {
-                    if (this.sessions.contains(session)) {
-                        this.sessions.remove(session);
-                    }
-                }
-            }
-            if (sentCount > 0) {
-                log.info("Sent message to {} session(s): Message starts with: {}", sentCount,
-                        messageJson.substring(0, Math.min(messageJson.length(), 100)));
-            }
+            int sentCount = sendMessagesToOpenSessions(targetSessions, textMessage);
+            logSentMessageInfo(sentCount, messageJson);
         } catch (IOException e) {
             log.error("Failed to serialize data payload for WebSocket broadcast: {}", dataPayload, e);
+        }
+    }
+
+    private int sendMessagesToOpenSessions(List<WebSocketSession> targetSessions, TextMessage textMessage) {
+        int sentCount = 0;
+        for (WebSocketSession session : targetSessions) {
+            if (session.isOpen()) {
+                if (sendMessageToSession(session, textMessage)) {
+                    sentCount++;
+                }
+            } else {
+                removeClosedSession(session);
+            }
+        }
+        return sentCount;
+    }
+
+    private boolean sendMessageToSession(WebSocketSession session, TextMessage textMessage) {
+        try {
+            synchronized (this) {
+                session.sendMessage(textMessage);
+            }
+            return true;
+        } catch (IOException e) {
+            log.error("Failed to send message to session {}: {}", session.getId(), e.getMessage());
+        } catch (IllegalStateException e) {
+            log.error("Illegal state for session {} (likely already closing): {}", session.getId(), e.getMessage());
+            removeClosedSession(session);
+        }
+        return false;
+    }
+
+    private void removeClosedSession(WebSocketSession session) {
+        if (this.sessions.contains(session)) {
+            this.sessions.remove(session);
+        }
+    }
+
+    private void logSentMessageInfo(int sentCount, String messageJson) {
+        if (sentCount > 0) {
+            log.info("Sent message to {} session(s): Message starts with: {}", sentCount,
+                    messageJson.substring(0, Math.min(messageJson.length(), 100)));
         }
     }
 }
