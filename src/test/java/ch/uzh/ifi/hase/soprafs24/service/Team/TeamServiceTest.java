@@ -7,6 +7,7 @@ import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
+import ch.uzh.ifi.hase.soprafs24.service.WebSocketNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -17,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.net.http.WebSocket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +35,9 @@ class TeamServiceTest {
 
     @Mock
     private SocketHandler socketHandler;
+
+    @Mock
+    private WebSocketNotificationService webSocketNotificationService;
 
     @InjectMocks
     private TeamService teamService;
