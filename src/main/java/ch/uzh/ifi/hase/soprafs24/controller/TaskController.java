@@ -17,6 +17,7 @@ import java.util.Calendar;
 
 import java.util.ArrayList;
 import java.util.List;
+
 @RestController
 public class TaskController {
 
@@ -48,6 +49,23 @@ public class TaskController {
         // Convert the created entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(createdTask);
     }
+
+    @PostMapping("/tasks/luckyDraw")
+    public List<TaskGetDTO> luckyDraw(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
+        // Extract the token from the Bearer header
+        String userToken = validateAuthorizationHeader(authorizationHeader);
+        teamService.validateTeamPaused(userToken);
+        Long userTeamId = userrepository.findByToken(userToken).getTeamId();
+        // Retrieve all active tasks using the service
+        List<Task> updatedTasks = taskService.luckyDrawTasks(userTeamId);
+
+        List<TaskGetDTO> taskGetDTOs = new ArrayList<>();
+        for (Task task : updatedTasks) {
+            taskGetDTOs.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
+        }
+        return taskGetDTOs;
+    }
+    
 
     @GetMapping("/tasks")
     @ResponseStatus(HttpStatus.OK)
@@ -194,6 +212,9 @@ public class TaskController {
             // For recurring tasks: use existing logic to calculate the next deadline
             taskService.calculateDeadline(task);
         }
+
+        // Lucky draw effect is removed
+        taskService.unLuckyDraw(task);
         
         // Save the updated task
         taskService.saveTask(task);
@@ -225,6 +246,9 @@ public class TaskController {
         
         List<TaskGetDTO> updatedTasks = new ArrayList<>();
         
+        // Lucky draw effect is removed
+        taskService.unLuckyDraw(task);
+
         String taskType = taskService.checkTaskType(task);
         if (additionalTask.equals(taskType)) {
             taskService.deleteTask(taskId);

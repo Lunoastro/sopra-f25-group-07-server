@@ -24,4 +24,5 @@ public class TaskGetDTO {
     private Integer daysVisible;
     private Integer frequency;
     private String startDate;
+    private Boolean luckyDraw;
 }

@@ -213,6 +213,29 @@ public class TaskService {
         return allTasks;
     }
 
+    public List<Task> luckyDrawTasks(Long userTeamId) {
+        if (userTeamId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User team ID cannot be null");
+        }
+        List<Task> activeTasks = getFilteredTasks(true, null);
+        // Filter out tasks that are already claimed
+        if (activeTasks == null || activeTasks.isEmpty()) {
+            // Return an empty list if no tasks are provided
+            return List.of(); 
+        }
+        // Filter tasks that are not assigned to anyone and belong to the user's team
+        List<Task> unclaimedTasks  = activeTasks.stream()
+                .filter(task -> task.getIsAssignedTo() == null) // Check if the task is not assigned to anyone
+                .filter(task -> task.getTeamId().equals(userTeamId)) // Check if the task belongs to the user's team
+                .collect(Collectors.toList());
+        
+        for (Task task : unclaimedTasks) {
+            // Set the color to null for unclaimed tasks
+            task.setLuckyDraw(true);
+        }
+        return unclaimedTasks;
+    }
+
     public void pauseAllTasksInTeam() {
         List<Task> tasks = getAllTasks();
         for (Task task : tasks) {
@@ -329,13 +352,13 @@ public class TaskService {
         if (!Objects.equals(task.getIsAssignedTo(), userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not assigned to this task, so you cannot quit it.");
         }
-
-
+        // Check if the task is has been lucky drawn
+        verifyLuckyDraw(task);
         // If checks pass, unassign the task
         unassignTask(task);
         log.info("User {} successfully quit task {}", userId, taskId);
     }
-    public void updateAllTaskColors(User user) { // update all tasks of a user with the color of the user -> FUTURE USE ONCE WE HAVE WEBSOCKET
+    public void updateAllTaskColors(User user) { // update all tasks of a user with the color of the user
         List<Task> userTasks = taskRepository.findTaskByIsAssignedTo(user.getId());
         for (Task task : userTasks) {
             task.setColor(user.getColor());
@@ -347,6 +370,7 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
         checkIsPaused(task);
+        verifyLuckyDraw(task);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.deleteById(taskId);
     }
@@ -406,6 +430,20 @@ public class TaskService {
     private void verifyTaskExistence(Task task) {
         if (taskRepository.findTaskById(task.getId()) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Task already exists");
+        }
+    }
+
+    private void verifyLuckyDraw(Task task) {
+        // Check if the task is has been lucky drawn
+        if (Boolean.TRUE.equals(task.getLuckyDraw())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot quit a task that has been lucky drawn.");
+        }
+    }
+
+    public void unLuckyDraw(Task task) {
+        // Check if the task is has been lucky drawn
+        if (Boolean.TRUE.equals(task.getLuckyDraw())) {
+            task.setLuckyDraw(false);
         }
     }
 

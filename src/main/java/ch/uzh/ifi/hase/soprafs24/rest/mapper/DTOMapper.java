@@ -105,6 +105,7 @@ public interface DTOMapper {
   @Mapping(source = "daysVisible", target = "daysVisible")
   @Mapping(source = "startDate", target = "startDate", dateFormat = "yyyy-MM-dd")
   @Mapping(source = "frequency", target = "frequency")
+  @Mapping(source = "luckyDraw", target = "luckyDraw")
   TaskGetDTO convertEntityToTaskGetDTO(Task task);
 
   @Mapping(source = "id", target = "id")
@@ -120,6 +121,7 @@ public interface DTOMapper {
   @Mapping(source = "daysVisible", target = "daysVisible")
   @Mapping(source = "frequency", target = "frequency")
   @Mapping(source = "startDate", target = "startDate", dateFormat = "yyyy-MM-dd")
+  @Mapping(source = "luckyDraw", target = "luckyDraw")
   Task convertTaskGetDTOtoEntity(TaskGetDTO taskGetDTO);
 
   @Mapping(source = "isAssignedTo", target = "isAssignedTo")

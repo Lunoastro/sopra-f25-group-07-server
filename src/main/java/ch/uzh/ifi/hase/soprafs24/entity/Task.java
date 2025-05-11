@@ -74,6 +74,9 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private Long teamId;
 
+    @Column(nullable = true)
+    private Boolean luckyDraw;
+
     // Getters and Setters
     public Long getId() {
         return id;
@@ -177,6 +180,14 @@ public class Task implements Serializable {
 
     public void setActiveStatus(Boolean activeStatus) {
         this.activeStatus = activeStatus;
+    }
+
+    public Boolean getLuckyDraw() {
+        return luckyDraw;
+    }
+
+    public void setLuckyDraw(Boolean luckyDraw) {
+        this.luckyDraw = luckyDraw;
     }
 
     public Long getcreatorId() {
