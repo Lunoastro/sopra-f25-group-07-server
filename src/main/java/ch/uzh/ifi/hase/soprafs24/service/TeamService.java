@@ -19,7 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Collections;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
-import ch.uzh.ifi.hase.soprafs24.service.WebSocketNotificationService;
 
 import java.util.List;
 import java.util.UUID;
