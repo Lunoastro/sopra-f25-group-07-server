@@ -26,7 +26,7 @@ liveness_check:
   success_threshold: 1
 
 automatic_scaling:
-  min_num_instances: 0    
+  min_num_instances: 1    
   cool_down_period_sec: 300
   cpu_utilization:
     target_utilization: 0.7 # Target CPU utilization (70%) to trigger scaling up/down
