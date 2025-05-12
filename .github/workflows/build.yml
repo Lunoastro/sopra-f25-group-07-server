@@ -76,7 +76,7 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           deliverables: app.yaml
-          version: v1
+          version: v${{ github.sha }}
           credentials: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
           promote: true
 
