@@ -24,10 +24,4 @@ liveness_check:
   timeout_sec: 5
   failure_threshold: 4              # Consecutive failures before instance is restarted
   success_threshold: 1
-
-automatic_scaling:
-  min_num_instances: 1    
-  cool_down_period_sec: 300
-  cpu_utilization:
-    target_utilization: 0.7 # Target CPU utilization (70%) to trigger scaling up/down
-  max_concurrent_requests: 1000
+  app_start_timeout_sec: 600        # Max time (seconds) for app to start before first check (10 minutes)
