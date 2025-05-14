@@ -1,8 +1,10 @@
 package ch.uzh.ifi.hase.soprafs24.service;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
@@ -24,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Objects;
 import java.util.Collections;
 import java.util.stream.Collectors;
+import java.util.Comparator;
+
+
 
 
 @Service
@@ -34,6 +39,7 @@ public class TaskService {
     private final Logger log = LoggerFactory.getLogger(TaskService.class);
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final TeamRepository teamRepository;
     private final CalendarService calendarService;
     private final WebSocketNotificationService notificationService;
     private String recurringTask = "recurring"; 
@@ -42,11 +48,13 @@ public class TaskService {
     @Autowired
     public TaskService(@Qualifier("taskRepository") TaskRepository taskRepository,
             @Qualifier("userRepository") UserRepository userRepository, 
+            @Qualifier("teamRepository") TeamRepository teamRepository,
             @Qualifier("userService") UserService userService,
             @Qualifier("calendarService") CalendarService calendarService,
             @Qualifier("webSocketNotificationService") WebSocketNotificationService notificationService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.teamRepository = teamRepository;
         this.userService = userService;
         this.calendarService = calendarService;
         this.notificationService = notificationService;
@@ -242,6 +250,54 @@ public class TaskService {
         }
         return unclaimedTasks;
     }
+
+    public List<Task> autodistributeTasks(Long userTeamId) {
+        // Step 1: Load the team entity
+        Team team = teamRepository.findTeamById(userTeamId);
+        if (team == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found with ID " + userTeamId);
+        }
+        
+        // Step 2: Get the team members (user IDs), then load full User entities
+        List<Long> memberIds = team.getMembers();
+        List<User> teamMembers = userRepository.findAllById(memberIds);
+        if (teamMembers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No users found for team ID " + userTeamId);
+        }
+
+        // Step 3: Get all unclaimed tasks for this team
+        List<Task> unclaimedTasks = getFilteredTasks(true, null).stream()
+                .filter(task -> task.getIsAssignedTo() == null)
+                .filter(task -> task.getTeamId().equals(userTeamId))
+                .sorted(Comparator.comparingInt(Task::getValue).reversed()) // Sort by XP desc
+                .collect(Collectors.toList());
+
+        if (unclaimedTasks.isEmpty()) {
+            return List.of();
+        }
+
+        // Step 4: Sort users by XP ascending
+        teamMembers.sort(Comparator.comparingInt(User::getXp));
+
+        // Step 5: Round-robin XP assignment
+        int userIndex = 0;
+        for (Task task : unclaimedTasks) {
+            User user = teamMembers.get(userIndex);
+            task.setIsAssignedTo(user.getId());
+            task.setColor(user.getColor());
+
+            userRepository.save(user);
+            taskRepository.save(task);
+            
+            userIndex = (userIndex + 1) % teamMembers.size();
+        }
+
+        notificationService.notifyTeamMembers(userTeamId, "task", getCurrentTasksForTeamDTO(userTeamId));
+
+        return unclaimedTasks;
+        }
+
+    
 
     public void pauseAllTasksInTeam() {
         List<Task> tasks = getAllTasks();
