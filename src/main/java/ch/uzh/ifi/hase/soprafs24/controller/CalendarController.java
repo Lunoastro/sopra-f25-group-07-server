@@ -82,7 +82,7 @@ public class CalendarController {
 
     @GetMapping("/events")
     @ResponseStatus(HttpStatus.OK)
-    public List<Event> getUpcomingEvents(@RequestParam(defaultValue = "10") int limit, @RequestHeader("Authorization") String authorizationHeader) throws IOException {
+    public List<Event> getUpcomingEvents(@RequestParam(defaultValue = "500") int limit, @RequestHeader("Authorization") String authorizationHeader) throws IOException {
         String token = validateAuthorizationHeader(authorizationHeader);
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
@@ -114,7 +114,7 @@ public class CalendarController {
     @ResponseStatus(HttpStatus.OK)
     public List<Map<String, Object>> getCombinedCalendar(
             @RequestParam(defaultValue = "true") boolean activeOnly,
-            @RequestParam(defaultValue = "20") int limit, 
+            @RequestParam(defaultValue = "500") int limit, 
             @RequestHeader("Authorization") String authorizationHeader) throws IOException {
 
         String token = validateAuthorizationHeader(authorizationHeader);

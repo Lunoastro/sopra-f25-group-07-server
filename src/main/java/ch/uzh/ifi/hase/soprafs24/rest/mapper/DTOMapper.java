@@ -133,6 +133,7 @@ public interface DTOMapper {
   @Mapping(source = "startDate", target = "startDate",dateFormat = "yyyy-MM-dd")
   @Mapping(source = "color", target = "color")
   @Mapping(source = "activeStatus", target = "activeStatus")
+  @Mapping(source = "frequency", target = "frequency")
   Task convertTaskPutDTOtoEntity(TaskPutDTO taskPutDTO);
 
   @Mapping(source = "id", target = "id")

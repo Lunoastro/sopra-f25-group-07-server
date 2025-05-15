@@ -202,7 +202,8 @@ public class UserService {
 public User getUserByToken(String token) {
   User user = userRepository.findByToken(token); 
   if (user == null) {
-      log.warn("User not found for token: {}", token);
+    log.warn("User not found for token: {}", token);
+    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found for token: " + token);
   }
   return user;
 }

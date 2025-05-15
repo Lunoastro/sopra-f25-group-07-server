@@ -57,9 +57,6 @@ public class TaskService {
         if (dto.getName() == null || dto.getName().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be null or empty");
         }
-        if (taskRepository.findTaskByName(dto.getName()) != null && !dto.getName().equals(taskRepository.findTaskByName(dto.getName()).getName())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Task name already exists");
-        }
         if (dto.getValue() == null || dto.getValue() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task value cannot be null or less than or equal to 0");
         }
@@ -79,7 +76,11 @@ public class TaskService {
         if (dto.getStartDate() != null && dto.getStartDate().before(new Date())) {
             throw new IllegalArgumentException("Invalid or past start date provided.");
         }
-        if (dto.getDaysVisible() == null && dto.getDaysVisible() > dto.getFrequency()) { // half also includes 0 and negative values
+        int half = dto.getFrequency() / 2;
+        if (half == 0) { // SPECIAL CASE: if frequency is 1, we set half to 1 as daysVisible can never be 0
+            half = 1;
+        }
+        if (dto.getDaysVisible() != null && (dto.getDaysVisible() > half || dto.getDaysVisible() <= 0)) { // half also includes 0 and negative values
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task daysVisible cannot be null or greater than half of frequency (exception: if frequency = 1, daysVisible = 1)");
         }
     }
@@ -88,7 +89,6 @@ public class TaskService {
         validateCommonTaskPutDto(task, taskPutDTO); // validate common fields
         if (recurringTask.equals(checkTaskType(task))) {
             validateRecurringPutDto(task, taskPutDTO); // validate recurring fields
-            calculateDeadline(task);
             checkDaysVisible(task); // check if daysVisible is valid (daysVisible >= half of frequency)
         } else {
             if (taskPutDTO.getDeadline() != null) { //validate additional task
@@ -108,9 +108,6 @@ public class TaskService {
         if (taskPutDTO.getName() != null) {
             if (taskPutDTO.getName().isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task name cannot be empty");
-            }
-            if (taskRepository.findTaskByName(taskPutDTO.getName()) != null && !taskPutDTO.getName().equals(task.getName())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Task name already exists");
             }
             task.setName(taskPutDTO.getName());
         }
@@ -138,11 +135,12 @@ public class TaskService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Frequency must be greater than 0");
             }
             task.setFrequency(taskPutDTO.getFrequency());
+            calculateDeadline(task);
         }
         int half = getHalfFrequency(task);
         if (taskPutDTO.getDaysVisible() != null) {
-            if (taskPutDTO.getDaysVisible() < half || taskPutDTO.getDaysVisible() > task.getFrequency()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible must be at least half of the frequency (or 1 if frequency is 1) but not greater than the frequency");
+            if (taskPutDTO.getDaysVisible() > half || taskPutDTO.getDaysVisible() <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible can be at most half of the frequency (or 1 if frequency is 1) but not lower than 1");
             }
             task.setDaysVisible(taskPutDTO.getDaysVisible());
         }
@@ -151,6 +149,7 @@ public class TaskService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be in the future");
             }
             task.setStartDate(taskPutDTO.getStartDate());
+            calculateDeadline(task);
         }
     }
 
@@ -308,15 +307,15 @@ public class TaskService {
         task.setTeamId(userRepository.findByToken(userToken).getTeamId());
         // store status of the task
         task.setActiveStatus(true);
+        // if start Date wasnt given, we use a default value
+        if (task.getStartDate() == null) { 
+            task.setStartDate((task.getCreationDate()));
+        }
         if (recurringTask.equals(taskType)) { // check if task is recurring
-            // if start Date wasnt given, we use a default value
-            if (task.getStartDate() == null) { 
-                task.setStartDate((task.getCreationDate()));
-            }
             // if daysVisible was not given, we use a default value
             if (task.getDaysVisible() == null) {
                 int half = getHalfFrequency(task);
-                task.setDaysVisible(half); // half of the frequency is the default minimum cooldown period
+                task.setDaysVisible(half); // half of the frequency is the default maximum cooldown period
             }
             // calculation and setting of new deadline; start Date + frequency = deadline
             calculateDeadline(task);
@@ -405,6 +404,20 @@ public class TaskService {
         notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
         log.info("Task with name: {} updated successfully", task.getName());
         return task;
+    }
+
+    public void deductExperiencePointsFromAll(Long teamId, Integer experiencePoints) {
+        List<User> teamMembers = userRepository.findByTeamId(teamId);
+    
+        if (teamMembers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No users found for the given team.");
+        }
+        // rounds down experience points to the nearest integer
+        int deductionPerUser = experiencePoints / teamMembers.size();
+
+        for (User user : teamMembers) {
+            userService.deductExperiencePoints(user.getId(), deductionPerUser);
+        }
     }
 
     public void saveTask(Task task) {
@@ -518,9 +531,9 @@ public class TaskService {
     
     private void checkDaysVisible(Task task) {
         String taskType = checkTaskType(task);
-        if (recurringTask.equals(taskType) && task.getDaysVisible() < getHalfFrequency(task) && task.getDaysVisible() != 1) {
+        if (recurringTask.equals(taskType) && task.getDaysVisible() > getHalfFrequency(task)) {
             // check daysVisible >= half of frequency and special case for frequency = 1
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible must be at least half of the frequency (or 1 if frequency is 1)");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "daysVisible can at most be half of the frequency (or 1 if frequency is 1)");
         } 
     }
 
