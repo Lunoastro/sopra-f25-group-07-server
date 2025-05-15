@@ -237,6 +237,9 @@ public class TaskController {
 
         // Lucky draw effect is removed
         taskService.unLuckyDraw(task);
+
+        // Unassign the task
+        taskService.unassignTask(task);
         
         // Save the updated task
         taskService.saveTask(task);

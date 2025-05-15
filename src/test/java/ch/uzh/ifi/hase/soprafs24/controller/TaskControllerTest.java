@@ -673,444 +673,444 @@ class TaskControllerTest {
     }
 
     @Test
-void PATCH_successfulQuitTask_taskQuit() throws Exception {
-    // Setup: Create a valid task and a token
-    Long taskId = 1L;
-    String token = "valid_token";
-    Long userId = 123L;
-    
-    Task existingTask = new Task();
-    existingTask.setId(taskId);
-    existingTask.setName("Test Task");
-    existingTask.setActiveStatus(true);
-    existingTask.setIsAssignedTo(userId); // Task is assigned to this user
-    
-    User mockUser = new User();
-    mockUser.setId(userId);
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    doNothing().when(taskService).validateRecurringEdit(token, taskId);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    doNothing().when(taskService).quitTask(taskId, userId);
-    
-    // Perform the PATCH request
-    MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/quit", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // For HTTP 204 No Content, we should check status code only
-    mockMvc.perform(patchRequest)
-        .andExpect(status().isNoContent());
+    void PATCH_successfulQuitTask_taskQuit() throws Exception {
+        // Setup: Create a valid task and a token
+        Long taskId = 1L;
+        String token = "valid_token";
+        Long userId = 123L;
         
-    // Verify that the service methods were called correctly
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService).validateTaskInTeam(token, taskId);
-    verify(taskService).validateRecurringEdit(token, taskId);
-    verify(userRepository).findByToken(token);
-    verify(taskService).quitTask(taskId, userId);
-}
-
-@Test
-void PATCH_failedQuitTask_notAssigned() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    Long userId = 123L;
-    
-    User mockUser = new User();
-    mockUser.setId(userId);
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    doNothing().when(taskService).validateRecurringEdit(token, taskId);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    
-    // Mock service behavior - task not assigned to user
-    doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task is not currently assigned."))
-        .when(taskService).quitTask(taskId, userId);
-    
-    // Perform the PATCH request
-    MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/quit", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(patchRequest)
-        .andExpect(status().isBadRequest());
-}
-
-@Test
-void PATCH_failedQuitTask_wrongUser() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    Long userId = 123L;
-    
-    User mockUser = new User();
-    mockUser.setId(userId);
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    doNothing().when(taskService).validateRecurringEdit(token, taskId);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    
-    // Mock service behavior - task assigned to different user
-    doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not assigned to this task, so you cannot quit it."))
-        .when(taskService).quitTask(taskId, userId);
-    
-    // Perform the PATCH request
-    MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/quit", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(patchRequest)
-        .andExpect(status().isForbidden());
-}
-
-@Test
-void PUT_successfulExpireTask_taskExpired() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    
-    Task existingTask = new Task();
-    existingTask.setId(taskId);
-    existingTask.setName("Expired Task");
-    existingTask.setIsAssignedTo(123L);
-    existingTask.setValue(100);
-    existingTask.setDeadline(new Date());
-    existingTask.setDaysVisible(3); 
-    
-    Task updatedTask = new Task();
-    updatedTask.setId(taskId);
-    updatedTask.setName("Expired Task");
-    updatedTask.setIsAssignedTo(123L);
-    updatedTask.setValue(100);
-    Date oldDeadline = existingTask.getDeadline();
-    updatedTask.setStartDate(oldDeadline);
-    
-    // Setup for a new deadline 3 days later
-    Calendar calendar = Calendar.getInstance();
-    calendar.setTime(oldDeadline);
-    calendar.add(Calendar.DATE, 3);
-    updatedTask.setDeadline(calendar.getTime());
-    
-    TaskGetDTO updatedTaskDTO = new TaskGetDTO();
-    updatedTaskDTO.setId(taskId);
-    updatedTaskDTO.setName("Expired Task");
-    updatedTaskDTO.setIsAssignedTo(123L);    
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    when(taskService.getTaskById(taskId)).thenReturn(existingTask);
-    when(taskService.checkTaskType(existingTask)).thenReturn("additional");
-    doNothing().when(userService).deductExperiencePoints(existingTask.getIsAssignedTo(), existingTask.getValue());
-    doNothing().when(taskService).saveTask(existingTask);
-    
-    // Perform the PUT request
-    MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Match on status code and verify the response JSON structure
-    mockMvc.perform(putRequest)
-        .andExpect(status().isNoContent());
-    
-    // Verify important method calls
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService).validateTaskInTeam(token, taskId);
-    verify(taskService).getTaskById(taskId);
-    verify(userService).deductExperiencePoints(existingTask.getIsAssignedTo(), existingTask.getValue());
-    verify(taskService).saveTask(any(Task.class));
-}
-
-@Test
-void PUT_expireTask_teamPaused_returnsForbidden() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    
-    // Mock service behavior - team is paused
-    doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused"))
-        .when(teamService).validateTeamPaused(token);
-    
-    // Perform the PUT request
-    MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(putRequest)
-        .andExpect(status().isForbidden());
-    
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService, never()).validateTaskInTeam(anyString(), anyLong());
-    verify(taskService, never()).getTaskById(anyLong());
-}
-
-@Test
-void PUT_expireTask_taskNotInTeam_returnsForbidden() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    
-    // Mock service behavior - task not in user's team
-    doNothing().when(teamService).validateTeamPaused(token);
-    doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Task does not belong to the team of the user"))
-        .when(taskService).validateTaskInTeam(token, taskId);
-    
-    // Perform the PUT request
-    MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(putRequest)
-        .andExpect(status().isForbidden());
-    
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService).validateTaskInTeam(token, taskId);
-    verify(taskService, never()).getTaskById(anyLong());
-}
-
-@Test
-void DELETE_successfulFinishTask_additionalTask_taskDeleted() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    Long userId = 123L;
-    
-    Task existingTask = new Task();
-    existingTask.setId(taskId);
-    existingTask.setName("Additional Task");
-    existingTask.setIsAssignedTo(userId); // Assigned to the current user
-    existingTask.setValue(150);
-    
-    User mockUser = new User();
-    mockUser.setId(userId);
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    when(taskService.getTaskById(taskId)).thenReturn(existingTask);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    when(taskService.checkTaskType(existingTask)).thenReturn("additional");
-    doNothing().when(userService).addExperiencePoints(userId, existingTask.getValue());
-    doNothing().when(taskService).deleteTask(taskId);
-    
-    // Perform the DELETE request
-    MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(deleteRequest)
-        .andExpect(status().isNoContent());
-    
-    // Verify method calls
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService).validateTaskInTeam(token, taskId);
-    verify(taskService).getTaskById(taskId);
-    verify(userRepository).findByToken(token);
-    verify(taskService).checkTaskType(existingTask);
-    verify(userService).addExperiencePoints(userId, existingTask.getValue());
-    verify(taskService).deleteTask(taskId);
-    verify(taskService, never()).saveTask(any(Task.class)); // Should not save for additional tasks
-}
-
-@Test
-void DELETE_successfulFinishTask_recurringTask_taskRescheduled() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    Long userId = 123L;
-    
-    Date now = new Date();
-    Task existingTask = new Task();
-    existingTask.setId(taskId);
-    existingTask.setName("Recurring Task");
-    existingTask.setIsAssignedTo(userId); // Assigned to the current user
-    existingTask.setValue(150); 
-    existingTask.setDeadline(now);
-    
-    User mockUser = new User();
-    mockUser.setId(userId);
-    
-    TaskGetDTO updatedTaskDTO = new TaskGetDTO();
-    updatedTaskDTO.setId(taskId);
-    updatedTaskDTO.setName("Recurring Task");
-    updatedTaskDTO.setIsAssignedTo(null); // Should be unassigned after completion
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    when(taskService.getTaskById(taskId)).thenReturn(existingTask);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    when(taskService.checkTaskType(existingTask)).thenReturn("recurring");
-    doNothing().when(userService).addExperiencePoints(userId, existingTask.getValue());
-    doNothing().when(taskService).calculateDeadline(existingTask);
-    doNothing().when(taskService).unassignTask(existingTask);
-    doNothing().when(taskService).saveTask(existingTask);
-    
-    // Perform the DELETE request
-    MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(deleteRequest)
-        .andExpect(status().isNoContent());
-    
-    // Verify method calls
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService).validateTaskInTeam(token, taskId);
-    verify(taskService).getTaskById(taskId);
-    verify(userRepository).findByToken(token);
-    verify(taskService).checkTaskType(existingTask);
-    verify(userService).addExperiencePoints(userId, existingTask.getValue());
-    verify(taskService).calculateDeadline(existingTask);
-    verify(taskService).unassignTask(existingTask);
-    verify(taskService).saveTask(existingTask);
-    verify(taskService, never()).deleteTask(taskId); // Should not delete recurring tasks
-}
-
-@Test
-void DELETE_failedFinishTask_taskNotClaimed() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    Long userId = 123L;
-    
-    Task existingTask = new Task();
-    existingTask.setId(taskId);
-    existingTask.setName("Unclaimed Task");
-    existingTask.setIsAssignedTo(null); // Task is not claimed
-    
-    User mockUser = new User();
-    mockUser.setId(userId);
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    when(taskService.getTaskById(taskId)).thenReturn(existingTask);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    
-    // Perform the DELETE request
-    MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(deleteRequest)
-        .andExpect(status().isForbidden());
-
-    
-    // Verify method calls
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService).validateTaskInTeam(token, taskId);
-    verify(taskService).getTaskById(taskId);
-    verify(userRepository).findByToken(token);
-    verify(userService, never()).addExperiencePoints(anyLong(), anyInt());
-    verify(taskService, never()).checkTaskType(any(Task.class));
-}
-
-@Test
-void DELETE_failedFinishTask_claimedByDifferentUser() throws Exception {
-    // Setup
-    Long taskId = 1L;
-    String token = "valid_token";
-    Long userId = 123L;
-    Long otherUserId = 456L;
-    
-    Task existingTask = new Task();
-    existingTask.setId(taskId);
-    existingTask.setName("Other User's Task");
-    existingTask.setIsAssignedTo(otherUserId); // Task is claimed by different user
-    
-    User mockUser = new User();
-    mockUser.setId(userId);
-    
-    doNothing().when(teamService).validateTeamPaused(token);
-    doNothing().when(taskService).validateTaskInTeam(token, taskId);
-    when(taskService.getTaskById(taskId)).thenReturn(existingTask);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    
-    // Perform the DELETE request
-    MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
-    
-    // Verify response
-    mockMvc.perform(deleteRequest)
-        .andExpect(status().isForbidden());
-    
-    // Verify method calls
-    verify(teamService).validateTeamPaused(token);
-    verify(taskService).validateTaskInTeam(token, taskId);
-    verify(taskService).getTaskById(taskId);
-    verify(userRepository).findByToken(token);
-    verify(userService, never()).addExperiencePoints(anyLong(), anyInt());
-    verify(taskService, never()).checkTaskType(any(Task.class));
-}
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Test Task");
+        existingTask.setActiveStatus(true);
+        existingTask.setIsAssignedTo(userId); // Task is assigned to this user
+        
+        User mockUser = new User();
+        mockUser.setId(userId);
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        doNothing().when(taskService).validateRecurringEdit(token, taskId);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        doNothing().when(taskService).quitTask(taskId, userId);
+        
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/quit", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // For HTTP 204 No Content, we should check status code only
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isNoContent());
+            
+        // Verify that the service methods were called correctly
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService).validateTaskInTeam(token, taskId);
+        verify(taskService).validateRecurringEdit(token, taskId);
+        verify(userRepository).findByToken(token);
+        verify(taskService).quitTask(taskId, userId);
+    }
 
     @Test
-void POST_luckyDraw_success_returnsUpdatedTasks() throws Exception {
-    // Setup test data
-    Date now = new Date();
-    Task task1 = new Task();
-    task1.setId(1L);
-    task1.setName("Lucky Task 1");
-    task1.setDescription("Description 1");
-    task1.setIsAssignedTo(5L); // Now assigned to a user
-    task1.setTeamId(10L);
-    task1.setDeadline(now);
-    task1.setCreationDate(now);
-    task1.setActiveStatus(true);
+    void PATCH_failedQuitTask_notAssigned() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        Long userId = 123L;
+        
+        User mockUser = new User();
+        mockUser.setId(userId);
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        doNothing().when(taskService).validateRecurringEdit(token, taskId);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        
+        // Mock service behavior - task not assigned to user
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task is not currently assigned."))
+            .when(taskService).quitTask(taskId, userId);
+        
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/quit", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isBadRequest());
+    }
 
-    Task task2 = new Task();
-    task2.setId(2L);
-    task2.setName("Lucky Task 2");
-    task2.setDescription("Description 2");
-    task2.setIsAssignedTo(6L); // Now assigned to a user
-    task2.setTeamId(10L);
-    task2.setDeadline(now);
-    task2.setCreationDate(now);
-    task2.setActiveStatus(true);
+    @Test
+    void PATCH_failedQuitTask_wrongUser() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        Long userId = 123L;
+        
+        User mockUser = new User();
+        mockUser.setId(userId);
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        doNothing().when(taskService).validateRecurringEdit(token, taskId);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        
+        // Mock service behavior - task assigned to different user
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not assigned to this task, so you cannot quit it."))
+            .when(taskService).quitTask(taskId, userId);
+        
+        // Perform the PATCH request
+        MockHttpServletRequestBuilder patchRequest = patch("/tasks/{taskId}/quit", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(patchRequest)
+            .andExpect(status().isForbidden());
+    }
 
-    // Create a list of tasks for the mock response
-    List<Task> luckyDrawTasks = Arrays.asList(task1, task2);
+    @Test
+    void PUT_successfulExpireTask_taskExpired() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Expired Task");
+        existingTask.setIsAssignedTo(123L);
+        existingTask.setValue(100);
+        existingTask.setDeadline(new Date());
+        existingTask.setDaysVisible(3); 
+        
+        Task updatedTask = new Task();
+        updatedTask.setId(taskId);
+        updatedTask.setName("Expired Task");
+        updatedTask.setIsAssignedTo(123L);
+        updatedTask.setValue(100);
+        Date oldDeadline = existingTask.getDeadline();
+        updatedTask.setStartDate(oldDeadline);
+        
+        // Setup for a new deadline 3 days later
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(oldDeadline);
+        calendar.add(Calendar.DATE, 3);
+        updatedTask.setDeadline(calendar.getTime());
+        
+        TaskGetDTO updatedTaskDTO = new TaskGetDTO();
+        updatedTaskDTO.setId(taskId);
+        updatedTaskDTO.setName("Expired Task");
+        updatedTaskDTO.setIsAssignedTo(123L);    
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
+        when(taskService.checkTaskType(existingTask)).thenReturn("additional");
+        doNothing().when(userService).deductExperiencePoints(existingTask.getIsAssignedTo(), existingTask.getValue());
+        doNothing().when(taskService).saveTask(existingTask);
+        
+        // Perform the PUT request
+        MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Match on status code and verify the response JSON structure
+        mockMvc.perform(putRequest)
+            .andExpect(status().isNoContent());
+        
+        // Verify important method calls
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService).validateTaskInTeam(token, taskId);
+        verify(taskService).getTaskById(taskId);
+        verify(userService).deductExperiencePoints(existingTask.getIsAssignedTo(), existingTask.getValue());
+        verify(taskService).saveTask(any(Task.class));
+    }
 
-    // Mock user for token validation
-    User mockUser = new User();
-    mockUser.setId(5L);
-    mockUser.setTeamId(10L);
+    @Test
+    void PUT_expireTask_teamPaused_returnsForbidden() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        
+        // Mock service behavior - team is paused
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused"))
+            .when(teamService).validateTeamPaused(token);
+        
+        // Perform the PUT request
+        MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(putRequest)
+            .andExpect(status().isForbidden());
+        
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService, never()).validateTaskInTeam(anyString(), anyLong());
+        verify(taskService, never()).getTaskById(anyLong());
+    }
 
-    String token = "token123";
+    @Test
+    void PUT_expireTask_taskNotInTeam_returnsForbidden() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        
+        // Mock service behavior - task not in user's team
+        doNothing().when(teamService).validateTeamPaused(token);
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Task does not belong to the team of the user"))
+            .when(taskService).validateTaskInTeam(token, taskId);
+        
+        // Perform the PUT request
+        MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(putRequest)
+            .andExpect(status().isForbidden());
+        
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService).validateTaskInTeam(token, taskId);
+        verify(taskService, never()).getTaskById(anyLong());
+    }
 
-    // Mock service behavior
-    doNothing().when(teamService).validateTeamPaused(token);
-    when(userRepository.findByToken(token)).thenReturn(mockUser);
-    when(taskService.luckyDrawTasks(mockUser.getTeamId())).thenReturn(luckyDrawTasks);
+    @Test
+    void DELETE_successfulFinishTask_additionalTask_taskDeleted() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        Long userId = 123L;
+        
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Additional Task");
+        existingTask.setIsAssignedTo(userId); // Assigned to the current user
+        existingTask.setValue(150);
+        
+        User mockUser = new User();
+        mockUser.setId(userId);
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        when(taskService.checkTaskType(existingTask)).thenReturn("additional");
+        doNothing().when(userService).addExperiencePoints(userId, existingTask.getValue());
+        doNothing().when(taskService).deleteTask(taskId);
+        
+        // Perform the DELETE request
+        MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(deleteRequest)
+            .andExpect(status().isNoContent());
+        
+        // Verify method calls
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService).validateTaskInTeam(token, taskId);
+        verify(taskService).getTaskById(taskId);
+        verify(userRepository).findByToken(token);
+        verify(taskService).checkTaskType(existingTask);
+        verify(userService).addExperiencePoints(userId, existingTask.getValue());
+        verify(taskService).deleteTask(taskId);
+        verify(taskService, never()).saveTask(any(Task.class)); // Should not save for additional tasks
+    }
 
-    // Perform the POST request
-    MockHttpServletRequestBuilder postRequest = post("/tasks/luckyDraw")
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Authorization", "Bearer " + token);
+    @Test
+    void DELETE_successfulFinishTask_recurringTask_taskRescheduled() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        Long userId = 123L;
+        
+        Date now = new Date();
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Recurring Task");
+        existingTask.setIsAssignedTo(userId); // Assigned to the current user
+        existingTask.setValue(150); 
+        existingTask.setDeadline(now);
+        
+        User mockUser = new User();
+        mockUser.setId(userId);
+        
+        TaskGetDTO updatedTaskDTO = new TaskGetDTO();
+        updatedTaskDTO.setId(taskId);
+        updatedTaskDTO.setName("Recurring Task");
+        updatedTaskDTO.setIsAssignedTo(null); // Should be unassigned after completion
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        when(taskService.checkTaskType(existingTask)).thenReturn("recurring");
+        doNothing().when(userService).addExperiencePoints(userId, existingTask.getValue());
+        doNothing().when(taskService).calculateDeadline(existingTask);
+        doNothing().when(taskService).unassignTask(existingTask);
+        doNothing().when(taskService).saveTask(existingTask);
+        
+        // Perform the DELETE request
+        MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(deleteRequest)
+            .andExpect(status().isNoContent());
+        
+        // Verify method calls
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService).validateTaskInTeam(token, taskId);
+        verify(taskService).getTaskById(taskId);
+        verify(userRepository).findByToken(token);
+        verify(taskService).checkTaskType(existingTask);
+        verify(userService).addExperiencePoints(userId, existingTask.getValue());
+        verify(taskService).calculateDeadline(existingTask);
+        verify(taskService).unassignTask(existingTask);
+        verify(taskService).saveTask(existingTask);
+        verify(taskService, never()).deleteTask(taskId); // Should not delete recurring tasks
+    }
 
-    mockMvc.perform(postRequest)
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(2)))
-        .andExpect(jsonPath("$[0].id", is(task1.getId().intValue())))
-        .andExpect(jsonPath("$[0].name", is(task1.getName())))
-        .andExpect(jsonPath("$[0].isAssignedTo", is(task1.getIsAssignedTo().intValue())))
-        .andExpect(jsonPath("$[1].id", is(task2.getId().intValue())))
-        .andExpect(jsonPath("$[1].name", is(task2.getName())))
-        .andExpect(jsonPath("$[1].isAssignedTo", is(task2.getIsAssignedTo().intValue())));
+    @Test
+    void DELETE_failedFinishTask_taskNotClaimed() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        Long userId = 123L;
+        
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Unclaimed Task");
+        existingTask.setIsAssignedTo(null); // Task is not claimed
+        
+        User mockUser = new User();
+        mockUser.setId(userId);
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        
+        // Perform the DELETE request
+        MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(deleteRequest)
+            .andExpect(status().isForbidden());
 
-    // Verify that the service methods were called
-    verify(teamService, times(1)).validateTeamPaused(token);
-    verify(userRepository, times(1)).findByToken(token);
-    verify(taskService, times(1)).luckyDrawTasks(mockUser.getTeamId());
-}
+        
+        // Verify method calls
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService).validateTaskInTeam(token, taskId);
+        verify(taskService).getTaskById(taskId);
+        verify(userRepository).findByToken(token);
+        verify(userService, never()).addExperiencePoints(anyLong(), anyInt());
+        verify(taskService, never()).checkTaskType(any(Task.class));
+    }
+
+    @Test
+    void DELETE_failedFinishTask_claimedByDifferentUser() throws Exception {
+        // Setup
+        Long taskId = 1L;
+        String token = "valid_token";
+        Long userId = 123L;
+        Long otherUserId = 456L;
+        
+        Task existingTask = new Task();
+        existingTask.setId(taskId);
+        existingTask.setName("Other User's Task");
+        existingTask.setIsAssignedTo(otherUserId); // Task is claimed by different user
+        
+        User mockUser = new User();
+        mockUser.setId(userId);
+        
+        doNothing().when(teamService).validateTeamPaused(token);
+        doNothing().when(taskService).validateTaskInTeam(token, taskId);
+        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        
+        // Perform the DELETE request
+        MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+        
+        // Verify response
+        mockMvc.perform(deleteRequest)
+            .andExpect(status().isForbidden());
+        
+        // Verify method calls
+        verify(teamService).validateTeamPaused(token);
+        verify(taskService).validateTaskInTeam(token, taskId);
+        verify(taskService).getTaskById(taskId);
+        verify(userRepository).findByToken(token);
+        verify(userService, never()).addExperiencePoints(anyLong(), anyInt());
+        verify(taskService, never()).checkTaskType(any(Task.class));
+    }
+
+        @Test
+    void POST_luckyDraw_success_returnsUpdatedTasks() throws Exception {
+        // Setup test data
+        Date now = new Date();
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Lucky Task 1");
+        task1.setDescription("Description 1");
+        task1.setIsAssignedTo(5L); // Now assigned to a user
+        task1.setTeamId(10L);
+        task1.setDeadline(now);
+        task1.setCreationDate(now);
+        task1.setActiveStatus(true);
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Lucky Task 2");
+        task2.setDescription("Description 2");
+        task2.setIsAssignedTo(6L); // Now assigned to a user
+        task2.setTeamId(10L);
+        task2.setDeadline(now);
+        task2.setCreationDate(now);
+        task2.setActiveStatus(true);
+
+        // Create a list of tasks for the mock response
+        List<Task> luckyDrawTasks = Arrays.asList(task1, task2);
+
+        // Mock user for token validation
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+
+        String token = "token123";
+
+        // Mock service behavior
+        doNothing().when(teamService).validateTeamPaused(token);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        when(taskService.luckyDrawTasks(mockUser.getTeamId())).thenReturn(luckyDrawTasks);
+
+        // Perform the POST request
+        MockHttpServletRequestBuilder postRequest = post("/tasks/luckyDraw")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].id", is(task1.getId().intValue())))
+            .andExpect(jsonPath("$[0].name", is(task1.getName())))
+            .andExpect(jsonPath("$[0].isAssignedTo", is(task1.getIsAssignedTo().intValue())))
+            .andExpect(jsonPath("$[1].id", is(task2.getId().intValue())))
+            .andExpect(jsonPath("$[1].name", is(task2.getName())))
+            .andExpect(jsonPath("$[1].isAssignedTo", is(task2.getIsAssignedTo().intValue())));
+
+        // Verify that the service methods were called
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(userRepository, times(1)).findByToken(token);
+        verify(taskService, times(1)).luckyDrawTasks(mockUser.getTeamId());
+    }
 
     @Test
     void POST_luckyDraw_unauthorized_returnsUnauthorized() throws Exception {

@@ -14,6 +14,8 @@ import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
+import com.google.common.annotations.VisibleForTesting;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +30,8 @@ import ch.uzh.ifi.hase.soprafs24.exceptions.CalendarAuthorizationException;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -49,22 +53,37 @@ public class CalendarService {
     private String redirectUri;
 
     private TaskService taskService;
-    private GoogleAuthorizationCodeFlow flow;
     private final GoogleTokenRepository googleTokenRepository;
 
-    public CalendarService(@Lazy TaskService taskService, @Lazy GoogleAuthorizationCodeFlow flow, GoogleTokenRepository googleTokenRepository) {
+    public CalendarService(@Lazy TaskService taskService, GoogleTokenRepository googleTokenRepository) {
         this.taskService = taskService;
-        this.flow = flow;
         this.googleTokenRepository = googleTokenRepository;
     }
 
-    public List<Event> getUserGoogleCalendarEvents(int maxResults, Long userId) throws IOException {
+    protected GoogleAuthorizationCodeFlow getFlow() throws IOException, GeneralSecurityException {
+        final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+
+        return new GoogleAuthorizationCodeFlow.Builder(
+                httpTransport,
+                JSON_FACTORY,
+                getClientSecrets(),
+                Collections.singletonList(CalendarScopes.CALENDAR))
+                .setAccessType(OFFLINE)
+                .build();
+    }
+
+    protected String getRedirectUri() {
+        return redirectUri;
+    }
+
+    public List<Event> getUserGoogleCalendarEvents(String startDate, String endDate, Long userId) throws IOException {
         try {
             Calendar calendar = getCalendarServiceForUser(userId);
-            DateTime now = new DateTime(System.currentTimeMillis());
+            DateTime start = new DateTime(startDate + "T00:00:00Z");
+            DateTime end = new DateTime(endDate + "T23:59:59Z");
             Events events = calendar.events().list(PRIMARY)
-                    .setMaxResults(maxResults)
-                    .setTimeMin(now)
+                    .setTimeMin(start)
+                    .setTimeMax(end)
                     .setOrderBy("startTime")
                     .setSingleEvents(true)
                     .execute();
@@ -76,13 +95,7 @@ public class CalendarService {
 
     public void syncSingleTask(Task task, Long userId) {
         try {
-            Credential cred = getUserCredentials(userId);
-            Calendar cal = new Calendar.Builder(
-                    GoogleNetHttpTransport.newTrustedTransport(),
-                    JSON_FACTORY,
-                    cred)
-                    .setApplicationName(APPLICATION_NAME)
-                    .build();
+            Calendar cal = getCalendarServiceForUser(userId);
 
             Event event = new Event()
                     .setSummary("[TASK] " + task.getName())
@@ -110,6 +123,7 @@ public class CalendarService {
 
         } catch (IOException | GeneralSecurityException ex) {
             logger.error("Google Calendar sync failed for task {} / user {}: {}", task.getId(), userId, ex.getMessage());
+            throw new RuntimeException("Failed to sync with Google Calendar", ex);
         }
     }
 
@@ -149,14 +163,10 @@ public class CalendarService {
 
     public String generateAuthUrl(Long userId) throws CalendarAuthorizationException {
         try {
-            final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-            flow = new GoogleAuthorizationCodeFlow.Builder(
-                    httpTransport, JSON_FACTORY, getClientSecrets(), Collections.singletonList(CalendarScopes.CALENDAR))
-                    .setAccessType(OFFLINE)  // Using constant "offline"
-                    .build();
+            GoogleAuthorizationCodeFlow flow = getFlow();
 
             return flow.newAuthorizationUrl()
-                    .setRedirectUri(redirectUri)
+                    .setRedirectUri(getRedirectUri())
                     .setState(userId.toString())
                     .build();
         } catch (Exception e) {
@@ -165,14 +175,7 @@ public class CalendarService {
     }
 
     public void handleOAuthCallback(String code, Long userId) throws Exception {
-        final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-
-        if (flow == null) {
-            flow = new GoogleAuthorizationCodeFlow.Builder(
-                    httpTransport, JSON_FACTORY, getClientSecrets(), Collections.singletonList(CalendarScopes.CALENDAR))
-                    .setAccessType(OFFLINE)  // Using constant "offline"
-                    .build();
-        }
+        GoogleAuthorizationCodeFlow flow = getFlow();
 
         var tokenResponse = flow.newTokenRequest(code)
                 .setRedirectUri(redirectUri)
@@ -245,14 +248,16 @@ public class CalendarService {
                 .setRefreshToken(googleToken.getRefreshToken())
                 .setExpirationTimeMilliseconds(googleToken.getExpirationTime());
     }
-    
 
-    private Calendar getCalendarServiceForUser(Long userId) throws IOException, GeneralSecurityException {
-        final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-        Credential credential = getUserCredentials(userId);  // Loads user's stored credentials
-        return new Calendar.Builder(httpTransport, JSON_FACTORY, credential)
-              .setApplicationName(APPLICATION_NAME)
-              .build();
+    @VisibleForTesting
+    public Calendar getCalendarServiceForUser(Long userId) throws IOException, GeneralSecurityException {
+        Credential cred = getUserCredentials(userId);
+        return new Calendar.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                JSON_FACTORY,
+                cred)
+                .setApplicationName(APPLICATION_NAME)
+                .build();
     }
 
     public Event getEventById(String eventId, Long userId) throws IOException, GeneralSecurityException {
@@ -265,11 +270,11 @@ public class CalendarService {
         return new DateTime(date).toStringRfc3339();
     }
 
-    public List<Map<String, Object>> getCombinedEvents(Long userId, boolean activeOnly, int limit) throws IOException {
+    public List<Map<String, Object>> getCombinedEvents(Long userId, boolean activeOnly, String startDate, String endDate) throws IOException {
         List<Map<String, Object>> combinedEvents = new ArrayList<>();
     
         // Fetch Google Calendar events
-        List<Event> googleEvents = getUserGoogleCalendarEvents(limit, userId);
+        List<Event> googleEvents = getUserGoogleCalendarEvents(startDate, endDate, userId);
         for (Event ge : googleEvents) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", ge.getId());
@@ -284,6 +289,9 @@ public class CalendarService {
         // Fetch tasks (filtered by active status if needed)
         List<Task> tasks = taskService.getFilteredTasks(activeOnly, null);  // Ensure taskService handles 'activeOnly'
         for (Task task : tasks) {
+            if (!isWithinRange(task.getDeadline(), startDate, endDate)) {
+                continue; // skip tasks outside of date range
+            }
             Map<String, Object> taskEvent = new HashMap<>();
             taskEvent.put("id", "task-" + task.getId());
             taskEvent.put(SUMMARY, "[TASK] " + task.getName());
@@ -301,6 +309,22 @@ public class CalendarService {
             combinedEvents.add(taskEvent);
         }
         return combinedEvents;
+    }
+
+    private boolean isWithinRange(Date deadline, String startDateStr, String endDateStr) {
+        try {
+            LocalDate startDate = LocalDate.parse(startDateStr);
+            LocalDate endDate = LocalDate.parse(endDateStr);
+
+            Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+            // Use end of day for endDate (23:59:59.999)
+            Date end = Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+            return !deadline.before(start) && deadline.before(end); 
+            // Note: using '< end' because 'end' is actually start of next day
+        } catch (Exception e) {
+            return false;
+        }
     }
     
 }

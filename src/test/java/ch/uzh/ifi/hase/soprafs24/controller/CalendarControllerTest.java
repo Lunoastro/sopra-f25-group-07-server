@@ -66,15 +66,16 @@ class CalendarControllerTest {
     void GET_userCalendarEvents_valid_returns200() throws Exception {
         when(userService.validateToken(validToken)).thenReturn(true);
         when(userService.findIDforToken(validToken)).thenReturn(1L);
-        when(calendarService.getUserGoogleCalendarEvents(5, 1L))
+        when(calendarService.getUserGoogleCalendarEvents("2023-01-01", "2023-12-31", 1L))
             .thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/calendar/events")
-                .param("limit", "5")
+                .param("startDate", "2023-01-01")
+                .param("endDate", "2023-12-31")
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isOk());
 
-        verify(calendarService).getUserGoogleCalendarEvents(5, 1L);
+        verify(calendarService).getUserGoogleCalendarEvents("2023-01-01", "2023-12-31", 1L);
     }
 
     @Test
@@ -124,12 +125,13 @@ class CalendarControllerTest {
 
         mockMvc.perform(get("/calendar/events")
                 .param("userId", "1")
-                .param("maxResults", "5")
+                .param("startDate", "2025-05-01")
+                .param("endDate", "2025-05-15")
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isUnauthorized());
 
         // Verify that the calendar service method was not called, as the token validation failed
-        verify(calendarService, never()).getUserGoogleCalendarEvents(anyInt(), anyLong());
+        verify(calendarService, never()).getUserGoogleCalendarEvents(anyString(), anyString(), anyLong());
     }   
 
     @Test
@@ -183,11 +185,12 @@ class CalendarControllerTest {
         // Mock service calls
         when(userService.validateToken(validToken)).thenReturn(true);
         when(userService.findIDforToken(validToken)).thenReturn(1L);
-        when(calendarService.getCombinedEvents(1L, true, 10)).thenReturn(combinedEvents);
+        when(calendarService.getCombinedEvents(1L, true, "2025-05-01", "2025-05-15")).thenReturn(combinedEvents);
 
         // Perform the GET request to the combined calendar endpoint
         mockMvc.perform(get("/calendar/combined")
-                .param("limit", "10")
+                .param("startDate", "2025-05-01")
+                .param("endDate", "2025-05-15")
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].summary").value("Google Event"))
@@ -195,8 +198,8 @@ class CalendarControllerTest {
             .andExpect(jsonPath("$[1].description").value("[TASK] Task 1"));
 
         // Verify service delegation
-        verify(calendarService).getCombinedEvents(1L, true, 10);
-        verify(calendarService, never()).getUserGoogleCalendarEvents(anyInt(), anyLong());
+        verify(calendarService).getCombinedEvents(1L, true, "2025-05-01", "2025-05-15");
+        verify(calendarService, never()).getUserGoogleCalendarEvents(anyString(), anyString(), anyLong());
     }
 
 
@@ -206,12 +209,13 @@ class CalendarControllerTest {
         when(userService.validateToken(validToken)).thenReturn(false);
 
         mockMvc.perform(get("/calendar/combined")
-                .param("limit", "10")
+                .param("startDate", "2025-05-01")
+                .param("endDate", "2025-05-15")
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isUnauthorized());
 
         // Verify that the calendar and task service methods were not called, as the token validation failed
-        verify(calendarService, never()).getUserGoogleCalendarEvents(anyInt(), anyLong());
+        verify(calendarService, never()).getUserGoogleCalendarEvents(anyString(), anyString(), anyLong());
         verify(taskService, never()).getFilteredTasks(anyBoolean(), any());
     }
 }
