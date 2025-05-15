@@ -82,7 +82,9 @@ public class CalendarController {
 
     @GetMapping("/events")
     @ResponseStatus(HttpStatus.OK)
-    public List<Event> getUpcomingEvents(@RequestParam(defaultValue = "10") int limit, @RequestHeader("Authorization") String authorizationHeader) throws IOException {
+    public List<Event> getEventsInRange(@RequestParam String startDate, // Format: "YYYY-MM-DD"
+                                        @RequestParam String endDate,  // Format: "YYYY-MM-DD"
+                                        @RequestHeader("Authorization") String authorizationHeader) throws IOException {
         String token = validateAuthorizationHeader(authorizationHeader);
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
@@ -92,7 +94,7 @@ public class CalendarController {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
-        return calendarService.getUserGoogleCalendarEvents(limit, userId);
+        return calendarService.getUserGoogleCalendarEvents(startDate, endDate, userId);
     }
 
     @GetMapping("/events/{id}")
@@ -114,7 +116,8 @@ public class CalendarController {
     @ResponseStatus(HttpStatus.OK)
     public List<Map<String, Object>> getCombinedCalendar(
             @RequestParam(defaultValue = "true") boolean activeOnly,
-            @RequestParam(defaultValue = "20") int limit, 
+            @RequestParam String startDate, // Format: "YYYY-MM-DD"
+            @RequestParam String endDate,  // Format: "YYYY-MM-DD"
             @RequestHeader("Authorization") String authorizationHeader) throws IOException {
 
         String token = validateAuthorizationHeader(authorizationHeader);
@@ -127,7 +130,7 @@ public class CalendarController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
 
-        return calendarService.getCombinedEvents(userId, activeOnly, limit);
+        return calendarService.getCombinedEvents(userId, activeOnly, startDate, endDate);
     }
 
 

@@ -842,7 +842,7 @@ class TaskServiceTest {
         validTaskPostDTO.setValue(10);
         validTaskPostDTO.setFrequency(7); // Weekly
         validTaskPostDTO.setStartDate(new Date(System.currentTimeMillis() + 86400000)); // Tomorrow
-        validTaskPostDTO.setDaysVisible(4); // More than half of frequency
+        validTaskPostDTO.setDaysVisible(2); // Less than half of frequency
 
         // when & then
         assertDoesNotThrow(() -> taskService.validatePostDto(validTaskPostDTO));
@@ -912,7 +912,7 @@ class TaskServiceTest {
 
         Task updatedTask = new Task();
         updatedTask.setFrequency(7); // Change to weekly
-        updatedTask.setDaysVisible(4); // Valid days visible
+        updatedTask.setDaysVisible(3); // Valid days visible
         updatedTask.setActiveStatus(false); // Change to inactive
 
         // when
@@ -920,7 +920,7 @@ class TaskServiceTest {
 
         // then
         assertEquals(7, existingTask.getFrequency());
-        assertEquals(4, existingTask.getDaysVisible());
+        assertEquals(3, existingTask.getDaysVisible());
         assertFalse(existingTask.getActiveStatus());
     }
 
@@ -951,7 +951,7 @@ class TaskServiceTest {
         existingTask.setId(1L);
         existingTask.setName("Original Recurring Task");
         existingTask.setFrequency(14);
-        existingTask.setDaysVisible(7);
+        existingTask.setDaysVisible(10);
         existingTask.setStartDate(new Date(System.currentTimeMillis() + 86400000));
 
         Task updatedTask = new Task();
@@ -962,7 +962,7 @@ class TaskServiceTest {
                 () -> taskService.validateToBeEditedFields(existingTask, updatedTask));
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         assertEquals(
-                "daysVisible must be at least half of the frequency (or 1 if frequency is 1) but not greater than the frequency",
+                "daysVisible can be at most half of the frequency (or 1 if frequency is 1) but not lower than 1",
                 exception.getReason());
     }
 
@@ -1104,7 +1104,7 @@ class TaskServiceTest {
 
         Task updatedTask = new Task();
         updatedTask.setFrequency(15);
-        updatedTask.setDaysVisible(10);
+        updatedTask.setDaysVisible(7);
         updatedTask.setStartDate(new Date(System.currentTimeMillis() + 7200 * 1000)); // Future start date
         updatedTask.setActiveStatus(false);
 
@@ -1113,7 +1113,7 @@ class TaskServiceTest {
 
         // then
         assertEquals(15, existingTask.getFrequency());
-        assertEquals(10, existingTask.getDaysVisible());
+        assertEquals(7, existingTask.getDaysVisible());
         assertEquals(updatedTask.getStartDate(), existingTask.getStartDate());
         assertFalse(existingTask.getActiveStatus());
     }
@@ -1141,14 +1141,14 @@ class TaskServiceTest {
         existingTask.setFrequency(10);
 
         Task updatedTask = new Task();
-        updatedTask.setDaysVisible(3); // Invalid daysVisible (less than half of frequency)
+        updatedTask.setDaysVisible(6); // Invalid daysVisible (more than half of frequency)
 
         // when & then
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> taskService.validateRecurringPutDto(existingTask, updatedTask));
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         assertEquals(
-                "daysVisible must be at least half of the frequency (or 1 if frequency is 1) but not greater than the frequency",
+                "daysVisible can be at most half of the frequency (or 1 if frequency is 1) but not lower than 1",
                 exception.getReason());
     }
 

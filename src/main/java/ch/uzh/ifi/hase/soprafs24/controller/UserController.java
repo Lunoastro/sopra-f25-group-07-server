@@ -102,6 +102,21 @@ public class UserController {
     return DTOMapper.INSTANCE.convertEntityToUserGetDTO(user);
   }
 
+  @GetMapping("/users/me")
+  @ResponseStatus(HttpStatus.OK)
+  
+  public UserGetDTO getUser(@RequestHeader("Authorization") String authorizationHeader) {
+    // Extract the token from the Authorization header
+    String token = validateAuthorizationHeader(authorizationHeader);
+
+    if (!userService.validateToken(token)) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
+    }
+
+    User user = userService.getUserByToken(token);
+    return DTOMapper.INSTANCE.convertEntityToUserGetDTO(user);
+  }
+
   @PutMapping("/logout")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void logoff(@RequestHeader("Authorization") String authorizationHeader) {

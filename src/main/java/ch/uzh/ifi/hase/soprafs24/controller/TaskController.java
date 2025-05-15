@@ -210,8 +210,12 @@ public class TaskController {
         
         // Check if the task has been claimed by someone
         if (task.getIsAssignedTo() != null) {
-            // Deduct experience points based on the task value
+            // Deduct experience points from one user based on the task value
             userService.deductExperiencePoints(task.getIsAssignedTo(), task.getValue());
+        }
+        else {
+            // if the task is not claimed, every user loses some experience points
+            taskService.deductExperiencePointsFromAll(task.getTeamId(), task.getValue());
         }
         
         // Record the old deadline (which was missed) as the new start date
@@ -233,6 +237,9 @@ public class TaskController {
 
         // Lucky draw effect is removed
         taskService.unLuckyDraw(task);
+
+        // Unassign the task
+        taskService.unassignTask(task);
         
         // Save the updated task
         taskService.saveTask(task);

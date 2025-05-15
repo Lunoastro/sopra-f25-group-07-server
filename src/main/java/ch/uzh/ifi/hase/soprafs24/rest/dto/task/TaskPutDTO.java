@@ -18,6 +18,7 @@ public class TaskPutDTO {
     private String name;
     private String description;
     private Integer daysVisible;
+    private Integer frequency;
     private Integer value;
     private Date startDate;
     private Date deadline;
