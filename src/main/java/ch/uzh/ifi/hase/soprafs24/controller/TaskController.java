@@ -51,7 +51,7 @@ public class TaskController {
     }
 
     @PostMapping("/tasks/luckyDraw")
-    public List<TaskGetDTO> luckyDraw(@RequestBody TaskPostDTO taskPostDTO, @RequestHeader("Authorization") String authorizationHeader) {
+    public List<TaskGetDTO> luckyDraw(@RequestHeader("Authorization") String authorizationHeader) {
         // Extract the token from the Bearer header
         String userToken = validateAuthorizationHeader(authorizationHeader);
         teamService.validateTeamPaused(userToken);
@@ -65,6 +65,24 @@ public class TaskController {
         }
         return taskGetDTOs;
     }
+
+    
+    @PostMapping("/tasks/autodistribute")
+    public List<TaskGetDTO> autodistribute(@RequestHeader("Authorization") String authorizationHeader) {
+        // Extract the token from the Bearer header
+        String userToken = validateAuthorizationHeader(authorizationHeader);
+        teamService.validateTeamPaused(userToken);
+        Long userTeamId = userrepository.findByToken(userToken).getTeamId();
+        // Call service to do the actual task distribution and XP update
+        List<Task> updatedTasks = taskService.autodistributeTasks(userTeamId);
+   
+        List<TaskGetDTO> taskGetDTOs = new ArrayList<>();
+        for (Task task : updatedTasks) {
+            taskGetDTOs.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
+        }
+        return taskGetDTOs;
+    }
+
     
 
     @GetMapping("/tasks")

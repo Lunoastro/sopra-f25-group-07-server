@@ -3,15 +3,21 @@ package ch.uzh.ifi.hase.soprafs24.service.Task;
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.service.WebSocketNotificationService;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Comparator;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,19 +32,27 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TaskServiceTest {
-
     @Mock
     private TaskRepository taskRepository;
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
 
     @Mock
     private UserService userService;
@@ -1184,4 +1198,618 @@ class TaskServiceTest {
         assertNotNull(task2.getPausedDate());
         verify(taskRepository, times(1)).saveAll(tasks);
     }
-}
+
+     @Test
+    void autodistributeTasks_success() {
+        // given
+        Long teamId = 1L;
+
+        // Setup team
+        Team team = new Team();
+        team.setId(teamId);
+        List<Long> memberIds = List.of(1L, 2L, 3L);
+        team.setMembers(memberIds);
+        
+        // Setup team members
+        User user1 = new User();
+        user1.setId(1L);
+        user1.setXp(100);
+        user1.setColor(ColorID.C1);
+        
+        User user2 = new User();
+        user2.setId(2L);
+        user2.setXp(50);
+        user2.setColor(ColorID.C2);
+        
+        User user3 = new User();
+        user3.setId(3L);
+        user3.setXp(200);
+        user3.setColor(ColorID.C3);
+        
+        List<User> users = new ArrayList<>(List.of(user1, user2, user3));
+        
+        // Setup tasks
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        task1.setIsAssignedTo(null); // Unclaimed
+        task1.setValue(20);
+        task1.setActiveStatus(true);
+        
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(teamId);
+        task2.setIsAssignedTo(null); // Unclaimed
+        task2.setValue(30);
+        task2.setActiveStatus(true);
+        
+        Task task3 = new Task();
+        task3.setId(3L);
+        task3.setTeamId(teamId);
+        task3.setIsAssignedTo(null); // Unclaimed
+        task3.setValue(10);
+        task3.setActiveStatus(true);
+        
+        Task task4 = new Task();
+        task4.setId(4L);
+        task4.setTeamId(teamId);
+        task4.setIsAssignedTo(5L); // Already claimed
+        task4.setValue(40);
+        task4.setActiveStatus(true);
+        
+        Task task5 = new Task();
+        task5.setId(5L);
+        task5.setTeamId(2L); // Different team
+        task5.setIsAssignedTo(null);
+        task5.setValue(50);
+        task5.setActiveStatus(true);
+        
+        // Änderung: Verwendung von ArrayList statt List.of()
+        List<Task> allTasks = new ArrayList<>(Arrays.asList(task1, task2, task3, task4, task5));
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(team);
+        when(userRepository.findAllById(memberIds)).thenReturn(users);
+        when(taskRepository.findAll()).thenReturn(allTasks);
+        
+        // For the getFilteredTasks internal method call
+        // Create a spy to intercept the getFilteredTasks call within the method
+        TaskService spyTaskService = spy(taskService);
+        doReturn(allTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        // Mock notification service
+        doNothing().when(webSocketNotificationService).notifyTeamMembers(anyLong(), anyString(), any());
+        
+        List<Task> result = spyTaskService.autodistributeTasks(teamId);
+        
+        // then
+        assertEquals(3, result.size());
+        
+        // Verify the tasks were assigned in expected order (by value) to users (by XP)
+        // Users should be assigned in order: user2 (XP=50), user1 (XP=100), user3 (XP=200)
+        assertEquals(2L, task2.getIsAssignedTo()); // Highest value task to lowest XP user
+        assertEquals(ColorID.C2, task2.getColor());
+        
+        assertEquals(1L, task1.getIsAssignedTo()); // Second highest to second lowest
+        assertEquals(ColorID.C1, task1.getColor());
+        
+        assertEquals(3L, task3.getIsAssignedTo()); // Lowest value to highest XP
+        assertEquals(ColorID.C3, task3.getColor());
+        
+        // Verify the repositories were called correctly
+        verify(taskRepository, times(3)).save(any(Task.class));
+        verify(userRepository, times(3)).save(any(User.class));
+        verify(webSocketNotificationService).notifyTeamMembers(eq(teamId), eq("task"), any());
+    }
+
+    @Test
+    void autodistributeTasks_noTasksRemainUnclaimed() {
+        // given
+        Long teamId = 1L;
+        
+        // Setup team
+        Team team = new Team();
+        team.setId(teamId);
+        List<Long> memberIds = List.of(1L, 2L);
+        team.setMembers(memberIds);
+        
+        // Setup team members
+        User user1 = new User();
+        user1.setId(1L);
+        user1.setXp(100);
+        user1.setColor(ColorID.C1);
+        
+        User user2 = new User();
+        user2.setId(2L);
+        user2.setXp(50);
+        user2.setColor(ColorID.C2);
+        
+        // Änderung: Verwendung von ArrayList statt List.of()
+        List<User> users = new ArrayList<>(Arrays.asList(user1, user2));
+        
+        // Setup 5 unclaimed tasks - bereits als ArrayList implementiert, gut!
+        List<Task> unclaimedTasks = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            Task task = new Task();
+            task.setId((long) i);
+            task.setTeamId(teamId);
+            task.setIsAssignedTo(null); // All unclaimed
+            task.setValue(i * 10);
+            task.setActiveStatus(true);
+            unclaimedTasks.add(task);
+        }
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(team);
+        when(userRepository.findAllById(memberIds)).thenReturn(users);
+        
+        TaskService spyTaskService = spy(taskService);
+        doReturn(unclaimedTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        doNothing().when(webSocketNotificationService).notifyTeamMembers(anyLong(), anyString(), any());
+        
+        List<Task> result = spyTaskService.autodistributeTasks(teamId);
+        
+        // then
+        assertEquals(5, result.size());
+        
+        // Check that no tasks remain unclaimed
+        for (Task task : result) {
+            assertNotNull(task.getIsAssignedTo(), "Task " + task.getId() + " should be assigned");
+            assertNotNull(task.getColor(), "Task " + task.getId() + " should have a color");
+        }
+        
+        // Check for round-robin assignment (with 2 users and 5 tasks)
+        // User 2 (lowest XP) should get tasks with IDs 5, 3, 1
+        // User 1 should get tasks with IDs 4, 2
+        
+        // Sort tasks by original value to check assignment pattern
+        result.sort(Comparator.comparingInt(Task::getValue).reversed());
+        
+        assertEquals(2L, result.get(0).getIsAssignedTo()); // Highest value to user2
+        assertEquals(1L, result.get(1).getIsAssignedTo()); // Second highest to user1
+        assertEquals(2L, result.get(2).getIsAssignedTo()); // Third highest to user2
+        assertEquals(1L, result.get(3).getIsAssignedTo()); // Fourth highest to user1
+        assertEquals(2L, result.get(4).getIsAssignedTo()); // Fifth highest to user2
+    }
+
+    @Test
+    void autodistributeTasks_teamNotFound_throwsNotFoundException() {
+        // given
+        Long teamId = 999L;
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(null);
+        
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.autodistributeTasks(teamId));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        assertEquals("Team not found with ID " + teamId, exception.getReason());
+    }
+
+    @Test
+    void autodistributeTasks_noTeamMembers_throwsNotFoundException() {
+        // given
+        Long teamId = 1L;
+        
+        // Setup team
+        Team team = new Team();
+        team.setId(teamId);
+        team.setMembers(List.of()); // Empty member list
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(team);
+        when(userRepository.findAllById(List.of())).thenReturn(List.of());
+        
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.autodistributeTasks(teamId));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        assertEquals("No users found for team ID " + teamId, exception.getReason());
+    }
+
+    @Test
+    void autodistributeTasks_noUnclaimedTasks_returnsEmptyList() {
+        // given
+        Long teamId = 1L;
+        
+        // Setup team
+        Team team = new Team();
+        team.setId(teamId);
+        List<Long> memberIds = List.of(1L, 2L);
+        team.setMembers(memberIds);
+        
+        // Setup team members
+        User user1 = new User();
+        user1.setId(1L);
+        user1.setXp(100);
+        User user2 = new User();
+        user2.setId(2L);
+        user2.setXp(50);
+        List<User> users = List.of(user1, user2);
+        
+        // Setup tasks (all claimed)
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        task1.setIsAssignedTo(1L); // Already claimed
+        task1.setActiveStatus(true);
+        
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(teamId);
+        task2.setIsAssignedTo(2L); // Already claimed
+        task2.setActiveStatus(true);
+        
+        List<Task> allTasks = List.of(task1, task2);
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(team);
+        when(userRepository.findAllById(memberIds)).thenReturn(users);
+        
+        TaskService spyTaskService = spy(taskService);
+        doReturn(allTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        List<Task> result = spyTaskService.autodistributeTasks(teamId);
+        
+        // then
+        assertTrue(result.isEmpty());
+        verify(taskRepository, never()).save(any(Task.class));
+        verify(userRepository, never()).save(any(User.class));
+        verify(webSocketNotificationService, never()).notifyTeamMembers(anyLong(), anyString(), any());
+    }
+
+    @Test
+    void autodistributeTasks_multipleTeams_onlyDistributesForSpecifiedTeam() {
+        // given
+        Long teamId = 1L;
+        Long otherTeamId = 2L;
+        
+        // Setup teams
+        Team team = new Team();
+        team.setId(teamId);
+        List<Long> memberIds = List.of(1L, 2L);
+        team.setMembers(memberIds);
+        
+        // Setup team members
+        User user1 = new User();
+        user1.setId(1L);
+        user1.setXp(100);
+        user1.setColor(ColorID.C1);
+        
+        User user2 = new User();
+        user2.setId(2L);
+        user2.setXp(50);
+        user2.setColor(ColorID.C2);
+        
+        // Änderung: Verwendung von ArrayList statt List.of()
+        List<User> users = new ArrayList<>(Arrays.asList(user1, user2));
+        
+        // Tasks for teamId
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        task1.setIsAssignedTo(null); // Unclaimed
+        task1.setValue(20);
+        task1.setActiveStatus(true);
+        
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(teamId);
+        task2.setIsAssignedTo(null); // Unclaimed
+        task2.setValue(30);
+        task2.setActiveStatus(true);
+        
+        // Tasks for otherTeamId
+        Task task3 = new Task();
+        task3.setId(3L);
+        task3.setTeamId(otherTeamId);
+        task3.setIsAssignedTo(null); // Unclaimed
+        task3.setValue(40);
+        task3.setActiveStatus(true);
+        
+        // Änderung: Verwendung von ArrayList statt List.of()
+        List<Task> allTasks = new ArrayList<>(Arrays.asList(task1, task2, task3));
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(team);
+        when(userRepository.findAllById(memberIds)).thenReturn(users);
+        
+        TaskService spyTaskService = spy(taskService);
+        doReturn(allTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        doNothing().when(webSocketNotificationService).notifyTeamMembers(anyLong(), anyString(), any());
+        
+        List<Task> result = spyTaskService.autodistributeTasks(teamId);
+        
+        // then
+        assertEquals(2, result.size());
+        
+        // Verify only tasks for the specified team were distributed
+        assertNotNull(task1.getIsAssignedTo());
+        assertNotNull(task2.getIsAssignedTo());
+        assertNull(task3.getIsAssignedTo()); // Other team's task should remain unclaimed
+        
+        verify(taskRepository, times(2)).save(any(Task.class));
+        verify(userRepository, times(2)).save(any(User.class));
+        }
+
+    @Test
+    void autodistributeTasks_moreTasksThanUsers_roundRobinDistribution() {
+        // given
+        Long teamId = 1L;
+        
+        // Setup team with 2 members
+        Team team = new Team();
+        team.setId(teamId);
+        List<Long> memberIds = List.of(1L, 2L);
+        team.setMembers(memberIds);
+        
+        // Setup team members
+        User user1 = new User();
+        user1.setId(1L);
+        user1.setXp(100);
+        user1.setColor(ColorID.C1);
+        
+        User user2 = new User();
+        user2.setId(2L);
+        user2.setXp(50);
+        user2.setColor(ColorID.C2);
+        
+        // Änderung: Verwendung von ArrayList statt List.of()
+        List<User> users = new ArrayList<>(Arrays.asList(user1, user2));
+        
+        // Setup 5 unclaimed tasks - bereits als ArrayList implementiert, gut!
+        List<Task> unclaimedTasks = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            Task task = new Task();
+            task.setId((long) i);
+            task.setTeamId(teamId);
+            task.setIsAssignedTo(null);
+            task.setValue(i * 10);
+            task.setActiveStatus(true);
+            unclaimedTasks.add(task);
+        }
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(team);
+        when(userRepository.findAllById(memberIds)).thenReturn(users);
+        
+        TaskService spyTaskService = spy(taskService);
+        doReturn(unclaimedTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        doNothing().when(webSocketNotificationService).notifyTeamMembers(anyLong(), anyString(), any());
+        
+        List<Task> result = spyTaskService.autodistributeTasks(teamId);
+        
+        // then
+        assertEquals(5, result.size());
+        
+        // Sort tasks by value descending to check the assignment pattern
+        result.sort(Comparator.comparingInt(Task::getValue).reversed());
+        
+        // Check round-robin assignment pattern
+        // First task to user with lowest XP (user2)
+        assertEquals(2L, result.get(0).getIsAssignedTo());
+        // Second task to next user (user1)
+        assertEquals(1L, result.get(1).getIsAssignedTo());
+        // Back to first user (user2)
+        assertEquals(2L, result.get(2).getIsAssignedTo());
+        // Back to second user (user1)
+        assertEquals(1L, result.get(3).getIsAssignedTo());
+        // Back to first user (user2)
+        assertEquals(2L, result.get(4).getIsAssignedTo());
+        
+        // Verify correct number of save operations
+        verify(taskRepository, times(5)).save(any(Task.class));
+        verify(userRepository, times(5)).save(any(User.class));
+    }
+
+    @Test
+    void luckyDrawTasks_success() {
+        // given
+        Long teamId = 1L;
+        
+        // Setup team
+        Team team = new Team();
+        team.setId(teamId);
+        List<Long> memberIds = List.of(1L, 2L, 3L);
+        team.setMembers(memberIds);
+        
+        // Setup team members
+        User user1 = new User();
+        user1.setId(1L);
+        
+        User user2 = new User();
+        user2.setId(2L);
+        
+        User user3 = new User();
+        user3.setId(3L);
+        
+        List<User> users = new ArrayList<>(Arrays.asList(user1, user2, user3));
+        
+        // Setup tasks
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        task1.setIsAssignedTo(null); // Unclaimed
+        task1.setValue(20);
+        task1.setActiveStatus(true);
+        task1.setLuckyDraw(false);
+        
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(teamId);
+        task2.setIsAssignedTo(null); // Unclaimed
+        task2.setValue(30);
+        task2.setActiveStatus(true);
+        task2.setLuckyDraw(false);
+        
+        Task task3 = new Task();
+        task3.setId(3L);
+        task3.setTeamId(teamId);
+        task3.setIsAssignedTo(1L); // Already claimed
+        task3.setValue(10);
+        task3.setActiveStatus(true);
+        task3.setLuckyDraw(false);
+        
+        Task task4 = new Task();
+        task4.setId(4L);
+        task4.setTeamId(2L); // Different team
+        task4.setIsAssignedTo(null); // Unclaimed
+        task4.setValue(40);
+        task4.setActiveStatus(true);
+        task4.setLuckyDraw(false);
+        
+        List<Task> allTasks = new ArrayList<>(Arrays.asList(task1, task2, task3, task4));
+        
+        // when
+        when(teamRepository.findTeamById(teamId)).thenReturn(team);
+        when(userRepository.findAllById(memberIds)).thenReturn(users);
+        
+        // For the getFilteredTasks internal method call
+        TaskService spyTaskService = spy(taskService);
+        doReturn(allTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        List<Task> result = spyTaskService.luckyDrawTasks(teamId);
+        
+        // then
+        assertEquals(2, result.size());
+        
+        // Verify tasks were flagged correctly
+        for (Task task : result) {
+            assertTrue(task.getLuckyDraw(), "Task should be marked for lucky draw");
+            assertEquals(teamId, task.getTeamId(), "Task should be from the specified team");
+            assertNull(task.getIsAssignedTo(), "Task should be unclaimed");
+        }
+        
+        // Verify only eligible tasks were included (from our team, unclaimed)
+        assertTrue(result.contains(task1));
+        assertTrue(result.contains(task2));
+        assertFalse(result.contains(task3)); // Already claimed
+        assertFalse(result.contains(task4)); // Different team
+        
+        // Verify original tasks were properly updated
+        assertTrue(task1.getLuckyDraw());
+        assertTrue(task2.getLuckyDraw());
+        assertFalse(task3.getLuckyDraw()); // Should be unchanged
+        assertFalse(task4.getLuckyDraw()); // Should be unchanged
+    }
+
+    @Test
+    void luckyDrawTasks_nullTeamId() {
+        // given
+        Long teamId = null;
+        
+        // when & then
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> taskService.luckyDrawTasks(teamId)
+        );
+        
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("User team ID cannot be null", exception.getReason());
+    }
+
+    @Test
+    void luckyDrawTasks_noActiveTasks() {
+        // given
+        Long teamId = 1L;
+        List<Task> emptyTaskList = new ArrayList<>();
+        
+        // when
+        TaskService spyTaskService = spy(taskService);
+        doReturn(emptyTaskList).when(spyTaskService).getFilteredTasks(true, null);
+        
+        List<Task> result = spyTaskService.luckyDrawTasks(teamId);
+        
+        // then
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void luckyDrawTasks_nullTaskList() {
+        // given
+        Long teamId = 1L;
+        
+        // when
+        TaskService spyTaskService = spy(taskService);
+        doReturn(null).when(spyTaskService).getFilteredTasks(true, null);
+        
+        List<Task> result = spyTaskService.luckyDrawTasks(teamId);
+        
+        // then
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void luckyDrawTasks_noUnclaimedTasks() {
+        // given
+        Long teamId = 1L;
+        
+        // Setup tasks - all already claimed
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        task1.setIsAssignedTo(1L); // Claimed
+        task1.setValue(20);
+        task1.setActiveStatus(true);
+        
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(teamId);
+        task2.setIsAssignedTo(2L); // Claimed
+        task2.setValue(30);
+        task2.setActiveStatus(true);
+        
+        List<Task> allTasks = new ArrayList<>(Arrays.asList(task1, task2));
+        
+        // when
+        TaskService spyTaskService = spy(taskService);
+        doReturn(allTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        List<Task> result = spyTaskService.luckyDrawTasks(teamId);
+        
+        // then
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void luckyDrawTasks_differentTeams() {
+        // given
+        Long teamId = 1L;
+        Long otherTeamId = 2L;
+        
+        // Setup tasks
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        task1.setIsAssignedTo(null); // Unclaimed
+        task1.setValue(20);
+        task1.setActiveStatus(true);
+        task1.setLuckyDraw(false);
+        
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(otherTeamId); // Different team
+        task2.setIsAssignedTo(null); // Unclaimed
+        task2.setValue(30);
+        task2.setActiveStatus(true);
+        task2.setLuckyDraw(false);
+        
+        List<Task> allTasks = new ArrayList<>(Arrays.asList(task1, task2));
+        
+        // when
+        TaskService spyTaskService = spy(taskService);
+        doReturn(allTasks).when(spyTaskService).getFilteredTasks(true, null);
+        
+        List<Task> result = spyTaskService.luckyDrawTasks(teamId);
+        
+        // then
+        assertEquals(1, result.size());
+        assertEquals(task1.getId(), result.get(0).getId());
+        assertTrue(result.get(0).getLuckyDraw());
+        assertFalse(task2.getLuckyDraw()); // Should remain unchanged
+    }
+    }

@@ -1051,4 +1051,266 @@ void DELETE_failedFinishTask_claimedByDifferentUser() throws Exception {
     verify(userService, never()).addExperiencePoints(anyLong(), anyInt());
     verify(taskService, never()).checkTaskType(any(Task.class));
 }
+
+    @Test
+void POST_luckyDraw_success_returnsUpdatedTasks() throws Exception {
+    // Setup test data
+    Date now = new Date();
+    Task task1 = new Task();
+    task1.setId(1L);
+    task1.setName("Lucky Task 1");
+    task1.setDescription("Description 1");
+    task1.setIsAssignedTo(5L); // Now assigned to a user
+    task1.setTeamId(10L);
+    task1.setDeadline(now);
+    task1.setCreationDate(now);
+    task1.setActiveStatus(true);
+
+    Task task2 = new Task();
+    task2.setId(2L);
+    task2.setName("Lucky Task 2");
+    task2.setDescription("Description 2");
+    task2.setIsAssignedTo(6L); // Now assigned to a user
+    task2.setTeamId(10L);
+    task2.setDeadline(now);
+    task2.setCreationDate(now);
+    task2.setActiveStatus(true);
+
+    // Create a list of tasks for the mock response
+    List<Task> luckyDrawTasks = Arrays.asList(task1, task2);
+
+    // Mock user for token validation
+    User mockUser = new User();
+    mockUser.setId(5L);
+    mockUser.setTeamId(10L);
+
+    String token = "token123";
+
+    // Mock service behavior
+    doNothing().when(teamService).validateTeamPaused(token);
+    when(userRepository.findByToken(token)).thenReturn(mockUser);
+    when(taskService.luckyDrawTasks(mockUser.getTeamId())).thenReturn(luckyDrawTasks);
+
+    // Perform the POST request
+    MockHttpServletRequestBuilder postRequest = post("/tasks/luckyDraw")
+        .contentType(MediaType.APPLICATION_JSON)
+        .header("Authorization", "Bearer " + token);
+
+    mockMvc.perform(postRequest)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$[0].id", is(task1.getId().intValue())))
+        .andExpect(jsonPath("$[0].name", is(task1.getName())))
+        .andExpect(jsonPath("$[0].isAssignedTo", is(task1.getIsAssignedTo().intValue())))
+        .andExpect(jsonPath("$[1].id", is(task2.getId().intValue())))
+        .andExpect(jsonPath("$[1].name", is(task2.getName())))
+        .andExpect(jsonPath("$[1].isAssignedTo", is(task2.getIsAssignedTo().intValue())));
+
+    // Verify that the service methods were called
+    verify(teamService, times(1)).validateTeamPaused(token);
+    verify(userRepository, times(1)).findByToken(token);
+    verify(taskService, times(1)).luckyDrawTasks(mockUser.getTeamId());
+}
+
+    @Test
+    void POST_luckyDraw_unauthorized_returnsUnauthorized() throws Exception {
+        String token = "invalid-token";
+        
+        // Mock service to throw exception for invalid token
+        doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
+            .when(teamService).validateTeamPaused(token);
+
+        // Perform the POST request with invalid token
+        MockHttpServletRequestBuilder postRequest = post("/tasks/luckyDraw")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isUnauthorized());
+
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(taskService, times(0)).luckyDrawTasks(anyLong());
+    }
+
+    @Test
+    void POST_luckyDraw_teamPaused_returnsForbidden() throws Exception {
+        String token = "token123";
+        
+        // Mock service to throw exception for paused team
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused"))
+            .when(teamService).validateTeamPaused(token);
+
+        // Perform the POST request
+        MockHttpServletRequestBuilder postRequest = post("/tasks/luckyDraw")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isForbidden());
+
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(userRepository, times(0)).findByToken(anyString());
+        verify(taskService, times(0)).luckyDrawTasks(anyLong());
+    }
+
+    @Test
+    void POST_autodistribute_success_returnsUpdatedTasks() throws Exception {
+        // Setup test data
+        Date now = new Date();
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Distributed Task 1");
+        task1.setDescription("Description 1");
+        task1.setIsAssignedTo(5L); // Assigned to a user
+        task1.setTeamId(10L);
+        task1.setDeadline(now);
+        task1.setCreationDate(now);
+        task1.setActiveStatus(true);
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Distributed Task 2");
+        task2.setDescription("Description 2");
+        task2.setIsAssignedTo(6L); // Assigned to another user
+        task2.setTeamId(10L);
+        task2.setDeadline(now);
+        task2.setCreationDate(now);
+        task2.setActiveStatus(true);
+
+        // Create a list of tasks for the mock response
+        List<Task> distributedTasks = Arrays.asList(task1, task2);
+
+        // Mock user for token validation
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+
+        String token = "token123";
+
+        // Mock service behavior
+        doNothing().when(teamService).validateTeamPaused(token);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        when(taskService.autodistributeTasks(mockUser.getTeamId())).thenReturn(distributedTasks);
+
+        // Perform the POST request
+        MockHttpServletRequestBuilder postRequest = post("/tasks/autodistribute")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].id", is(task1.getId().intValue())))
+            .andExpect(jsonPath("$[0].name", is(task1.getName())))
+            .andExpect(jsonPath("$[0].isAssignedTo", is(task1.getIsAssignedTo().intValue())))
+            .andExpect(jsonPath("$[1].id", is(task2.getId().intValue())))
+            .andExpect(jsonPath("$[1].name", is(task2.getName())))
+            .andExpect(jsonPath("$[1].isAssignedTo", is(task2.getIsAssignedTo().intValue())));
+
+        // Verify that the service methods were called
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(userRepository, times(1)).findByToken(token);
+        verify(taskService, times(1)).autodistributeTasks(mockUser.getTeamId());
+    }
+
+    @Test
+    void POST_autodistribute_unauthorized_returnsUnauthorized() throws Exception {
+        String token = "invalid-token";
+        
+        // Mock service to throw exception for invalid token
+        doThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"))
+            .when(teamService).validateTeamPaused(token);
+
+        // Perform the POST request with invalid token
+        MockHttpServletRequestBuilder postRequest = post("/tasks/autodistribute")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isUnauthorized());
+
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(taskService, times(0)).autodistributeTasks(anyLong());
+    }
+
+    @Test
+    void POST_autodistribute_teamPaused_returnsForbidden() throws Exception {
+        String token = "token123";
+        
+        // Mock service to throw exception for paused team
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused"))
+            .when(teamService).validateTeamPaused(token);
+
+        // Perform the POST request
+        MockHttpServletRequestBuilder postRequest = post("/tasks/autodistribute")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isForbidden());
+
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(userRepository, times(0)).findByToken(anyString());
+        verify(taskService, times(0)).autodistributeTasks(anyLong());
+    }
+
+    @Test
+    void POST_autodistribute_noTasksAvailable_returnsEmptyList() throws Exception {
+        // Setup
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+
+        String token = "token123";
+
+        // Mock service behavior - no tasks available for distribution
+        doNothing().when(teamService).validateTeamPaused(token);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        when(taskService.autodistributeTasks(mockUser.getTeamId())).thenReturn(Collections.emptyList());
+
+        // Perform the POST request
+        MockHttpServletRequestBuilder postRequest = post("/tasks/autodistribute")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+
+        // Verify that the service methods were called
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(userRepository, times(1)).findByToken(token);
+        verify(taskService, times(1)).autodistributeTasks(mockUser.getTeamId());
+    }
+
+    @Test
+    void POST_luckyDraw_noTasksAvailable_returnsEmptyList() throws Exception {
+        // Setup
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+
+        String token = "token123";
+
+        // Mock service behavior - no tasks available for lucky draw
+        doNothing().when(teamService).validateTeamPaused(token);
+        when(userRepository.findByToken(token)).thenReturn(mockUser);
+        when(taskService.luckyDrawTasks(mockUser.getTeamId())).thenReturn(Collections.emptyList());
+
+        // Perform the POST request
+        MockHttpServletRequestBuilder postRequest = post("/tasks/luckyDraw")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header("Authorization", "Bearer " + token);
+
+        mockMvc.perform(postRequest)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+
+        // Verify that the service methods were called
+        verify(teamService, times(1)).validateTeamPaused(token);
+        verify(userRepository, times(1)).findByToken(token);
+        verify(taskService, times(1)).luckyDrawTasks(mockUser.getTeamId());
+    }
+
+    
 }
