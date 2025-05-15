@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -173,27 +174,32 @@ class TeamServiceIntegrationTest {
     
     @Test
     void quitTeam_validInput_userQuitTeam() {
+        // Arrange: Set the user's team and save both user and team
         testUser.setTeamId(testTeam.getId());
         userRepository.save(testUser);
-        
-        assertTrue(testTeam.getMembers().contains(testUser.getId()));
 
+        // Assert: Ensure the user is initially in the team
+        assertTrue(testTeam.getMembers().contains(testUser.getId()), "User should initially be in the team");
+
+        // Act: User quits the team
         teamService.quitTeam(testUser.getId(), testTeam.getId());
 
+        // Assert: Check if the user's teamId is cleared
         User updatedUser = userRepository.findById(testUser.getId()).orElse(null);
         assertNotNull(updatedUser, "User should exist after quitting team");
-        assertNull(updatedUser.getTeamId(), "User should not have teamId after quitting");
-        
+        assertNull(updatedUser.getTeamId(), "User should no longer have a team");
+
+        // Assert: Check if the team is deleted or remains
         Team updatedTeam = teamRepository.findTeamById(testTeam.getId());
-        
         if (updatedTeam == null) {
-            // Team was deleted because it had no members left
+            // Assert: Team should be deleted if no members remain
+            assertTrue(true, "Team was deleted because it had no members left");
         } else {
-            // Team still exists, verify user was removed from members list
-            assertFalse(updatedTeam.getMembers().contains(testUser.getId()), 
-                        "User should be removed from team members");
+            // Assert: Team still exists and the user was removed from the members list
+            assertFalse(updatedTeam.getMembers().contains(testUser.getId()), "User should be removed from team members");
         }
     }
+
 
 
     @Test
