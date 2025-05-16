@@ -6,17 +6,19 @@ import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.List;
 import com.google.api.services.calendar.model.Event;
 
+
 @RestController
-@RequestMapping("/calendar")
 public class CalendarController {
 
     private final CalendarService calendarService;
@@ -31,7 +33,7 @@ public class CalendarController {
     }
     
 
-    @PostMapping("/sync")
+    @PostMapping("/calendar/sync")
     @ResponseStatus(HttpStatus.OK)
     public String syncAllActiveTasks(@RequestHeader("Authorization") String authorizationHeader) {
         String token = validateAuthorizationHeader(authorizationHeader);
@@ -51,7 +53,13 @@ public class CalendarController {
         return "All active tasks synced to Google Calendar successfully!";
     }
 
-    @GetMapping("/auth-url")
+    @GetMapping("/today")
+    public ResponseEntity<String> getTodayDate() {
+        String today = LocalDate.now().toString(); // e.g., "2025-05-16"
+        return ResponseEntity.ok(today);
+    }
+
+    @GetMapping("/calendar/auth-url")
     @ResponseStatus(HttpStatus.OK)
     public String getGoogleAuthUrl(@RequestHeader("Authorization") String authorizationHeader) throws Exception {
         String token = validateAuthorizationHeader(authorizationHeader);
@@ -67,7 +75,7 @@ public class CalendarController {
         return calendarService.generateAuthUrl(userId);
     }
 
-    @GetMapping("/Callback")
+    @GetMapping("/calendar/Callback")
     @ResponseStatus(HttpStatus.OK)
     public String handleGoogleCallback(@RequestParam("code") String code, @RequestParam("state") String userIdStr) throws Exception {
         Long userId;
@@ -80,7 +88,7 @@ public class CalendarController {
         return "Google Calendar connected successfully!";
     }
 
-    @GetMapping("/events")
+    @GetMapping("/calendar/events")
     @ResponseStatus(HttpStatus.OK)
     public List<Event> getEventsInRange(@RequestParam String startDate, // Format: "YYYY-MM-DD"
                                         @RequestParam String endDate,  // Format: "YYYY-MM-DD"
@@ -97,7 +105,7 @@ public class CalendarController {
         return calendarService.getUserGoogleCalendarEvents(startDate, endDate, userId);
     }
 
-    @GetMapping("/events/{id}")
+    @GetMapping("/calendar/events/{id}")
     @ResponseStatus(HttpStatus.OK)
     public Event getEventById(@PathVariable String id, @RequestHeader("Authorization") String authorizationHeader) throws IOException, GeneralSecurityException {
         String token = validateAuthorizationHeader(authorizationHeader);
@@ -112,7 +120,7 @@ public class CalendarController {
         return calendarService.getEventById(id, userId);
     }
 
-    @GetMapping("/combined")
+    @GetMapping("/calendar/combined")
     @ResponseStatus(HttpStatus.OK)
     public List<Map<String, Object>> getCombinedCalendar(
             @RequestParam(defaultValue = "true") boolean activeOnly,
