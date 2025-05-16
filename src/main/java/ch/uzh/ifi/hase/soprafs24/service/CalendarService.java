@@ -122,9 +122,7 @@ public class CalendarService {
             }
 
         } catch (IOException | GeneralSecurityException ex) {
-            logger.error("Google Calendar sync failed for task {} / user {}: {}", task.getId(), userId, ex.getMessage());
-            throw new RuntimeException("Failed to sync with Google Calendar", ex);
-        }
+            logger.warn("Google Calendar sync failed for task {} / user {}: {}", task.getId(), userId, ex.getMessage(), ex);        }
     }
 
     public void syncTaskWithGoogleCalendar(Long userId, Map<String, Object> taskEvent) {
