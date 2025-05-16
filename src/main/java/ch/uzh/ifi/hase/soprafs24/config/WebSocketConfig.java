@@ -14,6 +14,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+import org.springframework.beans.factory.annotation.Value; 
 import java.util.Map;
 
 @Configuration
@@ -22,6 +23,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketConfig.class);
     private final SocketHandler myPlainWebSocketHandler;
+    @Value("${cors.allowed.origins:*}") // Default to "*" if property is not set
+    private String[] allowedOrigins;
 
     @Autowired
     public WebSocketConfig(SocketHandler myPlainWebSocketHandler) {
