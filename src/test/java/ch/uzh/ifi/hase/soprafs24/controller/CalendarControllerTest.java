@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -217,5 +218,14 @@ class CalendarControllerTest {
         // Verify that the calendar and task service methods were not called, as the token validation failed
         verify(calendarService, never()).getUserGoogleCalendarEvents(anyString(), anyString(), anyLong());
         verify(taskService, never()).getFilteredTasks(anyBoolean(), any());
+    }
+
+    @Test
+    void GET_TodayDate_() throws Exception {
+        String expectedDate = LocalDate.now().toString();
+
+        mockMvc.perform(get("/today"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(expectedDate));
     }
 }
