@@ -32,7 +32,7 @@ import java.util.Comparator;
 
 
 @Service
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class TaskService {
 
     private final UserService userService;
