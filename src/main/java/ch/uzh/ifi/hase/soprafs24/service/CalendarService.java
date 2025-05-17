@@ -39,7 +39,7 @@ import java.time.ZoneId;
 import java.util.*;
 
 @Service
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class CalendarService {
     private static final Logger logger = LoggerFactory.getLogger(CalendarService.class);
     private static final String APPLICATION_NAME = "TaskAway Calendar";

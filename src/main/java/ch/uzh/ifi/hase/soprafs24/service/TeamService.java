@@ -37,7 +37,7 @@ import java.util.Objects;
  * to the caller.
  */
 @Service
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class TeamService {
 
   private final Logger log = LoggerFactory.getLogger(TeamService.class);
