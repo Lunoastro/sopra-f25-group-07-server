@@ -8,6 +8,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.DateTime;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
@@ -18,11 +19,14 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import ch.uzh.ifi.hase.soprafs24.repository.GoogleTokenRepository;
+import ch.uzh.ifi.hase.soprafs24.config.JpaDataStoreFactory;
 import ch.uzh.ifi.hase.soprafs24.entity.GoogleToken;
 import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.exceptions.CalendarAuthorizationException;
@@ -35,6 +39,7 @@ import java.time.ZoneId;
 import java.util.*;
 
 @Service
+@Transactional
 public class CalendarService {
     private static final Logger logger = LoggerFactory.getLogger(CalendarService.class);
     private static final String APPLICATION_NAME = "TaskAway Calendar";
@@ -55,20 +60,33 @@ public class CalendarService {
     private TaskService taskService;
     private final GoogleTokenRepository googleTokenRepository;
 
+    @Autowired
+    private JpaDataStoreFactory jpaDataStoreFactory;
+
     public CalendarService(@Lazy TaskService taskService, GoogleTokenRepository googleTokenRepository) {
         this.taskService = taskService;
         this.googleTokenRepository = googleTokenRepository;
     }
 
     protected GoogleAuthorizationCodeFlow getFlow() throws IOException, GeneralSecurityException {
+        String json = System.getenv("GOOGLE_CALENDAR_CREDENTIALS");
+        if (json == null || json.isEmpty()) {
+            throw new IOException("Environment variable GOOGLE_CALENDAR_CREDENTIALS is not set.");
+        }
+
         final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY,
+                new InputStreamReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))));
 
         return new GoogleAuthorizationCodeFlow.Builder(
                 httpTransport,
                 JSON_FACTORY,
-                getClientSecrets(),
+                clientSecrets,
                 Collections.singletonList(CalendarScopes.CALENDAR))
                 .setAccessType(OFFLINE)
+                .setDataStoreFactory(jpaDataStoreFactory)
+                .setTokenServerUrl(new GenericUrl("https://oauth2.googleapis.com/token"))
                 .build();
     }
 
@@ -79,16 +97,20 @@ public class CalendarService {
     public List<Event> getUserGoogleCalendarEvents(String startDate, String endDate, Long userId) throws IOException {
         try {
             Calendar calendar = getCalendarServiceForUser(userId);
+
             DateTime start = new DateTime(startDate + "T00:00:00Z");
             DateTime end = new DateTime(endDate + "T23:59:59Z");
+
             Events events = calendar.events().list(PRIMARY)
                     .setTimeMin(start)
                     .setTimeMax(end)
                     .setOrderBy("startTime")
                     .setSingleEvents(true)
                     .execute();
+
             return events.getItems();
         } catch (GeneralSecurityException e) {
+            logger.error("Error accessing Google Calendar for user {}: {}", userId, e.getMessage(), e);
             throw new IOException("Error accessing Google Calendar for user.", e);
         }
     }
@@ -101,7 +123,7 @@ public class CalendarService {
                     .setSummary("[TASK] " + task.getName())
                     .setDescription(task.getDescription())
                     .setStart(new EventDateTime()
-                            .setDateTime(new DateTime(toISOString(task.getDeadline()))))
+                            .setDateTime(new DateTime(toISOString(task.getStartDate()))))
                     .setEnd(new EventDateTime()
                             .setDateTime(new DateTime(toISOString(task.getDeadline()))));
 
@@ -120,6 +142,7 @@ public class CalendarService {
                 cal.events().delete(PRIMARY, task.getGoogleEventId()).execute();
                 task.setGoogleEventId(null);
             }
+            taskService.saveTask(task);
 
         } catch (IOException | GeneralSecurityException ex) {
             logger.warn("Google Calendar sync failed for task {} / user {}: {}", task.getId(), userId, ex.getMessage(), ex);        }
@@ -166,8 +189,11 @@ public class CalendarService {
             return flow.newAuthorizationUrl()
                     .setRedirectUri(getRedirectUri())
                     .setState(userId.toString())
+                    .setAccessType(OFFLINE)   // request refresh token
+                    .set("prompt", "consent")
                     .build();
         } catch (Exception e) {
+            logger.error("Failed to generate authorization URL for user {}: {}", userId, e.getMessage(), e);
             throw new CalendarAuthorizationException("Failed to generate authorization URL for user: " + userId, e);
         }
     }
@@ -195,65 +221,48 @@ public class CalendarService {
         logger.info("Google OAuth token saved for user: {}", userId);
     }
 
-    private GoogleClientSecrets getClientSecrets() throws IOException {
-        String json = System.getenv("GOOGLE_CALENDAR_CREDENTIALS");
-
-        if (json != null && !json.isEmpty()) {
-            InputStream in = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
-            return GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-        }
-
-        throw new FileNotFoundException("Environment variable GOOGLE_CALENDAR_CREDENTIALS is not set.");
-    }
-
-    public Credential getUserCredentials(Long userId) throws IOException {
-        // Retrieve the token from DB
+    public Credential getUserCredentials(Long userId) throws IOException, GeneralSecurityException {
         GoogleToken googleToken = googleTokenRepository.findById(userId)
-                .orElseThrow(() -> new IOException("No credentials found for user: " + userId));
+            .orElseThrow(() -> new IOException("No credentials found for user: " + userId));
 
-        // Create a Credential object from the stored token information
-        return new Credential(BearerToken.authorizationHeaderAccessMethod())
-                .setAccessToken(googleToken.getAccessToken())
-                .setRefreshToken(googleToken.getRefreshToken())
-                .setExpirationTimeMilliseconds(googleToken.getExpirationTime());
-    }
+        GoogleAuthorizationCodeFlow flow = getFlow();
 
-    public Credential refreshUserCredentials(Long userId) throws IOException {
-        GoogleToken googleToken = googleTokenRepository.findById(userId)
-                .orElseThrow(() -> new IOException("No credentials found for user: " + userId));
-    
-        // If the token is expired, refresh it
-        if (System.currentTimeMillis() > googleToken.getExpirationTime()) {
-            // Create the Credential object from the current token
-            Credential credential = new Credential(BearerToken.authorizationHeaderAccessMethod())
-                    .setAccessToken(googleToken.getAccessToken())
-                    .setRefreshToken(googleToken.getRefreshToken())
-                    .setExpirationTimeMilliseconds(googleToken.getExpirationTime());
-    
-            // Refresh the token
-            if (credential.refreshToken()) {
-                googleToken.setAccessToken(credential.getAccessToken());
-                googleToken.setExpirationTime(System.currentTimeMillis() + (credential.getExpiresInSeconds() * 1000));
-                googleTokenRepository.save(googleToken);
+        Credential credential = new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
+            .setTransport(flow.getTransport())
+            .setJsonFactory(flow.getJsonFactory())
+            .setTokenServerEncodedUrl(flow.getTokenServerEncodedUrl())
+            .setClientAuthentication(flow.getClientAuthentication())
+            .build();
+
+        // Set tokens from DB
+        credential.setAccessToken(googleToken.getAccessToken());
+        credential.setRefreshToken(googleToken.getRefreshToken());
+        credential.setExpirationTimeMilliseconds(googleToken.getExpirationTime());
+
+        // Check if access token is missing or about to expire
+        if (credential.getAccessToken() == null || (credential.getExpirationTimeMilliseconds() != null && credential.getExpirationTimeMilliseconds() <= System.currentTimeMillis() + 60000)) {
+            logger.info("Access token expired or missing for user {}, refreshing token...", userId);
+            boolean refreshed = credential.refreshToken();
+            if (!refreshed) {
+                throw new IOException("Failed to refresh token for user: " + userId);
             }
-    
-            return credential;  // Return the updated Credential
+
+            // Update refreshed tokens in DB
+            googleToken.setAccessToken(credential.getAccessToken());
+            googleToken.setExpirationTime(credential.getExpirationTimeMilliseconds());
+            googleTokenRepository.save(googleToken);
         }
-    
-        // Return existing credentials if they are not expired
-        return new Credential(BearerToken.authorizationHeaderAccessMethod())
-                .setAccessToken(googleToken.getAccessToken())
-                .setRefreshToken(googleToken.getRefreshToken())
-                .setExpirationTimeMilliseconds(googleToken.getExpirationTime());
+
+        return credential;
     }
+
 
     @VisibleForTesting
     public Calendar getCalendarServiceForUser(Long userId) throws IOException, GeneralSecurityException {
         Credential cred = getUserCredentials(userId);
-        return new Calendar.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                JSON_FACTORY,
-                cred)
+        final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+
+        return new Calendar.Builder(httpTransport, JSON_FACTORY, cred)
                 .setApplicationName(APPLICATION_NAME)
                 .build();
     }

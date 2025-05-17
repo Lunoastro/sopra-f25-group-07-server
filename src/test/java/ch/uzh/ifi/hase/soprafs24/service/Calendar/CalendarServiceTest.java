@@ -60,7 +60,6 @@ class CalendarServiceTest {
         }
     }
 
-
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -72,8 +71,6 @@ class CalendarServiceTest {
         calendarService = new TestableCalendarService(taskService, tokenRepository, mockFlow, "http://localhost/redirect");
         spyService = Mockito.spy(calendarService);
     }
-
-
 
     @Test
     void testGetUserGoogleCalendarEvents_success() throws Exception {
@@ -123,31 +120,37 @@ class CalendarServiceTest {
     @Test
     void testSyncSingleTask_insertNewEvent() throws Exception {
         Long userId = 1L;
+        
+        // Create and setup task with all necessary dates initialized
         Task task = new Task();
         task.setId(1L);
         task.setName("Test Task");
         task.setDescription("Description");
-        task.setDeadline(new Date());
+        task.setDeadline(new Date()); 
+        task.setStartDate(new Date());
+        
         task.setActiveStatus(true);
         task.setGoogleEventId(null);
-
-        // Mock Calendar API
+        
+        // Mock Calendar API components
         Calendar calendar = mock(Calendar.class);
         Calendar.Events events = mock(Calendar.Events.class);
         Calendar.Events.Insert insert = mock(Calendar.Events.Insert.class);
-
+        
         Event insertedEvent = new Event().setId("event123");
-
+        
         when(calendar.events()).thenReturn(events);
         when(events.insert(eq("primary"), any(Event.class))).thenReturn(insert);
         when(insert.execute()).thenReturn(insertedEvent);
-
-        // Spy calendarService and mock internal calls
+        
+        // Spy your actual CalendarService instance (assumed to be spyService)
         doReturn(calendar).when(spyService).getCalendarServiceForUser(userId);
         doReturn(mock(com.google.api.client.auth.oauth2.Credential.class)).when(spyService).getUserCredentials(userId);
-
+        
+        // Call method under test
         spyService.syncSingleTask(task, userId);
-
+        
+        // Assert that task's googleEventId was updated after sync
         assertEquals("event123", task.getGoogleEventId());
     }
 
@@ -168,6 +171,8 @@ class CalendarServiceTest {
         Task task = new Task();
         task.setId(1L);
         task.setName("Task");
+        task.setValue(10);
+        task.setStartDate(new Date());
         task.setDeadline(new Date());
         task.setActiveStatus(true);
 
@@ -176,22 +181,21 @@ class CalendarServiceTest {
         Calendar.Events events = mock(Calendar.Events.class);
         Calendar.Events.Insert insert = mock(Calendar.Events.Insert.class);
 
-        // Simulate Calendar API failure
         when(calendar.events()).thenReturn(events);
         when(events.insert(eq("primary"), any(Event.class))).thenReturn(insert);
         when(insert.execute()).thenThrow(new RuntimeException("API error"));
 
-        // Stub methods on the existing spyService created in @BeforeEach
         doReturn(calendar).when(spyService).getCalendarServiceForUser(userId);
         doReturn(mock(Credential.class)).when(spyService).getUserCredentials(userId);
 
-        // Execute and assert exception
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+        // Expect exception since production code throws it
+        Exception exception = assertThrows(RuntimeException.class, () -> {
             spyService.syncSingleTask(task, userId);
         });
-
-        assertTrue(ex.getMessage().contains("API error"));
+        assertEquals("API error", exception.getMessage());
     }
+
+
 
 
     @Test
