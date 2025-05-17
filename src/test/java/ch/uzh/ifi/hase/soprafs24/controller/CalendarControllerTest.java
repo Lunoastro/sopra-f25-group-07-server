@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(CalendarController.class)
+@WebMvcTest({CalendarController.class, CalendarAuthController.class})
 class CalendarControllerTest {
 
     @Autowired
@@ -83,7 +83,7 @@ class CalendarControllerTest {
     void GET_handleOAuthCallback_valid_returns200() throws Exception {
         doNothing().when(calendarService).handleOAuthCallback("authcode", 1L);
 
-        mockMvc.perform(get("/calendar/Callback")
+        mockMvc.perform(get("/Callback")
                 .param("code", "authcode")
                 .param("state", "1"))
             .andExpect(status().isOk());
@@ -100,8 +100,7 @@ class CalendarControllerTest {
         mockMvc.perform(get("/calendar/auth-url")
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isOk())
-            .andExpect(content().string("http://auth.url"));
-
+            .andExpect(jsonPath("$.authUrl").value("http://auth.url"));
         verify(calendarService).generateAuthUrl(1L);
     }
 

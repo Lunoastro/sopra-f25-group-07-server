@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +19,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @RestController
 @SpringBootApplication
+@EnableTransactionManagement
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
     @Value("${cors.allowed.origins:*}") // Default to "*" if property is not set

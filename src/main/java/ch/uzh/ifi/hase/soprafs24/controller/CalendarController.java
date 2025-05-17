@@ -6,18 +6,18 @@ import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.time.LocalDate;
 import java.util.Map;
 import java.util.List;
 import com.google.api.services.calendar.model.Event;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 
+@ConditionalOnProperty(name = "GOOGLE_CALENDAR_CREDENTIALS")
 @RestController
 public class CalendarController {
 
@@ -51,41 +51,6 @@ public class CalendarController {
         calendarService.syncAllActiveTasksToUserCalendar(userId);
 
         return "All active tasks synced to Google Calendar successfully!";
-    }
-
-    @GetMapping("/today")
-    public ResponseEntity<String> getTodayDate() {
-        String today = LocalDate.now().toString(); // e.g., "2025-05-16"
-        return ResponseEntity.ok(today);
-    }
-
-    @GetMapping("/calendar/auth-url")
-    @ResponseStatus(HttpStatus.OK)
-    public String getGoogleAuthUrl(@RequestHeader("Authorization") String authorizationHeader) throws Exception {
-        String token = validateAuthorizationHeader(authorizationHeader);
-        if (!userService.validateToken(token)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
-        }
-        // Get authenticated user ID
-        Long userId = userService.findIDforToken(token);
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
-        }
-
-        return calendarService.generateAuthUrl(userId);
-    }
-
-    @GetMapping("/calendar/Callback")
-    @ResponseStatus(HttpStatus.OK)
-    public String handleGoogleCallback(@RequestParam("code") String code, @RequestParam("state") String userIdStr) throws Exception {
-        Long userId;
-        try {
-            userId = Long.parseLong(userIdStr);
-        } catch (NumberFormatException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid state/user ID.");
-        }
-        calendarService.handleOAuthCallback(code, userId);
-        return "Google Calendar connected successfully!";
     }
 
     @GetMapping("/calendar/events")
