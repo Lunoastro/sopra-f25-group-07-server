@@ -16,10 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collections;
-import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
-
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -130,9 +126,7 @@ public class TeamService {
     socketHandler.associateSessionWithTeam(userId, team.getId());
     userRepository.flush();
     teamRepository.flush();
-    // Notify the team about the new member
-    List<UserGetDTO> currentMembers = getCurrentMembersForTeamDTO(team.getId());
-    notificationService.notifyTeamMembers(team.getId(), "Team", currentMembers);
+    log.debug("User {} joined team {}", userId, team.getId());
 
   }
   
@@ -315,40 +309,6 @@ public class TeamService {
     throw new ResponseStatusException(
           HttpStatus.CONFLICT,
           "All team colours are already in use for team " + team.getId());
-  }
-
-  // Helper function to get current members of a team as UserGetDTOs
-  public List<UserGetDTO> getCurrentMembersForTeamDTO(Long teamId) {
-    if (teamId == null) {
-        log.warn("getCurrentMembersForTeamDTO called with null teamId.");
-        return Collections.emptyList();
-    }
-    Team team;
-    try {
-        team = getTeamById(teamId); // Uses existing method which throws if not found
-    } catch (ResponseStatusException e) {
-        log.warn("Team not found with id {} while trying to get current members DTO.", teamId);
-        return Collections.emptyList(); // Or re-throw if that's preferred
-    }
-    
-    List<Long> memberIds = team.getMembers();
-
-    if (memberIds == null || memberIds.isEmpty()) {
-        return Collections.emptyList();
-    }
-
-    return memberIds.stream()
-            .map(memberId -> {
-                try {
-                    return userService.getUserById(memberId); // Fetch User entity for each ID
-                } catch (ResponseStatusException e) {
-                    log.warn("User with ID {} not found while fetching members for team {}. Skipping.", memberId, teamId);
-                    return null; // Skip if a user ID in the list is somehow invalid
-                }
-            })
-            .filter(Objects::nonNull) // Filter out null users if any were skipped
-            .map(user -> DTOMapper.INSTANCE.convertEntityToUserGetDTO(user)) // Convert User to UserGetDTO
-            .collect(Collectors.toList());
   }
   }
 

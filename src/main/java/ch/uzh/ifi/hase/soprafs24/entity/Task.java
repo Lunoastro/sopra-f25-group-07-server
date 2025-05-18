@@ -3,6 +3,8 @@ package ch.uzh.ifi.hase.soprafs24.entity;
 import javax.persistence.*;
 import java.io.Serializable;
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
+import ch.uzh.ifi.hase.soprafs24.listener.TaskEntityListener;
+
 import java.util.Date;
 
 /**
@@ -12,6 +14,7 @@ import java.util.Date;
  */
 @Entity
 @Table(name = "TASK")
+@EntityListeners(TaskEntityListener.class)
 public class Task implements Serializable {
 
     private static final long serialVersionUID = 1L;
