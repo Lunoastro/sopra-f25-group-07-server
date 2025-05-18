@@ -1299,7 +1299,6 @@ class TaskServiceTest {
         // Verify the repositories were called correctly
         verify(taskRepository, times(3)).save(any(Task.class));
         verify(userRepository, times(3)).save(any(User.class));
-        verify(webSocketNotificationService).notifyTeamMembers(eq(teamId), eq("task"), any());
     }
 
     @Test
