@@ -1,10 +1,10 @@
 
 package ch.uzh.ifi.hase.soprafs24.listener;
 
-import ch.uzh.ifi.hase.soprafs24.entity.User;
 
+import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.service.WebSocketNotificationService;
 import org.slf4j.Logger;
@@ -18,33 +18,34 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import javax.persistence.PostPersist;
 import javax.persistence.PostRemove;
 import javax.persistence.PostUpdate;
-import java.util.HashMap;
-import java.util.Map;
-
+import java.util.Collections;
+import java.util.List;
 @Component
 public class UserEntityListener {
-
+    private static final String ENTITY_TYPE = "TEAM";
     private final Logger log = LoggerFactory.getLogger(UserEntityListener.class);
-
     private final WebSocketNotificationService notificationService;
-    private final UserService userService;
+    private final TeamService teamService; 
 
     @Autowired
     public UserEntityListener(@Lazy WebSocketNotificationService notificationService,
+            @Lazy TeamService teamService,
             @Lazy UserService userService) {
         this.notificationService = notificationService;
-        this.userService = userService;
+        this.teamService = teamService;
     }
 
-    private void sendUserUpdateNotification(User user, String action) {
+    
+
+    
+    private void sendUserChangeNotification(User user, String action) {
         if (user == null || user.getId() == null) {
             log.warn("User or User.id is null. Cannot send {} notification.", action);
             return;
         }
 
         final Long userId = user.getId();
-
-        final Long teamId = user.getTeamId();
+        final Long teamId = user.getTeamId(); 
 
         if (teamId == null) {
             log.debug("User {} (Action: {}) has no assigned teamId. No team notification sent.", userId, action);
@@ -56,43 +57,25 @@ public class UserEntityListener {
                 @Override
                 public void afterCommit() {
                     try {
+                        
+                        List<UserGetDTO> teamMembersPayload = teamService.getCurrentMembersForTeam(teamId);
 
-                        User freshUser = userService.getUserById(userId);
-                        if (freshUser == null) {
-                            log.warn("User with ID {} not found after commit for action {}. Skipping notification.",
-                                    userId, action);
-                            return;
-                        }
-
-                        if (freshUser.getTeamId() == null || !freshUser.getTeamId().equals(teamId)) {
+                        if (teamMembersPayload == null) { 
+                                                          
                             log.warn(
-                                    "User {} teamId changed during transaction or is null after commit (was {}). Notifying original teamId {}.",
-                                    userId, freshUser.getTeamId(), teamId);
-
-                            if (freshUser.getTeamId() == null) {
-
-                                log.debug(
-                                        "User {} is no longer in team {} after commit. No 'user_updated' sent to that team.",
-                                        userId, teamId);
-                                return;
-                            }
-
-                            UserGetDTO userGetDTO = DTOMapper.INSTANCE.convertEntityToUserGetDTO(freshUser);
-                            log.debug(
-                                    "UserEntityListener (after commit): Notifying team {} about user {} update (Action: {})",
-                                    freshUser.getTeamId(), userId, action);
-                            notificationService.notifyTeamMembers(freshUser.getTeamId(), "user_updated", userGetDTO);
-                            return;
+                                    "Failed to get current members for team {} after user {} {}. No notification sent.",
+                                    teamId, userId, action);
+                            teamMembersPayload = Collections.emptyList(); 
                         }
-
-                        UserGetDTO userGetDTO = DTOMapper.INSTANCE.convertEntityToUserGetDTO(freshUser);
                         log.debug(
-                                "UserEntityListener (after commit): Notifying team {} about user {} update (Action: {})",
-                                teamId, userId, action);
-                        notificationService.notifyTeamMembers(teamId, "user_updated", userGetDTO);
+                                "UserEntityListener (after commit): Notifying team {} due to user {} {} (Action: {}). Payload: List of {} members.",
+                                teamId, userId, action, action, teamMembersPayload.size());
+                        notificationService.notifyTeamMembers(teamId, ENTITY_TYPE, teamMembersPayload);
+
                     } catch (Exception e) {
-                        log.error("Error sending {} notification from UserEntityListener after commit for user {}: {}",
-                                action, userId, e.getMessage(), e);
+                        log.error(
+                                "Error sending {} notification from UserEntityListener after commit for user {} (team {}): {}",
+                                action, userId, teamId, e.getMessage(), e);
                     }
                 }
             });
@@ -103,6 +86,7 @@ public class UserEntityListener {
         }
     }
 
+    
     private void sendUserRemoveNotification(User user, String action) {
         if (user == null || user.getId() == null) {
             log.warn("User or User.id is null. Cannot send {} notification.", action);
@@ -110,11 +94,22 @@ public class UserEntityListener {
         }
 
         final Long userId = user.getId();
-        final Long teamId = user.getTeamId();
+        final Long teamId = user.getTeamId(); 
 
         if (teamId == null) {
-            log.debug("Deleted user {} (Action: {}) had no assigned teamId. No team notification sent.", userId,
-                    action);
+            log.debug(
+                    "Deleted user {} (Action: {}) had no assigned teamId. No specific team notification for member list sent.",
+                    userId, action);
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            log.debug("User {} was deleted and had no team. No team member list to send.", userId);
             return;
         }
 
@@ -123,16 +118,26 @@ public class UserEntityListener {
                 @Override
                 public void afterCommit() {
                     try {
-                        Map<String, Object> deletePayload = new HashMap<>();
-                        deletePayload.put("id", userId);
+                        
+                        
+                        List<UserGetDTO> teamMembersPayload = teamService.getCurrentMembersForTeam(teamId);
+
+                        if (teamMembersPayload == null) {
+                            log.warn(
+                                    "Failed to get current members for team {} after user {} deletion. No notification sent.",
+                                    teamId, userId);
+                            teamMembersPayload = Collections.emptyList();
+                        }
 
                         log.debug(
-                                "UserEntityListener (after commit): Notifying team {} about deleted user {} (Action: {})",
-                                teamId, userId, action);
-                        notificationService.notifyTeamMembers(teamId, "user_deleted", deletePayload);
+                                "UserEntityListener (after commit): Notifying team {} due to user {} DELETION (Action: {}). Payload: List of {} members.",
+                                teamId, userId, action, teamMembersPayload.size());
+                        notificationService.notifyTeamMembers(teamId, ENTITY_TYPE, teamMembersPayload);
+
                     } catch (Exception e) {
-                        log.error("Error sending {} notification from UserEntityListener after commit for user {}: {}",
-                                action, userId, e.getMessage(), e);
+                        log.error(
+                                "Error sending {} (user deletion) notification from UserEntityListener after commit for user {} (team {}): {}",
+                                action, userId, teamId, e.getMessage(), e);
                     }
                 }
             });
@@ -146,11 +151,11 @@ public class UserEntityListener {
     @PostPersist
     public void afterUserPersist(User user) {
         log.debug("UserEntityListener: @PostPersist triggered for user ID: {}.", user.getId());
-
+        
         if (user.getTeamId() != null) {
-            log.debug("New user {} is assigned to team {}. Triggering update-like notification.", user.getId(),
+            log.debug("New user {} is assigned to team {}. Triggering team members update notification.", user.getId(),
                     user.getTeamId());
-            sendUserUpdateNotification(user, "PERSIST_WITH_TEAM");
+            sendUserChangeNotification(user, "USER_PERSISTED_IN_TEAM");
         } else {
             log.debug("New user {} has no teamId. No team notification for user creation itself.", user.getId());
         }
@@ -159,13 +164,18 @@ public class UserEntityListener {
     @PostUpdate
     public void afterUserUpdate(User user) {
         log.debug("UserEntityListener: @PostUpdate triggered for user ID: {}", user.getId());
-
-        sendUserUpdateNotification(user, "UPDATE");
+        
+        
+        
+        
+        sendUserChangeNotification(user, "USER_UPDATED");
     }
 
     @PostRemove
     public void afterUserRemove(User user) {
         log.debug("UserEntityListener: @PostRemove triggered for user ID: {}", user.getId());
-        sendUserRemoveNotification(user, "REMOVE");
+        
+        
+        sendUserRemoveNotification(user, "USER_REMOVED");
     }
 }

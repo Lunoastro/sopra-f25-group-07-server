@@ -61,7 +61,7 @@ public class TaskEntityListener {
                     try {
                         notificationService.notifyTeamMembers(
                                 task.getTeamId(),
-                                "task", 
+                                "Task", 
                                 getCurrentTasksForTeamDTO(task.getTeamId()) 
                         );
                     } catch (Exception e) {
@@ -76,7 +76,7 @@ public class TaskEntityListener {
              try {
                 notificationService.notifyTeamMembers(
                         task.getTeamId(),
-                        "task",
+                        "Task",
                         getCurrentTasksForTeamDTO(task.getTeamId())
                 );
             } catch (Exception e) {

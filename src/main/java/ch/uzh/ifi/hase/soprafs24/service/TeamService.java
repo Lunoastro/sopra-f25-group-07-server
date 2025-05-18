@@ -5,6 +5,8 @@ import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.user.UserGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
 
 import org.slf4j.Logger;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Set;
 import java.util.Objects;
 
@@ -310,5 +313,38 @@ public class TeamService {
           HttpStatus.CONFLICT,
           "All team colours are already in use for team " + team.getId());
   }
+  public List<UserGetDTO> getCurrentMembersForTeam(Long teamId) {
+        if (teamId == null) {
+            log.warn("getCurrentMembersForTeam called with null teamId.");
+            return Collections.emptyList();
+        }
+        Team team;
+        try {
+            team = getTeamById(teamId);
+        } catch (ResponseStatusException e) {
+            log.warn("Team not found with id {} while trying to get current members DTO.", teamId);
+            return Collections.emptyList();
+        }
+
+        List<Long> memberIds = team.getMembers();
+
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return memberIds.stream()
+                .map(memberId -> {
+                    try {
+                        return userService.getUserById(memberId);
+                    } catch (ResponseStatusException e) {
+                        log.warn("User with ID {} not found while fetching members for team {}. Skipping.", memberId,
+                                teamId);
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .map(user -> DTOMapper.INSTANCE.convertEntityToUserGetDTO(user))
+                .collect(Collectors.toList());
+    }
   }
 
