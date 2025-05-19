@@ -26,7 +26,7 @@ import java.util.Map;
 public class TeamEntityListener {
 
     private final Logger log = LoggerFactory.getLogger(TeamEntityListener.class);
-
+    private static final String ENTITY_TYPE = "TEAM";
     private final WebSocketNotificationService notificationService;
     private final TeamService teamService;
 
@@ -57,7 +57,7 @@ public class TeamEntityListener {
                         log.debug(
                                 "TeamEntityListener (after commit): Notifying members of team {} about {} (Action: {})",
                                 teamId, teamId, action);
-                        notificationService.notifyTeamMembers(teamId, "team", teamGetDTO);
+                        notificationService.notifyTeamMembers(teamId, ENTITY_TYPE, teamGetDTO);
                     } catch (Exception e) {
                         log.error("Error sending {} notification from TeamEntityListener after commit for team {}: {}",
                                 action, teamId, e.getMessage(), e);
@@ -89,7 +89,7 @@ public class TeamEntityListener {
                         Map<String, Object> deletePayload = new HashMap<>();
                         deletePayload.put("id", teamId);
                         deletePayload.put("status", "DELETED");
-                        notificationService.notifyTeamMembers(teamId, "Team", deletePayload);
+                        notificationService.notifyTeamMembers(teamId, ENTITY_TYPE, deletePayload);
                     } catch (Exception e) {
                         log.error("Error sending {} notification from TeamEntityListener after commit for team {}: {}",
                                 action, teamId, e.getMessage(), e);
