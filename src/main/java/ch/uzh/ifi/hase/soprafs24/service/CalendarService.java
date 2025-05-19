@@ -54,7 +54,7 @@ public class CalendarService {
     private static final String SUMMARY = "summary"; // Constant for "summary"
     private static final String DESCRIPTION = "description"; // Constant for "description"
 
-    @Value("${REDIRECT_URI:redirect.uri}")
+    @Value("${redirect.uri:redirect.uri}")
     private String redirectUri;
 
     private TaskService taskService;
@@ -70,15 +70,24 @@ public class CalendarService {
 
     protected GoogleAuthorizationCodeFlow getFlow() throws IOException, GeneralSecurityException {
         String json = System.getenv("GOOGLE_CALENDAR_CREDENTIALS");
+        GoogleClientSecrets clientSecrets;
+
         if (json == null || json.isEmpty()) {
-            throw new IOException("Environment variable GOOGLE_CALENDAR_CREDENTIALS is not set.");
+            logger.warn("GOOGLE_CALENDAR_CREDENTIALS environment variable is not set. Using local_credentials.json as fallback.");
+
+            try (InputStream in = new FileInputStream("src/main/resources/local_credentials.json")) {
+                clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+            } catch (FileNotFoundException e) {
+                logger.error("local_credentials.json not found. Google Calendar integration will not work.", e);
+                throw new IllegalStateException("Missing both GOOGLE_CALENDAR_CREDENTIALS and local_credentials.json", e);
+            }
+        } else {
+            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY,
+                    new InputStreamReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))));
         }
 
         final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY,
-                new InputStreamReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))));
-
+        
         return new GoogleAuthorizationCodeFlow.Builder(
                 httpTransport,
                 JSON_FACTORY,
@@ -91,6 +100,9 @@ public class CalendarService {
     }
 
     protected String getRedirectUri() {
+        if (redirectUri == null || redirectUri.isEmpty()) {
+            redirectUri="http://localhost:8080/Callback";
+        }
         return redirectUri;
     }
 

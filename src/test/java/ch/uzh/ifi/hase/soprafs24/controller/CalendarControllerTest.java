@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -25,7 +26,13 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+
 @WebMvcTest({CalendarController.class, CalendarAuthController.class})
+@TestPropertySource(properties = {
+    "calendar.redirectUri=http://localhost:8080/Callback",
+    "calendar.credentialsFile=src/main/resources/local_credentials.json",
+    "GOOGLE_CALENDAR_CREDENTIALS=true"
+})
 class CalendarControllerTest {
 
     @Autowired
