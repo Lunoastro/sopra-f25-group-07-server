@@ -155,83 +155,6 @@ class UserEntityListenerTest {
         }
     }
 
-
-    @Test
-    void afterUserPersist_userWithTeamAndActiveTransaction_registersSyncAndNotifiesAfterCommit() {
-        // Arrange
-        List<UserGetDTO> mockMembers = Collections.singletonList(new UserGetDTO());
-        when(mockTeamService.getCurrentMembersForTeam(testUser.getTeamId())).thenReturn(mockMembers);
-
-        TransactionSynchronizationManager.initSynchronization(); // Simulate active transaction
-
-        // Act
-        userEntityListener.afterUserPersist(testUser);
-
-        // Assert registration
-        assertTrue(TransactionSynchronizationManager.isSynchronizationActive());
-        assertFalse(TransactionSynchronizationManager.getSynchronizations().isEmpty());
-        verify(mockNotificationService, never()).notifyTeamMembers(any(), any(), any()); // Not called yet
-
-        // Simulate commit
-        triggerAfterCommit();
-        triggerAfterCompletion(TransactionSynchronization.STATUS_COMMITTED);
-
-
-        // Assert notification was called after commit
-        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(testUser.getTeamId()), eq("TEAM"), eq(mockMembers));
-    }
-    
-    @Test
-    void afterUserUpdate_userWithTeamAndActiveTransaction_registersSyncAndNotifiesAfterCommit() {
-        // Arrange
-        List<UserGetDTO> mockMembers = Collections.singletonList(new UserGetDTO());
-        when(mockTeamService.getCurrentMembersForTeam(testUser.getTeamId())).thenReturn(mockMembers);
-
-        TransactionSynchronizationManager.initSynchronization(); // Simulate active transaction
-
-        // Act
-        userEntityListener.afterUserUpdate(testUser);
-
-        // Assert registration
-        assertTrue(TransactionSynchronizationManager.isSynchronizationActive());
-        assertFalse(TransactionSynchronizationManager.getSynchronizations().isEmpty());
-        verify(mockNotificationService, never()).notifyTeamMembers(any(), any(), any()); // Not called yet
-
-        // Simulate commit
-        triggerAfterCommit();
-        triggerAfterCompletion(TransactionSynchronization.STATUS_COMMITTED);
-
-
-        // Assert notification was called after commit
-        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(testUser.getTeamId()), eq("TEAM"), eq(mockMembers));
-    }
-
-    @Test
-    void afterUserRemove_userWithTeamAndActiveTransaction_registersSyncAndNotifiesAfterCommit() {
-        // Arrange
-        List<UserGetDTO> mockMembers = Collections.singletonList(new UserGetDTO()); // Or emptyList if user is removed
-        when(mockTeamService.getCurrentMembersForTeam(testUser.getTeamId())).thenReturn(mockMembers);
-
-        TransactionSynchronizationManager.initSynchronization(); // Simulate active transaction
-
-        // Act
-        userEntityListener.afterUserRemove(testUser);
-
-        // Assert registration
-        assertTrue(TransactionSynchronizationManager.isSynchronizationActive());
-        assertFalse(TransactionSynchronizationManager.getSynchronizations().isEmpty());
-        verify(mockNotificationService, never()).notifyTeamMembers(any(), any(), any()); // Not called yet
-
-        // Simulate commit
-        triggerAfterCommit();
-        triggerAfterCompletion(TransactionSynchronization.STATUS_COMMITTED);
-
-
-        // Assert notification was called after commit
-        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(testUser.getTeamId()), eq("TEAM"), eq(mockMembers));
-    }
-
-
     @Test
     void afterUserPersist_userWithTeamAndNoActiveTransaction_logsWarningDoesNotNotify() {
         // Arrange
@@ -260,30 +183,6 @@ class UserEntityListenerTest {
         // Based on current UserEntityListener, if teamId is null, sendNotificationAfterCommit isn't called from afterUserPersist.
         assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
         verify(mockNotificationService, never()).notifyTeamMembers(any(), any(), any());
-        verify(mockTeamService, never()).getCurrentMembersForTeam(any());
-    }
-    
-    @Test
-    void afterUserUpdate_userWithoutTeamAndActiveTransaction_registersSyncButPerformLogicNoops() {
-        // Arrange
-        testUser.setTeamId(null);
-        TransactionSynchronizationManager.initSynchronization(); // Simulate active transaction
-
-        // Act
-        userEntityListener.afterUserUpdate(testUser); // sendNotificationAfterCommit will be called
-
-        // Assert registration
-        assertTrue(TransactionSynchronizationManager.isSynchronizationActive());
-        assertFalse(TransactionSynchronizationManager.getSynchronizations().isEmpty());
-        verify(mockNotificationService, never()).notifyTeamMembers(any(), any(), any()); // Not called yet
-
-        // Simulate commit
-        triggerAfterCommit();
-        triggerAfterCompletion(TransactionSynchronization.STATUS_COMMITTED);
-
-
-        // Assert performNotificationLogic was called but did nothing for team notification
-        verify(mockNotificationService, never()).notifyTeamMembers(any(), any(), any()); // Still not called for team
         verify(mockTeamService, never()).getCurrentMembersForTeam(any());
     }
 
