@@ -35,7 +35,7 @@ jobs:
         env:
           GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.CALENDAR }}
           SPRING_PROFILES_ACTIVE: dev # Activate the 'dev' profile during tests
-        run: ./gradlew test -Dredirect.uri=${{ env.REDIRECT_URI_LOCAL }}
+        run: ./gradlew test -Dredirect.uri=http://localhost:8080/Callback
 
       - name: Cache SonarQube packages
         if: github.event_name != 'workflow_dispatch'

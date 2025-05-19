@@ -54,7 +54,7 @@ public class CalendarService {
     private static final String SUMMARY = "summary"; // Constant for "summary"
     private static final String DESCRIPTION = "description"; // Constant for "description"
 
-    @Value("${REDIRECT_URI:redirect.uri}")
+    @Value("${REDIRECT_URI:}")
     private String redirectUri;
 
     private TaskService taskService;
@@ -118,7 +118,8 @@ public class CalendarService {
             redirectUri = propRedirectUri;
             return redirectUri;
         }
-        
+        logger.warn("Using local redirect_uri as fallback.");
+
         // Default for local development only
         redirectUri = "http://localhost:8080/Callback";
         logger.info("Using default redirect URI: {}", redirectUri);
