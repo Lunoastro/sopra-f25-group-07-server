@@ -5,6 +5,9 @@ runtime: java
 instance_class: F2 
 env: flex
 
+runtime_config:
+  operating_system: "ubuntu22" 
+  runtime_version: "17"
 
 network:
   session_affinity: true
@@ -18,7 +21,3 @@ automatic_scaling:
   max_num_instances: 15
   cpu_utilization:
     target_utilization: 0.7
-
-flexible_runtime_settings:
-  operating_system: ubuntu22
-  runtime_version: '17'
