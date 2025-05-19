@@ -100,9 +100,28 @@ public class CalendarService {
     }
 
     protected String getRedirectUri() {
-        if (redirectUri == null || redirectUri.isEmpty()) {
-            redirectUri="http://localhost:8080/Callback";
+        // First check if we already have a value set
+        if (redirectUri != null && !redirectUri.isEmpty()) {
+            return redirectUri;
         }
+        
+        // Try to get from environment variable
+        String envRedirectUri = System.getenv("REDIRECT_URI");
+        if (envRedirectUri != null && !envRedirectUri.isEmpty()) {
+            redirectUri = envRedirectUri;
+            return redirectUri;
+        }
+        
+        // Try to get from system property
+        String propRedirectUri = System.getProperty("redirect.uri");
+        if (propRedirectUri != null && !propRedirectUri.isEmpty()) {
+            redirectUri = propRedirectUri;
+            return redirectUri;
+        }
+        
+        // Default for local development only
+        redirectUri = "http://localhost:8080/Callback";
+        logger.info("Using default redirect URI: {}", redirectUri);
         return redirectUri;
     }
 
@@ -214,7 +233,7 @@ public class CalendarService {
         GoogleAuthorizationCodeFlow flow = getFlow();
 
         var tokenResponse = flow.newTokenRequest(code)
-                .setRedirectUri(redirectUri)
+                .setRedirectUri(getRedirectUri())
                 .execute();
 
         // Store token in the database
