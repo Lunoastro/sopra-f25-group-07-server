@@ -5,10 +5,9 @@ import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+
 
 
 import org.slf4j.Logger;
@@ -24,7 +23,6 @@ import java.util.Calendar;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Objects;
-import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.Comparator;
 
@@ -41,7 +39,6 @@ public class TaskService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final CalendarService calendarService;
-    private final WebSocketNotificationService notificationService;
     private String recurringTask = "recurring"; 
     private String additionalTask = "additional"; 
 
@@ -50,14 +47,12 @@ public class TaskService {
             @Qualifier("userRepository") UserRepository userRepository, 
             @Qualifier("teamRepository") TeamRepository teamRepository,
             @Qualifier("userService") UserService userService,
-            @Qualifier("calendarService") CalendarService calendarService,
-            @Qualifier("webSocketNotificationService") WebSocketNotificationService notificationService) {
+            @Qualifier("calendarService") CalendarService calendarService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.teamRepository = teamRepository;
         this.userService = userService;
         this.calendarService = calendarService;
-        this.notificationService = notificationService;
     }
 
     // validate PostDTO based on the fields
@@ -243,6 +238,7 @@ public class TaskService {
                 .filter(task -> task.getTeamId().equals(userTeamId)) // Check if the task belongs to the user's team
                 .collect(Collectors.toList());
         
+        
         for (Task task : unclaimedTasks) {
             // Set the color to null for unclaimed tasks
             task.setLuckyDraw(true);
@@ -291,7 +287,7 @@ public class TaskService {
             userIndex = (userIndex + 1) % teamMembers.size();
         }
 
-        notificationService.notifyTeamMembers(userTeamId, "task", getCurrentTasksForTeamDTO(userTeamId));
+        
 
         return unclaimedTasks;
         }
@@ -305,6 +301,7 @@ public class TaskService {
             task.setPausedDate(new Date());
         }
         taskRepository.saveAll(tasks);
+        
     }
 
     public void unpauseAllTasksInTeam() {
@@ -315,6 +312,7 @@ public class TaskService {
             newDeadline(task); // update the deadline based on the paused time
         }
         taskRepository.saveAll(tasks);
+        
     }
 
     private void newDeadline(Task task) {
@@ -383,7 +381,7 @@ public class TaskService {
         taskRepository.save(task);
         taskRepository.flush();
         // Notify all users in the team about the new task
-        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        
         log.info("Task with name: {} created successfully", task.getName());
         return task;
     }
@@ -406,7 +404,7 @@ public class TaskService {
         taskRepository.save(task);
         taskRepository.flush();
         // Notify all users in the team about the claimed task
-        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        
         log.info("Task with name: {} claimed successfully by user with id: {}", task.getName(), user.getId());
         return task;
     }
@@ -427,8 +425,11 @@ public class TaskService {
         verifyLuckyDraw(task);
         // If checks pass, unassign the task
         unassignTask(task);
+        
+        log.info("Task with id: {} unassigned successfully", taskId);
         log.info("User {} successfully quit task {}", userId, taskId);
     }
+
     public void updateAllTaskColors(User user) { // update all tasks of a user with the color of the user
         List<Task> userTasks = taskRepository.findTaskByIsAssignedTo(user.getId());
         for (Task task : userTasks) {
@@ -446,7 +447,7 @@ public class TaskService {
         taskRepository.deleteById(taskId);
         taskRepository.flush();
         // Notify all users in the team about the deleted task
-        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
+        
         log.info("Task with id: {} deleted successfully", taskId);
     }
 
@@ -456,8 +457,6 @@ public class TaskService {
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.save(task);
         taskRepository.flush();
-        // Notify all users in the team about the updated task
-        notificationService.notifyTeamMembers(task.getTeamId(), "task", getCurrentTasksForTeamDTO(task.getTeamId()));
         log.info("Task with name: {} updated successfully", task.getName());
         return task;
     }
@@ -508,18 +507,6 @@ public class TaskService {
     }
 
     //-------------------------------------helper functions here-------------------------------------------------
-    private List<TaskGetDTO> getCurrentTasksForTeamDTO(Long teamId) {
-        if (teamId == null) {
-            return Collections.emptyList();
-        }
-        List<Task> teamTasks = taskRepository.findAll().stream()
-                                    .filter(t -> teamId.equals(t.getTeamId()))
-                                    .toList();
-    
-        return teamTasks.stream()
-                        .map(DTOMapper.INSTANCE::convertEntityToTaskGetDTO)
-                        .toList();
-    }
 
     public String checkTaskType(Task task) {
         String taskType;

@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,6 +22,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableTransactionManagement
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
+    @Value("${cors.allowed.origins:*}") // Default to "*" if property is not set
+    private String[] allowedOrigins;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -37,7 +40,10 @@ public class Application {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**").allowedOrigins("*").allowedMethods("*");
+                registry
+                .addMapping("/**")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("*");
             }
         };
     }
@@ -46,6 +52,10 @@ public class Application {
     public CommandLineRunner checkDatabaseConfig(Environment environment) {
         return args -> {
             String[] activeProfiles = environment.getActiveProfiles();
+            if (activeProfiles.length == 0) {
+                logger.warn("No active profiles found. Defaulting to 'dev'.");
+                activeProfiles = new String[]{"dev"};
+            }
             logger.info("Active profiles: {}", String.join(", ", activeProfiles));
 
             try {

@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.entity;
 
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
+import ch.uzh.ifi.hase.soprafs24.listener.UserEntityListener;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -19,6 +20,7 @@ import java.util.Date;
  */
 @Entity
 @Table(name = "USERS")
+@EntityListeners(UserEntityListener.class)
 public class User implements Serializable {
 
   private static final long serialVersionUID = 1L;

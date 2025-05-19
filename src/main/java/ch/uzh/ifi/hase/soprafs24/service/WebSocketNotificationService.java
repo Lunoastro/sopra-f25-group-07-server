@@ -1,4 +1,3 @@
-// src/main/java/ch/uzh/ifi/hase/soprafs24/service/WebSocketNotificationService.java
 package ch.uzh.ifi.hase.soprafs24.service;
 
 import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
