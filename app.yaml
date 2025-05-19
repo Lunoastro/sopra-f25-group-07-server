@@ -4,6 +4,7 @@
 runtime: java
 instance_class: F2 
 env: flex
+
 runtime_config:
   operating_system: "ubuntu22" 
   runtime_version: "17"
@@ -14,3 +15,31 @@ network:
 handlers:
   - url: /.*
     script: auto
+
+automatic_scaling:
+  cool_down_period: 120s
+  min_num_instances: 1
+  max_num_instances: 15
+  cpu_utilization:
+    target_utilization: 0.7
+
+network:
+  session_affinity: true
+
+liveness_check:
+  initial_delay_sec: '300'
+  check_interval_sec: '30'
+  timeout_sec: '4'
+  failure_threshold: 4
+  success_threshold: 2
+  
+readiness_check:
+  check_interval_sec: '5'
+  timeout_sec: '4'
+  failure_threshold: 2
+  success_threshold: 2
+  app_start_timeout_sec: '300'
+
+flexible_runtime_settings:
+  operating_system: ubuntu22
+  runtime_version: '17'
