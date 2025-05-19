@@ -25,7 +25,7 @@ import javax.persistence.PostUpdate;
 public class TaskEntityListener {
 
     private final Logger log = LoggerFactory.getLogger(TaskEntityListener.class);
-
+    private static final String ENTITY_TYPE = "TASKS";
     private final WebSocketNotificationService notificationService;
     private final TaskRepository taskRepository;
 
@@ -61,7 +61,7 @@ public class TaskEntityListener {
                     try {
                         notificationService.notifyTeamMembers(
                                 task.getTeamId(),
-                                "Task", 
+                                ENTITY_TYPE, 
                                 getCurrentTasksForTeamDTO(task.getTeamId()) 
                         );
                     } catch (Exception e) {
@@ -76,7 +76,7 @@ public class TaskEntityListener {
              try {
                 notificationService.notifyTeamMembers(
                         task.getTeamId(),
-                        "Task",
+                        ENTITY_TYPE,
                         getCurrentTasksForTeamDTO(task.getTeamId())
                 );
             } catch (Exception e) {

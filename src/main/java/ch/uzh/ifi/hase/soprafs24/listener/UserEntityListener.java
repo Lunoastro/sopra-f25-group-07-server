@@ -21,7 +21,7 @@ import java.util.List;
 
 @Component
 public class UserEntityListener {
-    private static final String ENTITY_TYPE = "TEAM";
+    private static final String ENTITY_TYPE = "MEMBERS";
     private final Logger log = LoggerFactory.getLogger(UserEntityListener.class);
     private final WebSocketNotificationService notificationService;
     private final TeamService teamService;
