@@ -5,6 +5,7 @@ import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
@@ -14,7 +15,6 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.HandshakeInterceptor;
-import org.springframework.beans.factory.annotation.Value; 
 import java.util.Map;
 
 @Configuration
@@ -23,8 +23,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketConfig.class);
     private final SocketHandler myPlainWebSocketHandler;
-    @Value("${cors.allowed.origins:*}") // Default to "*" if property is not set
-    private String[] allowedOrigins;
+    @Value("${cors.allowed.origins:*}")
+    private String[] allowedOrigins; 
 
     @Autowired
     public WebSocketConfig(SocketHandler myPlainWebSocketHandler) {
@@ -33,9 +33,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(myPlainWebSocketHandler, "/api/ws/updates")
+        registry.addHandler(myPlainWebSocketHandler, "/api/ws/updates") 
                 .addInterceptors(initialHandshakeInterceptor())
-                .setAllowedOrigins("*"); // IMPORTANT: Restrict for production
+                .setAllowedOrigins(allowedOrigins);
     }
 
     @Bean
@@ -45,10 +45,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
             public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                            WebSocketHandler wsHandler,
                                            Map<String, Object> attributes) throws Exception {
-                // Allow the handshake to proceed. Authentication will occur via the first message.
                 log.info("WebSocket initial handshake allowed for session from {}. Awaiting auth message.", request.getRemoteAddress());
-                attributes.put("authenticated", false); // Mark session as not yet authenticated
-                return true;
+                attributes.put("authenticated", false); 
+                return true; 
             }
 
             @Override
@@ -56,7 +55,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
                                        WebSocketHandler wsHandler,
                                        Exception exception) {
                 if (exception != null) {
-                    log.error("Exception after WebSocket initial handshake: {}", exception.getMessage(), exception);
+                    log.error("Exception during WebSocket handshake phase for session from {}: {}", request.getRemoteAddress(), exception.getMessage(), exception);
+                } else {
+                    log.info("WebSocket handshake completed successfully for session from {}.", request.getRemoteAddress());
                 }
             }
         };
