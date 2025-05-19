@@ -54,7 +54,7 @@ public class CalendarService {
     private static final String SUMMARY = "summary"; // Constant for "summary"
     private static final String DESCRIPTION = "description"; // Constant for "description"
 
-    @Value("${redirect.uri:redirect.uri}")
+    @Value("${REDIRECT_URI:redirect.uri}")
     private String redirectUri;
 
     private TaskService taskService;
