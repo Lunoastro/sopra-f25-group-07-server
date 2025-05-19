@@ -77,7 +77,7 @@ class UserEntityListenerTest {
 
         // Assert
         ArgumentCaptor<List> payloadCaptor = ArgumentCaptor.forClass(List.class);
-        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(10L), eq("TEAM"), payloadCaptor.capture());
+        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(10L), eq("MEMBERS"), payloadCaptor.capture());
         assertEquals(mockMembers, payloadCaptor.getValue());
     }
 
@@ -103,7 +103,7 @@ class UserEntityListenerTest {
 
         // Assert
         ArgumentCaptor<List> payloadCaptor = ArgumentCaptor.forClass(List.class);
-        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(10L), eq("TEAM"), payloadCaptor.capture());
+        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(10L), eq("MEMBERS"), payloadCaptor.capture());
         assertTrue(payloadCaptor.getValue().isEmpty());
     }
 
@@ -117,7 +117,7 @@ class UserEntityListenerTest {
 
         // Assert
         ArgumentCaptor<List> payloadCaptor = ArgumentCaptor.forClass(List.class);
-        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(10L), eq("TEAM"), payloadCaptor.capture());
+        verify(mockNotificationService, times(1)).notifyTeamMembers(eq(10L), eq("MEMBERS"), payloadCaptor.capture());
         assertTrue(payloadCaptor.getValue().isEmpty());
     }
     
