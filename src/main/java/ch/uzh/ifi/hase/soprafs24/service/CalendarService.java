@@ -22,8 +22,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs24.repository.GoogleTokenRepository;
 import ch.uzh.ifi.hase.soprafs24.config.JpaDataStoreFactory;
@@ -37,6 +39,7 @@ import java.security.GeneralSecurityException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(rollbackFor = Exception.class)
@@ -56,6 +59,9 @@ public class CalendarService {
 
     @Value("${REDIRECT_URI:}")
     private String redirectUri;
+
+    @Value("${frontend.url}")
+    private String frontendUrl;
 
     private TaskService taskService;
     private final GoogleTokenRepository googleTokenRepository;
@@ -129,9 +135,11 @@ public class CalendarService {
     public List<Event> getUserGoogleCalendarEvents(String startDate, String endDate, Long userId) throws IOException {
         try {
             Calendar calendar = getCalendarServiceForUser(userId);
-
+            logger.warn("Fetching Google Calendar events for user: {}, CALENDAR: {}", userId, calendar);
             DateTime start = new DateTime(startDate + "T00:00:00Z");
-            DateTime end = new DateTime(endDate + "T23:59:59Z");
+            LocalDate endLocalDate = LocalDate.parse(endDate).minusDays(1);
+            LocalDate exclusiveEnd = endLocalDate.plusDays(1);
+            DateTime end = new DateTime(exclusiveEnd.toString() + "T00:00:00Z");
 
             Events events = calendar.events().list(PRIMARY)
                     .setTimeMin(start)
@@ -140,7 +148,22 @@ public class CalendarService {
                     .setSingleEvents(true)
                     .execute();
 
-            return events.getItems();
+            List<Event> items = events.getItems();
+
+            // Manual filtering for all-day events starting on exclusiveEnd date or later
+            return items.stream()
+                    .filter(event -> {
+                        if (event.getStart().getDateTime() != null) {
+                            // Timed event
+                            return event.getStart().getDateTime().getValue() < end.getValue();
+                        } else if (event.getStart().getDate() != null) {
+                            // All-day event
+                            LocalDate eventStartDate = LocalDate.parse(event.getStart().getDate().toStringRfc3339());
+                            return eventStartDate.isBefore(exclusiveEnd);
+                        }
+                        return true; // If somehow neither is set, keep it
+                    })
+                    .collect(Collectors.toList());
         } catch (GeneralSecurityException e) {
             logger.error("Error accessing Google Calendar for user {}: {}", userId, e.getMessage(), e);
             throw new IOException("Error accessing Google Calendar for user.", e);
@@ -231,6 +254,10 @@ public class CalendarService {
     }
 
     public void handleOAuthCallback(String code, Long userId) throws Exception {
+        if (code == null || code.isEmpty()) {
+            throw new IllegalArgumentException("Authorization code must not be null or empty");
+        }
+        
         GoogleAuthorizationCodeFlow flow = getFlow();
 
         var tokenResponse = flow.newTokenRequest(code)
@@ -238,24 +265,38 @@ public class CalendarService {
                 .execute();
 
         // Store token in the database
-        GoogleToken googleToken = googleTokenRepository.findById(userId)
-                .orElseGet(() -> {
-                    GoogleToken newToken = new GoogleToken();
-                    newToken.setId(userId);
-                    return newToken;
-                });
+        GoogleToken googleToken = googleTokenRepository.findGoogleTokenById(userId);
+        if (googleToken == null) {
+            googleToken = new GoogleToken();
+            googleToken.setId(userId);
+        }
+        
+        String refreshToken = tokenResponse.getRefreshToken();
+        if (refreshToken != null) {
+            googleToken.setRefreshToken(refreshToken);
+        }
+
+        if (tokenResponse.getAccessToken() == null) {
+            logger.warn("Access token was null for user: {}", userId);
+            throw new IllegalStateException("Access token must not be null.");
+        }
+
 
         googleToken.setAccessToken(tokenResponse.getAccessToken());
-        googleToken.setRefreshToken(tokenResponse.getRefreshToken());
         googleToken.setExpirationTime(System.currentTimeMillis() + (tokenResponse.getExpiresInSeconds() * 1000));
 
         googleTokenRepository.save(googleToken);
+
+        logger.info("Saved token for user {}: accessToken={}, expiresIn={}, googleToken={}", userId, tokenResponse.getAccessToken(), tokenResponse.getExpiresInSeconds(), googleToken);
         logger.info("Google OAuth token saved for user: {}", userId);
     }
 
     public Credential getUserCredentials(Long userId) throws IOException, GeneralSecurityException {
-        GoogleToken googleToken = googleTokenRepository.findById(userId)
-            .orElseThrow(() -> new IOException("No credentials found for user: " + userId));
+        GoogleToken googleToken = googleTokenRepository.findGoogleTokenById(userId);
+        if (googleToken == null) {
+            logger.warn("No Google token found for user: {}", userId);
+            throw new IOException("No credentials found for user: " + userId);
+        }
 
         GoogleAuthorizationCodeFlow flow = getFlow();
 
@@ -364,6 +405,17 @@ public class CalendarService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public boolean isGoogleTokenValid(GoogleToken googleToken) {
+        return googleToken != null && googleToken.getAccessToken() != null && !googleToken.getAccessToken().isEmpty();
+    }
+
+    public String getRedirectURL(Long teamId) {
+        if (teamId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found for user.");
+        }
+        return frontendUrl + teamId;
     }
     
 }

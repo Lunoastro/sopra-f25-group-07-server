@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import ch.uzh.ifi.hase.soprafs24.entity.User;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,10 +12,13 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.Map;
+import org.springframework.web.servlet.view.RedirectView;
 
 
 @RestController
 public class CalendarAuthController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CalendarAuthController.class);
 
     private final CalendarService calendarService;
     private final UserService userService;
@@ -53,8 +57,10 @@ public class CalendarAuthController {
     }
 
     @GetMapping("/Callback")
-    @ResponseStatus(HttpStatus.OK)
-    public String handleGoogleCallback(@RequestParam("code") String code, @RequestParam("state") String userIdStr) throws Exception {
+    public RedirectView handleGoogleCallback(@RequestParam("code") String code, @RequestParam("state") String userIdStr) throws Exception {
+        logger.info("Received code: {}", code);
+        logger.info("Received state (userId): {}", userIdStr);
+
         Long userId;
         try {
             userId = Long.parseLong(userIdStr);
@@ -62,7 +68,15 @@ public class CalendarAuthController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid state/user ID.");
         }
         calendarService.handleOAuthCallback(code, userId);
-        return "Google Calendar connected successfully!";
+
+        User user = userService.getUserById(userId); // <-- you may need to implement this
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
+        }
+        Long teamId = user.getTeamId(); // Assuming User has a getTeamId() method
+        
+        // Redirect to frontend calendar page
+        return new RedirectView(calendarService.getRedirectURL(teamId));
     }
 
     private String validateAuthorizationHeader(String authorizationHeader) {

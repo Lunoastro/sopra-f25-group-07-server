@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository("googleTokenRepository")
 public interface GoogleTokenRepository extends JpaRepository<GoogleToken, Long> {
-
+    GoogleToken findGoogleTokenById(Long userId);
 }

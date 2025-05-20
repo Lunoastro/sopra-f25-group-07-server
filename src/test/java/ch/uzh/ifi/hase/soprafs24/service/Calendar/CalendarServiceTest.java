@@ -101,7 +101,10 @@ class CalendarServiceTest {
         when(eventsList.setSingleEvents(true)).thenReturn(eventsList);
 
         // Mock the execute method to return a real Events object with your test event
-        Event event = new Event().setSummary("Test Event");
+        Event event = new Event()
+            .setSummary("Test Event")
+            .setStart(new EventDateTime().setDate(new com.google.api.client.util.DateTime("2025-05-01")))
+            .setEnd(new EventDateTime().setDate(new com.google.api.client.util.DateTime("2025-05-10")));
         Events eventsResponse = new Events();
         eventsResponse.setItems(Collections.singletonList(event));
 
