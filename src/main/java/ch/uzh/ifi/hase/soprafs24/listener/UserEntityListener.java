@@ -83,7 +83,7 @@ public class UserEntityListener {
      * commits.
      * If no transaction is active, logs a warning and does not send a notification.
      */
-    private void sendNotificationAfterCommit(User user, String action) {
+    void sendNotificationAfterCommit(User user, String action) {
 
         if (user == null || user.getId() == null) {
             log.warn("User or User.id is null in sendNotificationAfterCommit. Action: {}. Skipping registration.",
