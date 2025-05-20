@@ -139,7 +139,7 @@ public class CalendarService {
             Calendar calendar = getCalendarServiceForUser(userId);
             logger.warn("Fetching Google Calendar events for user: {}, CALENDAR: {}", userId, calendar);
             DateTime start = new DateTime(startDate + "T00:00:00Z");
-            LocalDate endLocalDate = LocalDate.parse(endDate).minusDays(1);
+            LocalDate endLocalDate = LocalDate.parse(endDate);
             LocalDate exclusiveEnd = endLocalDate.plusDays(1);
             DateTime end = new DateTime(exclusiveEnd.toString() + "T00:00:00Z");
 
