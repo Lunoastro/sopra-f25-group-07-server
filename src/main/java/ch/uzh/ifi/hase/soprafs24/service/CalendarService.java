@@ -78,6 +78,8 @@ public class CalendarService {
         String json = System.getenv("GOOGLE_CALENDAR_CREDENTIALS");
         GoogleClientSecrets clientSecrets;
 
+        logger.warn("GOOGLE_CALENDAR_CREDENTIALS are: {}", json);
+
         if (json == null || json.isEmpty()) {
             logger.warn("GOOGLE_CALENDAR_CREDENTIALS environment variable is not set. Using local_credentials.json as fallback.");
 
@@ -240,7 +242,8 @@ public class CalendarService {
     public String generateAuthUrl(Long userId) throws CalendarAuthorizationException {
         try {
             GoogleAuthorizationCodeFlow flow = getFlow();
-
+            logger.warn("This is the AUTH-URL DURING SUCCESS: {}", flow);
+            logger.warn("This is the REDIRECT_URI DURING SUCCESS: {}",getRedirectUri());
             return flow.newAuthorizationUrl()
                     .setRedirectUri(getRedirectUri())
                     .setState(userId.toString())
@@ -248,6 +251,8 @@ public class CalendarService {
                     .set("prompt", "consent")
                     .build();
         } catch (Exception e) {
+            logger.warn("This is the AUTH-URL WHILE IT FAILED: {}", System.getenv("GOOGLE_CALENDAR_CREDENTIALS"));
+            logger.warn("This is the REDIRECT_URI WHILE IT FAILED: {}", redirectUri);
             logger.error("Failed to generate authorization URL for user {}: {}", userId, e.getMessage(), e);
             throw new CalendarAuthorizationException("Failed to generate authorization URL for user: " + userId, e);
         }
