@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class JpaDataStoreFactory extends AbstractDataStoreFactory {
 
     @Autowired
-    private GoogleTokenRepository repo;
+    GoogleTokenRepository repo;
 
     @Override
     protected <V extends Serializable> DataStore<V> createDataStore(String id) {
