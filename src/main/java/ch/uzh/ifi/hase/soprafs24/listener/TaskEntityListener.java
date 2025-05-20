@@ -34,7 +34,7 @@ public class TaskEntityListener {
         this.notificationService = notificationService;
         this.taskRepository = taskRepository;
     }
-    private List<TaskGetDTO> getCurrentTasksForTeamDTO(Long teamId) {
+    List<TaskGetDTO> getCurrentTasksForTeamDTO(Long teamId) {
         if (teamId == null) {
             return Collections.emptyList();
         }
