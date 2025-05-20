@@ -68,14 +68,6 @@ class TaskEntityListenerTest {
         }
     }
 
-    private void triggerAfterCommit() {
-        List<TransactionSynchronization> synchronizations = TransactionSynchronizationManager.getSynchronizations();
-        if (!synchronizations.isEmpty()) {
-            synchronizations.get(0).afterCommit();
-        } else {
-            log.warn("No synchronizations to trigger afterCommit for test.");
-        }
-    }
 
     @Test
     void afterTaskPersist_noActiveTransaction_sendsNotificationDirectly() {
