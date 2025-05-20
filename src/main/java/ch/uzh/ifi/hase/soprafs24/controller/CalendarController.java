@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
+import ch.uzh.ifi.hase.soprafs24.repository.GoogleTokenRepository;
 import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
@@ -14,22 +15,26 @@ import java.security.GeneralSecurityException;
 import java.util.Map;
 import java.util.List;
 import com.google.api.services.calendar.model.Event;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import ch.uzh.ifi.hase.soprafs24.entity.GoogleToken;
 
 
-@ConditionalOnProperty(name = "GOOGLE_CALENDAR_CREDENTIALS")
 @RestController
 public class CalendarController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CalendarController.class);
 
     private final CalendarService calendarService;
     private final UserService userService;
     private final TeamService teamService;
+    private final GoogleTokenRepository googleTokenRepository;
+    
 
     @Autowired
-    public CalendarController(CalendarService calendarService, UserService userService, TeamService teamService) {
+    public CalendarController(CalendarService calendarService, UserService userService, TeamService teamService, GoogleTokenRepository googleTokenRepository) {
         this.calendarService = calendarService;
         this.userService = userService;
         this.teamService = teamService;
+        this.googleTokenRepository = googleTokenRepository;
     }
     
 
@@ -47,6 +52,7 @@ public class CalendarController {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
+        requireSyncedGoogleAccount(userId);
         // Sync active tasks to Google Calendar
         calendarService.syncAllActiveTasksToUserCalendar(userId);
 
@@ -67,6 +73,17 @@ public class CalendarController {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
+        // Check if user has a linked Google token
+        requireSyncedGoogleAccount(userId);
+
+        // Optionally validate the Google token here if you want to check expiration or validity before calling calendar service
+        GoogleToken googleToken = googleTokenRepository.findGoogleTokenById(userId);
+        
+        logger.info("Received startDate: {}", startDate);
+        logger.info("Received endDate: {}", endDate);
+        logger.info("Received userId: {}", userId);
+        logger.info("Received googleToken: {}", googleToken);
+        
         return calendarService.getUserGoogleCalendarEvents(startDate, endDate, userId);
     }
 
@@ -82,6 +99,7 @@ public class CalendarController {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
+        requireSyncedGoogleAccount(userId);
         return calendarService.getEventById(id, userId);
     }
 
@@ -102,6 +120,7 @@ public class CalendarController {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
+        requireSyncedGoogleAccount(userId);
 
         return calendarService.getCombinedEvents(userId, activeOnly, startDate, endDate);
     }
@@ -112,5 +131,15 @@ public class CalendarController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Missing or invalid Authorization header.");
         }
         return authorizationHeader.substring(7);  // Remove "Bearer " prefix
+    }
+
+    private void requireSyncedGoogleAccount(Long userId) {
+        GoogleToken token = googleTokenRepository.findGoogleTokenById(userId);
+        if (token == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Google Calendar not synced for user");
+        }  
+        if (!calendarService.isGoogleTokenValid(token)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Google token expired or invalid. Please reconnect your Google account.");
+        }
     }
 }

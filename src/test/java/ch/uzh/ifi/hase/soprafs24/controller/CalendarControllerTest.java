@@ -1,5 +1,9 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
+import ch.uzh.ifi.hase.soprafs24.entity.GoogleToken;
+import ch.uzh.ifi.hase.soprafs24.entity.Team;
+import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.repository.GoogleTokenRepository;
 import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
@@ -48,6 +52,9 @@ class CalendarControllerTest {
     private TeamService teamService;
 
     @MockBean
+    private GoogleTokenRepository googleTokenRepository;
+
+    @MockBean
     private CalendarService calendarService;
 
     private final String validToken = "valid_token";
@@ -63,6 +70,12 @@ class CalendarControllerTest {
         when(userService.validateToken(validToken)).thenReturn(true);
         when(userService.findIDforToken(validToken)).thenReturn(1L);
 
+        // set any required fields on fakeGoogleToken if needed
+        GoogleToken fakeGoogleToken = new GoogleToken();
+        
+        when(googleTokenRepository.findGoogleTokenById(1L)).thenReturn(fakeGoogleToken);
+        when(calendarService.isGoogleTokenValid(fakeGoogleToken)).thenReturn(true);
+
         mockMvc.perform(post("/calendar/sync")
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isOk());
@@ -77,6 +90,11 @@ class CalendarControllerTest {
         when(calendarService.getUserGoogleCalendarEvents("2023-01-01", "2023-12-31", 1L))
             .thenReturn(Collections.emptyList());
 
+        // set any required fields on fakeGoogleToken if needed
+        GoogleToken fakeGoogleToken = new GoogleToken();
+        when(googleTokenRepository.findGoogleTokenById(1L)).thenReturn(fakeGoogleToken);
+        when(calendarService.isGoogleTokenValid(fakeGoogleToken)).thenReturn(true);
+
         mockMvc.perform(get("/calendar/events")
                 .param("startDate", "2023-01-01")
                 .param("endDate", "2023-12-31")
@@ -87,13 +105,23 @@ class CalendarControllerTest {
     }
 
     @Test
-    void GET_handleOAuthCallback_valid_returns200() throws Exception {
+    void GET_handleOAuthCallback_valid_returns302Redirect() throws Exception {
         doNothing().when(calendarService).handleOAuthCallback("authcode", 1L);
+        
+        // Stub team retrieval
+        Team mockTeam = new Team();
+        mockTeam.setId(42L);
+        User mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setTeamId(mockTeam.getId());
+        when(userService.getUserById(1L)).thenReturn(mockUser);
+        when(calendarService.getRedirectURL(42L)).thenReturn("http://localhost:3000/calendar/42");
 
         mockMvc.perform(get("/Callback")
                 .param("code", "authcode")
                 .param("state", "1"))
-            .andExpect(status().isOk());
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("http://localhost:3000/calendar/42"));
 
         verify(calendarService).handleOAuthCallback("authcode", 1L);
     }
@@ -151,6 +179,11 @@ class CalendarControllerTest {
         when(userService.findIDforToken(validToken)).thenReturn(1L);
         when(calendarService.getEventById("eventId123", 1L)).thenReturn(mockEvent);
 
+        // set any required fields on fakeGoogleToken if needed
+        GoogleToken fakeGoogleToken = new GoogleToken();
+        when(googleTokenRepository.findGoogleTokenById(1L)).thenReturn(fakeGoogleToken);
+        when(calendarService.isGoogleTokenValid(fakeGoogleToken)).thenReturn(true);
+
         mockMvc.perform(get("/calendar/events/eventId123")
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isOk())
@@ -166,6 +199,11 @@ class CalendarControllerTest {
         when(userService.findIDforToken(validToken)).thenReturn(1L);
         when(calendarService.getEventById(anyString(), anyLong()))
             .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+
+        // set any required fields on fakeGoogleToken if needed
+        GoogleToken fakeGoogleToken = new GoogleToken();
+        when(googleTokenRepository.findGoogleTokenById(1L)).thenReturn(fakeGoogleToken);
+        when(calendarService.isGoogleTokenValid(fakeGoogleToken)).thenReturn(true);
 
         mockMvc.perform(get("/calendar/events/invalidEventId")
                 .header("Authorization", bearer(validToken)))
@@ -193,6 +231,11 @@ class CalendarControllerTest {
         when(userService.validateToken(validToken)).thenReturn(true);
         when(userService.findIDforToken(validToken)).thenReturn(1L);
         when(calendarService.getCombinedEvents(1L, true, "2025-05-01", "2025-05-15")).thenReturn(combinedEvents);
+
+        // set any required fields on fakeGoogleToken if needed
+        GoogleToken fakeGoogleToken = new GoogleToken();
+        when(googleTokenRepository.findGoogleTokenById(1L)).thenReturn(fakeGoogleToken);
+        when(calendarService.isGoogleTokenValid(fakeGoogleToken)).thenReturn(true);
 
         // Perform the GET request to the combined calendar endpoint
         mockMvc.perform(get("/calendar/combined")

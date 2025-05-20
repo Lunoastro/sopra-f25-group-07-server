@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,6 +32,9 @@ import static org.mockito.Mockito.*;
  */
 
 @SpringBootTest
+@TestPropertySource(properties = {
+    "frontend.url=http://localhost:3000"
+})
 class WebSocketNotificationServiceIntegrationTest {
 
     @Autowired
