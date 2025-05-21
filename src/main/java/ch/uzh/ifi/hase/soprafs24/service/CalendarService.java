@@ -144,75 +144,97 @@ public class CalendarService {
         try {
             Calendar calendar = getCalendarServiceForUser(userId);
             logger.warn("Fetching Google Calendar events for user: {}, CALENDAR: {}", userId, calendar);
-            DateTime start = new DateTime(startDate + "T00:00:00Z");
-            LocalDate endLocalDate = LocalDate.parse(endDate);
-            LocalDate exclusiveEnd = endLocalDate.plusDays(1);
-            DateTime end = new DateTime(exclusiveEnd.toString() + "T00:00:00Z");
 
-            Events events = calendar.events().list(PRIMARY)
-                    .setTimeMin(start)
-                    .setTimeMax(end)
-                    .setOrderBy("startTime")
-                    .setSingleEvents(true)
-                    .execute();
+            DateTime start = buildStartDateTime(startDate);
+            DateTime end = buildExclusiveEndDateTime(endDate);
 
-            List<Event> items = events.getItems();
+            List<Event> events = fetchEvents(calendar, start, end);
 
-            // Manual filtering for all-day events starting on exclusiveEnd date or later
-            return items.stream()
-                    .filter(event -> {
-                        if (event.getStart().getDateTime() != null) {
-                            // Timed event
-                            return event.getStart().getDateTime().getValue() < end.getValue();
-                        } else if (event.getStart().getDate() != null) {
-                            // All-day event
-                            LocalDate eventStartDate = LocalDate.parse(event.getStart().getDate().toStringRfc3339());
-                            return eventStartDate.isBefore(exclusiveEnd);
-                        }
-                        return true; // If somehow neither is set, keep it
-                    })
-                    .map(event -> {
-                        Map<String, Object> simplified = new HashMap<>();
-                        simplified.put("id", event.getId());
-                        simplified.put("name", event.getSummary());
-                        simplified.put(DESCRIPTION, event.getDescription());
-                        
-                        String displayDateStr = null;
+            LocalDate exclusiveEnd = LocalDate.parse(endDate).plusDays(1);
 
-                        if (event.getStart() != null && event.getEnd() != null) {
-                            // All-day event
-                            if (event.getStart().getDate() != null && event.getEnd().getDate() != null) {
-                                LocalDate adjusted = LocalDate.parse(event.getEnd().getDate().toStringRfc3339()).minusDays(1);
-                                displayDateStr = adjusted.toString();
-                            }
+            return events.stream()
+                    .filter(event -> isEventWithinRange(event, end, exclusiveEnd))
+                    .map(this::simplifyEvent)
+                    .collect(Collectors.toList());
 
-                            // Timed event
-                            else if (event.getStart().getDateTime() != null && event.getEnd().getDateTime() != null) {
-                                DateTime endDateTime = event.getEnd().getDateTime();
-                                Instant endInstant = Instant.ofEpochMilli(endDateTime.getValue());
-                                ZonedDateTime zonedEnd = endInstant.atZone(ZoneId.systemDefault());
-
-                                // Check if it ends exactly at midnight
-                                if (zonedEnd.toLocalTime().equals(LocalTime.MIDNIGHT)) {
-                                    // Use start date instead
-                                    Instant startInstant = Instant.ofEpochMilli(event.getStart().getDateTime().getValue());
-                                    ZonedDateTime zonedStart = startInstant.atZone(ZoneId.systemDefault());
-                                    displayDateStr = zonedStart.toLocalDate().toString();
-                                } else {
-                                    displayDateStr = zonedEnd.toLocalDate().toString();
-                                }
-                            }
-                        }
-                        simplified.put(ENDDATE, displayDateStr);
-                        simplified.put(LOCATION, event.getLocation());
-                        return simplified;
-                    })
-                .collect(Collectors.toList());
         } catch (GeneralSecurityException e) {
             logger.error("Error accessing Google Calendar for user {}: {}", userId, e.getMessage(), e);
             throw new IOException("Error accessing Google Calendar for user.", e);
         }
     }
+
+    private DateTime buildStartDateTime(String startDate) {
+        return new DateTime(startDate + "T00:00:00Z");
+    }
+
+    private DateTime buildExclusiveEndDateTime(String endDate) {
+        LocalDate endLocalDate = LocalDate.parse(endDate);
+        LocalDate exclusiveEnd = endLocalDate.plusDays(1);
+        return new DateTime(exclusiveEnd.toString() + "T00:00:00Z");
+    }
+
+    private List<Event> fetchEvents(Calendar calendar, DateTime start, DateTime end) throws IOException {
+        Events events = calendar.events().list(PRIMARY)
+                .setTimeMin(start)
+                .setTimeMax(end)
+                .setOrderBy("startTime")
+                .setSingleEvents(true)
+                .execute();
+
+        return events.getItems();
+    }
+
+    private boolean isEventWithinRange(Event event, DateTime end, LocalDate exclusiveEnd) {
+        if (event.getStart().getDateTime() != null) {
+            // Timed event
+            return event.getStart().getDateTime().getValue() < end.getValue();
+        } else if (event.getStart().getDate() != null) {
+            // All-day event
+            LocalDate eventStartDate = LocalDate.parse(event.getStart().getDate().toStringRfc3339());
+            return eventStartDate.isBefore(exclusiveEnd);
+        }
+        return true; // fallback keep if neither set
+    }
+
+    private Map<String, Object> simplifyEvent(Event event) {
+        Map<String, Object> simplified = new HashMap<>();
+        simplified.put("id", event.getId());
+        simplified.put("name", event.getSummary());
+        simplified.put(DESCRIPTION, event.getDescription());
+        simplified.put(ENDDATE, calculateDisplayEndDate(event));
+        simplified.put(LOCATION, event.getLocation());
+        return simplified;
+    }
+
+    private String calculateDisplayEndDate(Event event) {
+        if (event.getStart() == null || event.getEnd() == null) {
+            return null;
+        }
+
+        // All-day event
+        if (event.getStart().getDate() != null && event.getEnd().getDate() != null) {
+            LocalDate adjusted = LocalDate.parse(event.getEnd().getDate().toStringRfc3339()).minusDays(1);
+            return adjusted.toString();
+        }
+
+        // Timed event
+        if (event.getStart().getDateTime() != null && event.getEnd().getDateTime() != null) {
+            DateTime endDateTime = event.getEnd().getDateTime();
+            Instant endInstant = Instant.ofEpochMilli(endDateTime.getValue());
+            ZonedDateTime zonedEnd = endInstant.atZone(ZoneId.systemDefault());
+
+            // If ends exactly at midnight, use start date instead
+            if (zonedEnd.toLocalTime().equals(LocalTime.MIDNIGHT)) {
+                Instant startInstant = Instant.ofEpochMilli(event.getStart().getDateTime().getValue());
+                ZonedDateTime zonedStart = startInstant.atZone(ZoneId.systemDefault());
+                return zonedStart.toLocalDate().toString();
+            } else {
+                return zonedEnd.toLocalDate().toString();
+            }
+        }
+        return null;
+    }
+
 
     public void syncSingleTask(Task task, Long userId) {
         try {
