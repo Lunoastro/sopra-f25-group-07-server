@@ -113,11 +113,11 @@ class CalendarServiceTest {
         // Spy and override the getCalendarServiceForUser to return mocked calendar
         doReturn(calendar).when(spyService).getCalendarServiceForUser(userId);
 
-        List<Event> result = spyService.getUserGoogleCalendarEvents(startDate, endDate, userId);
+        List<Map<String, Object>> result = spyService.getUserGoogleCalendarEvents(startDate, endDate, userId);
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals("Test Event", result.get(0).getSummary());
+        assertEquals("Test Event", result.get(0).get("name"));
     }
 
     @Test
