@@ -184,8 +184,6 @@ public class TaskController {
         teamService.validateTeamPaused(userToken);
         // check if task is in the same team as the user
         taskService.validateTaskInTeam(userToken, taskId);
-        // Checks if user is the creator of the task and if task exists
-        taskService.validateRecurringEdit(userToken, taskId); 
         // Unclaims the task for the user and assigns the user to the correct field
         Long userId = userrepository.findByToken(userToken).getId();
         taskService.quitTask(taskId, userId);

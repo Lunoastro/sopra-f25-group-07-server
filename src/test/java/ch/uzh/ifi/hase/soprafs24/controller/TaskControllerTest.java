@@ -706,7 +706,6 @@ class TaskControllerTest {
         // Verify that the service methods were called correctly
         verify(teamService).validateTeamPaused(token);
         verify(taskService).validateTaskInTeam(token, taskId);
-        verify(taskService).validateRecurringEdit(token, taskId);
         verify(userRepository).findByToken(token);
         verify(taskService).quitTask(taskId, userId);
     }
