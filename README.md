@@ -6,7 +6,7 @@ TASK AWAY is a chore management app designed for shared living spaces. It helps 
 
 ## Technologies
 
-The back-end of the application is built with Java using the Spring Boot framework. For data persistence, we use PostgreSQL hosted on Supabase. The server is deployed on Google Cloud, while the client is hosted on Vercel. Communication between the server and client is managed through both REST APIs and WebSockets.
+The back-end of the application is built with Java 17 using the Spring Boot framework. For data persistence, we use PostgreSQL hosted on Supabase. The server is deployed on Google Cloud, while the client is hosted on Vercel. Communication between the server and client is managed through both REST APIs and WebSockets.
 
 ## High-level components
 
@@ -19,6 +19,11 @@ All REST calls are handled by the [controller classes](./src/main/java/ch/uzh/if
 
 ```
 ./gradlew build
+```
+In case of problems or tests not running during the build process, you can run the following command:
+
+```bash
+./gradlew clean build
 ```
 
 ### Run with production DB
