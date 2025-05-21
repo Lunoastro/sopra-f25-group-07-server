@@ -106,6 +106,8 @@ public interface DTOMapper {
   @Mapping(source = "startDate", target = "startDate", dateFormat = "yyyy-MM-dd")
   @Mapping(source = "frequency", target = "frequency")
   @Mapping(source = "luckyDraw", target = "luckyDraw")
+  @Mapping(source = "creatorName", target = "creatorName")
+  @Mapping(source = "assigneeName", target = "assigneeName")
   TaskGetDTO convertEntityToTaskGetDTO(Task task);
 
   @Mapping(source = "id", target = "id")
@@ -122,6 +124,8 @@ public interface DTOMapper {
   @Mapping(source = "frequency", target = "frequency")
   @Mapping(source = "startDate", target = "startDate", dateFormat = "yyyy-MM-dd")
   @Mapping(source = "luckyDraw", target = "luckyDraw")
+  @Mapping(source = "creatorName", target = "creatorName")
+  @Mapping(source = "assigneeName", target = "assigneeName")
   Task convertTaskGetDTOtoEntity(TaskGetDTO taskGetDTO);
 
   @Mapping(source = "isAssignedTo", target = "isAssignedTo")

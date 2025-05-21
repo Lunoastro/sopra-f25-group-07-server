@@ -66,7 +66,13 @@ public class Task implements Serializable {
     private Long creatorId;
 
     @Column(nullable = true)
+    private String creatorName;
+
+    @Column(nullable = true)
     private Long isAssignedTo;
+
+    @Column(nullable = true)
+    private String assigneeName;
 
     @Column(nullable = true)
     private Integer frequency;
@@ -200,11 +206,27 @@ public class Task implements Serializable {
         this.creatorId = creatorId;
     }
 
+    public String getCreatorName() {
+        return creatorName;
+    }
+
+    public void setCreatorName(String creatorName) {
+        this.creatorName = creatorName;
+    }
+
     public Long getIsAssignedTo() {
         return isAssignedTo;
     }
     public void setIsAssignedTo(Long isAssignedTo) {
         this.isAssignedTo = isAssignedTo;
+    }
+
+    public String getAssigneeName() {
+        return assigneeName;
+    }
+
+    public void setAssigneeName(String assigneeName) {
+        this.assigneeName = assigneeName;
     }
 
     public Integer getFrequency() {

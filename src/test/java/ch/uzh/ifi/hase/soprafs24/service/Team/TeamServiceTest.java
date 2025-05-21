@@ -6,6 +6,7 @@ import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.service.TeamService;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import ch.uzh.ifi.hase.soprafs24.websocket.SocketHandler;
 import ch.uzh.ifi.hase.soprafs24.service.WebSocketNotificationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,9 @@ class TeamServiceTest {
 
     @Mock
     private UserService userService; // Inject the UserService
+
+    @Mock
+    private TaskService taskService;
 
     @Mock
     private SocketHandler socketHandler;
@@ -150,6 +154,9 @@ class TeamServiceTest {
     @Test
     void quitTeam_validInput_userQuitTeam() {
         Mockito.when(teamRepository.findTeamById(Mockito.anyLong())).thenReturn(testTeam);
+        Mockito.when(userService.getUserById(Mockito.anyLong())).thenReturn(testUser);
+        Mockito.when(taskService.getTasksAssignedToUser(Mockito.anyLong())).thenReturn(new ArrayList<>());
+        Mockito.when(taskService.getTasksCreatedByUser(Mockito.anyLong())).thenReturn(new ArrayList<>());
 
         teamService.quitTeam(testUser.getId(), testTeam.getId());
 

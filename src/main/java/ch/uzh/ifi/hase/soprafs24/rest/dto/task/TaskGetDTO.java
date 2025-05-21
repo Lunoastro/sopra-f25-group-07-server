@@ -25,4 +25,6 @@ public class TaskGetDTO {
     private Integer frequency;
     private String startDate;
     private Boolean luckyDraw;
+    private String creatorName;
+    private String assigneeName;
 }
