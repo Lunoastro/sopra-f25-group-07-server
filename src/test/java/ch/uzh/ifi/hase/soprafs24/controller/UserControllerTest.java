@@ -256,7 +256,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // then
         // checking the status code
         mockMvc.perform(putRequest)
-                .andExpect(status().isNoContent()); //checking status: 204
+                .andExpect(status().isOk()); //checking status: 200
     }
   
     @Test
