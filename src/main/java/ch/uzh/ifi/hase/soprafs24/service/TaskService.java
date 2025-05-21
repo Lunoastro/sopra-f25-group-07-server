@@ -366,6 +366,8 @@ public class TaskService {
         task.setCreationDate(new Date(new Date().getTime() + 3600 * 1000));
         // store the userId of the creator
         task.setcreatorId(userRepository.findByToken(userToken).getId());
+        // store the name of the creator
+        task.setCreatorName(userRepository.findByToken(userToken).getUsername());
         // enforce that the task colour is initially set to white 
         task.setColor(null);
         // set the task teamId
@@ -403,9 +405,10 @@ public class TaskService {
         verifyClaimStatus(task);
         validateUserToken(userToken);
         checkIsPaused(task);
-        // store the userId of the creator
+        // store the userId and name of the assignee
         User user = userRepository.findByToken(userToken);
         task.setIsAssignedTo(user.getId());
+        task.setAssigneeName(user.getUsername());
         //set the task color to the color of the user who claimed it
         if(user.getColor() != null) {
             task.setColor(user.getColor());
@@ -514,6 +517,7 @@ public class TaskService {
     }
     public void unassignTask(Task task) {
         task.setIsAssignedTo(null);
+        task.setAssigneeName(null);
         task.setColor(null); // Reset color to default when unassigned
         taskRepository.save(task);
     }
