@@ -36,9 +36,12 @@ import ch.uzh.ifi.hase.soprafs24.exceptions.CalendarAuthorizationException;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -57,6 +60,8 @@ public class CalendarService {
     private static final String SOURCE = "source"; // Constant for "source"
     private static final String SUMMARY = "summary"; // Constant for "summary"
     private static final String DESCRIPTION = "description"; // Constant for "description"
+    private static final String ENDDATE = "endDate";
+    private static final String LOCATION = "location";
 
     @Value("${REDIRECT_URI:}")
     private String redirectUri;
@@ -167,26 +172,41 @@ public class CalendarService {
                         return true; // If somehow neither is set, keep it
                     })
                     .map(event -> {
-                    Map<String, Object> simplified = new HashMap<>();
-                    simplified.put("name", event.getSummary());
-                    simplified.put(DESCRIPTION, event.getDescription());
+                        Map<String, Object> simplified = new HashMap<>();
+                        simplified.put("id", event.getId());
+                        simplified.put("name", event.getSummary());
+                        simplified.put(DESCRIPTION, event.getDescription());
+                        
+                        String displayDateStr = null;
 
-                    // Handle end date
-                    String endDateStr = null;
-                    if (event.getEnd() != null) {
-                        if (event.getEnd().getDate() != null) {
-                            endDateStr = event.getEnd().getDate().toStringRfc3339().substring(0, 10);
-                        } else if (event.getEnd().getDateTime() != null) {
-                            endDateStr = event.getEnd().getDateTime().toStringRfc3339().substring(0, 10);
+                        if (event.getStart() != null && event.getEnd() != null) {
+                            // All-day event
+                            if (event.getStart().getDate() != null && event.getEnd().getDate() != null) {
+                                LocalDate adjusted = LocalDate.parse(event.getEnd().getDate().toStringRfc3339()).minusDays(1);
+                                displayDateStr = adjusted.toString();
+                            }
+
+                            // Timed event
+                            else if (event.getStart().getDateTime() != null && event.getEnd().getDateTime() != null) {
+                                DateTime endDateTime = event.getEnd().getDateTime();
+                                Instant endInstant = Instant.ofEpochMilli(endDateTime.getValue());
+                                ZonedDateTime zonedEnd = endInstant.atZone(ZoneId.systemDefault());
+
+                                // Check if it ends exactly at midnight
+                                if (zonedEnd.toLocalTime().equals(LocalTime.MIDNIGHT)) {
+                                    // Use start date instead
+                                    Instant startInstant = Instant.ofEpochMilli(event.getStart().getDateTime().getValue());
+                                    ZonedDateTime zonedStart = startInstant.atZone(ZoneId.systemDefault());
+                                    displayDateStr = zonedStart.toLocalDate().toString();
+                                } else {
+                                    displayDateStr = zonedEnd.toLocalDate().toString();
+                                }
+                            }
                         }
-                    }
-                    simplified.put("endDate", endDateStr);
-
-                    // Location as name string
-                    simplified.put("location", event.getLocation());
-
-                    return simplified;
-                })
+                        simplified.put(ENDDATE, displayDateStr);
+                        simplified.put(LOCATION, event.getLocation());
+                        return simplified;
+                    })
                 .collect(Collectors.toList());
         } catch (GeneralSecurityException e) {
             logger.error("Error accessing Google Calendar for user {}: {}", userId, e.getMessage(), e);
@@ -198,13 +218,21 @@ public class CalendarService {
         try {
             Calendar cal = getCalendarServiceForUser(userId);
 
+            LocalDate startDate = task.getStartDate().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+            LocalDate deadlineDate = task.getDeadline().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+            DateTime startDateTime = new DateTime(startDate.toString());
+            DateTime endDateTime = new DateTime(deadlineDate.plusDays(1).toString());
+
             Event event = new Event()
-                    .setSummary("[TASK] " + task.getName())
-                    .setDescription(task.getDescription())
-                    .setStart(new EventDateTime()
-                            .setDateTime(new DateTime(toISOString(task.getStartDate()))))
-                    .setEnd(new EventDateTime()
-                            .setDateTime(new DateTime(toISOString(task.getDeadline()))));
+                .setSummary("[TASK] " + task.getName())
+                .setDescription(task.getDescription())
+                .setStart(new EventDateTime().setDate(startDateTime))
+                .setEnd(new EventDateTime().setDate(endDateTime));
 
             if (Boolean.TRUE.equals(task.getActiveStatus())) {
                 if (task.getGoogleEventId() == null) {
@@ -387,8 +415,8 @@ public class CalendarService {
             map.put("id", ge.get("id"));
             map.put("name", ge.get("name"));
             map.put(DESCRIPTION, ge.get(DESCRIPTION));
-            map.put("endDate", ge.get("endDate"));
-            map.put("location", ge.get("location"));
+            map.put(ENDDATE, ge.get(ENDDATE));
+            map.put(LOCATION, ge.get(LOCATION));
             map.put(SOURCE, "google");
             combinedEvents.add(map);
         }
@@ -403,8 +431,8 @@ public class CalendarService {
             taskEvent.put("id", "task-" + task.getId());
             taskEvent.put("name", "[TASK] " + task.getName());
             taskEvent.put(DESCRIPTION, task.getDescription());
-            taskEvent.put("endDate", toDateOnly(task.getDeadline() != null ? task.getDeadline().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime() : null));  // helper function to format deadline
-            taskEvent.put("location", null);
+            taskEvent.put(ENDDATE, toDateOnly(task.getDeadline() != null ? task.getDeadline().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime() : null));  // helper function to format deadline
+            taskEvent.put(LOCATION, null);
             taskEvent.put("colorId", task.getColor() != null ? task.getColor().toString() : null);
             taskEvent.put(SOURCE, "task");
             taskEvent.put(STATUS_FIELD, "active");

@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
 import com.google.api.services.calendar.model.Event;
 import ch.uzh.ifi.hase.soprafs24.entity.GoogleToken;
@@ -84,12 +85,14 @@ public class CalendarController {
         logger.info("Received userId: {}", userId);
         logger.info("Received googleToken: {}", googleToken);
         
-        return calendarService.getUserGoogleCalendarEvents(startDate, endDate, userId);
+        List<Map<String, Object>> fetchedTasks = calendarService.getUserGoogleCalendarEvents(startDate, endDate, userId);
+        logger.warn("All fetched tasks: {}", fetchedTasks);
+        return fetchedTasks;
     }
 
     @GetMapping("/calendar/events/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public Event getEventById(@PathVariable String id, @RequestHeader("Authorization") String authorizationHeader) throws IOException, GeneralSecurityException {
+    public Map<String, Object> getEventById(@PathVariable String id, @RequestHeader("Authorization") String authorizationHeader) throws IOException, GeneralSecurityException {
         String token = validateAuthorizationHeader(authorizationHeader);
         if (!userService.validateToken(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized: Invalid token.");
@@ -100,7 +103,34 @@ public class CalendarController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
         }
         requireSyncedGoogleAccount(userId);
-        return calendarService.getEventById(id, userId);
+        Event event = calendarService.getEventById(id, userId);
+        if (event == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found.");
+        }
+
+        Map<String, Object> simplified = new HashMap<>();
+        simplified.put("id", event.getId());
+        simplified.put("name", event.getSummary());
+        simplified.put("description", event.getDescription());
+
+        if (event.getEnd() != null) {
+            String endDate = event.getEnd().getDate() != null
+                ? event.getEnd().getDate().toString()  // All-day event
+                : java.time.Instant.ofEpochMilli(event.getEnd().getDateTime().getValue())
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDate()
+                    .toString();  // Timed event
+            simplified.put("endDate", endDate);
+        }
+
+        if (event.getLocation() != null) {
+            String location = event.getLocation();
+            if (location != null && location.contains(",")) {
+                location = location.split(",")[0];
+            }
+            simplified.put("location", location);
+        }
+        return simplified;
     }
 
     @GetMapping("/calendar/combined")

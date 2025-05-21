@@ -188,7 +188,7 @@ class CalendarControllerTest {
                 .header("Authorization", bearer(validToken)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value("eventId123"))
-            .andExpect(jsonPath("$.summary").value("Test Event"));
+            .andExpect(jsonPath("$.name").value("Test Event"));
 
         verify(calendarService).getEventById("eventId123", 1L);
     }
