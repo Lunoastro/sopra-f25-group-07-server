@@ -287,10 +287,8 @@ public class TaskService {
             userIndex = (userIndex + 1) % teamMembers.size();
         }
 
-        
-
         return unclaimedTasks;
-        }
+    }
 
     
 
@@ -314,6 +312,19 @@ public class TaskService {
         taskRepository.saveAll(tasks);
         
     }
+
+    public List<Task> getTasksAssignedToUser(Long userId) {
+        return taskRepository.findAll().stream()
+            .filter(task -> userId.equals(task.getIsAssignedTo()))
+            .collect(Collectors.toList());
+    }
+
+    public List<Task> getTasksCreatedByUser(Long userId) {
+        return taskRepository.findAll().stream()
+            .filter(task -> userId.equals(task.getcreatorId()))
+            .collect(Collectors.toList());
+    }
+
 
     private void newDeadline(Task task) {
         // Calculate paused time in milliseconds

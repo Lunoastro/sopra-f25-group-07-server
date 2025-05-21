@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 import java.util.Objects;
+import ch.uzh.ifi.hase.soprafs24.entity.Task;
 
 
 
@@ -159,6 +160,23 @@ public class TeamService {
     User user = userService.getUserById(userId);
     // Ensure the user is actually in this team
     checkUserIsTeamMember(team, userId);
+
+    // Unassign all tasks the user is currently assigned to
+    List<Task> assignedTasks = taskService.getTasksAssignedToUser(userId);
+    for (Task task : assignedTasks) {
+        taskService.unassignTask(task);
+    }
+
+    // Delete all tasks the user has created
+    List<Task> createdTasks = taskService.getTasksCreatedByUser(userId);
+    for (Task task : createdTasks) {
+        // If the task is assigned to someone else, unassign it first
+        if (task.getIsAssignedTo() != null) {
+            taskService.unassignTask(task);
+        }
+        taskService.deleteTask(task.getId());
+    }
+
 
     // Remove user from the team
     team.getMembers().remove(userId);
