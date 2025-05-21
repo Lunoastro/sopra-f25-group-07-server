@@ -454,6 +454,7 @@ public class TaskService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
         checkIsPaused(task);
         verifyLuckyDraw(task);
+        task.setActiveStatus(false);
         calendarService.syncSingleTask(task, task.getcreatorId());
         taskRepository.deleteById(taskId);
         taskRepository.flush();
