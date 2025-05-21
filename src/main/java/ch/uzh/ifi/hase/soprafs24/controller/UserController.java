@@ -132,8 +132,8 @@ public class UserController {
   }
 
   @PutMapping("/users/{userId}")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void update(@PathVariable Long userId, @RequestBody UserPutDTO userPutDTO, @RequestHeader("Authorization") String authorizationHeader) {    
+  @ResponseStatus(HttpStatus.OK)
+  public UserGetDTO update(@PathVariable Long userId, @RequestBody UserPutDTO userPutDTO, @RequestHeader("Authorization") String authorizationHeader) {    
     if(!userRepository.findById(userId).isPresent()){
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User with userId " + userId + " was not found.");
     }
@@ -156,6 +156,7 @@ public class UserController {
       //update user information
     User user = userService.updateUser(userInput);
     taskService.updateAllTaskColors(user);
+    return DTOMapper.INSTANCE.convertEntityToUserGetDTO(user);
   }
 
   @DeleteMapping("/users/{userId}")
