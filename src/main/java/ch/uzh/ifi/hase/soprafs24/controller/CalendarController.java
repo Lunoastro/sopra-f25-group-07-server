@@ -61,7 +61,7 @@ public class CalendarController {
 
     @GetMapping("/calendar/events")
     @ResponseStatus(HttpStatus.OK)
-    public List<Event> getEventsInRange(@RequestParam String startDate, // Format: "YYYY-MM-DD"
+    public List<Map<String, Object>> getEventsInRange(@RequestParam String startDate, // Format: "YYYY-MM-DD"
                                         @RequestParam String endDate,  // Format: "YYYY-MM-DD"
                                         @RequestHeader("Authorization") String authorizationHeader) throws IOException {
         String token = validateAuthorizationHeader(authorizationHeader);

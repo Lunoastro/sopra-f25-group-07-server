@@ -37,6 +37,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -134,7 +135,7 @@ public class CalendarService {
         return redirectUri;
     }
 
-    public List<Event> getUserGoogleCalendarEvents(String startDate, String endDate, Long userId) throws IOException {
+    public List<Map<String, Object>> getUserGoogleCalendarEvents(String startDate, String endDate, Long userId) throws IOException {
         try {
             Calendar calendar = getCalendarServiceForUser(userId);
             logger.warn("Fetching Google Calendar events for user: {}, CALENDAR: {}", userId, calendar);
@@ -165,7 +166,28 @@ public class CalendarService {
                         }
                         return true; // If somehow neither is set, keep it
                     })
-                    .collect(Collectors.toList());
+                    .map(event -> {
+                    Map<String, Object> simplified = new HashMap<>();
+                    simplified.put("name", event.getSummary());
+                    simplified.put(DESCRIPTION, event.getDescription());
+
+                    // Handle end date
+                    String endDateStr = null;
+                    if (event.getEnd() != null) {
+                        if (event.getEnd().getDate() != null) {
+                            endDateStr = event.getEnd().getDate().toStringRfc3339().substring(0, 10);
+                        } else if (event.getEnd().getDateTime() != null) {
+                            endDateStr = event.getEnd().getDateTime().toStringRfc3339().substring(0, 10);
+                        }
+                    }
+                    simplified.put("endDate", endDateStr);
+
+                    // Location as name string
+                    simplified.put("location", event.getLocation());
+
+                    return simplified;
+                })
+                .collect(Collectors.toList());
         } catch (GeneralSecurityException e) {
             logger.error("Error accessing Google Calendar for user {}: {}", userId, e.getMessage(), e);
             throw new IOException("Error accessing Google Calendar for user.", e);
@@ -359,14 +381,14 @@ public class CalendarService {
         List<Map<String, Object>> combinedEvents = new ArrayList<>();
     
         // Fetch Google Calendar events
-        List<Event> googleEvents = getUserGoogleCalendarEvents(startDate, endDate, userId);
-        for (Event ge : googleEvents) {
+        List<Map<String, Object>> googleEvents = getUserGoogleCalendarEvents(startDate, endDate, userId);
+        for (Map<String, Object> ge : googleEvents) {
             Map<String, Object> map = new HashMap<>();
-            map.put("id", ge.getId());
-            map.put(SUMMARY, ge.getSummary());
-            map.put(DESCRIPTION, ge.getDescription());
-            map.put(START, ge.getStart());
-            map.put(END, ge.getEnd());
+            map.put("id", ge.get("id"));
+            map.put("name", ge.get("name"));
+            map.put(DESCRIPTION, ge.get(DESCRIPTION));
+            map.put("endDate", ge.get("endDate"));
+            map.put("location", ge.get("location"));
             map.put(SOURCE, "google");
             combinedEvents.add(map);
         }
@@ -379,14 +401,10 @@ public class CalendarService {
             }
             Map<String, Object> taskEvent = new HashMap<>();
             taskEvent.put("id", "task-" + task.getId());
-            taskEvent.put(SUMMARY, "[TASK] " + task.getName());
+            taskEvent.put("name", "[TASK] " + task.getName());
             taskEvent.put(DESCRIPTION, task.getDescription());
-    
-            // Convert task deadline to Google Calendar-compatible format
-            taskEvent.put(START, Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
-            taskEvent.put(END, Map.of(DATETIME_FIELD, toISOString(task.getDeadline())));
-    
-            // Optional: Add task color
+            taskEvent.put("endDate", toDateOnly(task.getDeadline() != null ? task.getDeadline().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime() : null));  // helper function to format deadline
+            taskEvent.put("location", null);
             taskEvent.put("colorId", task.getColor() != null ? task.getColor().toString() : null);
             taskEvent.put(SOURCE, "task");
             taskEvent.put(STATUS_FIELD, "active");
@@ -398,19 +416,20 @@ public class CalendarService {
 
     private boolean isWithinRange(Date deadline, String startDateStr, String endDateStr) {
         try {
+            if (deadline == null) {
+                return false;
+            }
+
+            LocalDate deadlineDate = deadline.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             LocalDate startDate = LocalDate.parse(startDateStr);
             LocalDate endDate = LocalDate.parse(endDateStr);
 
-            Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-            // Use end of day for endDate (23:59:59.999)
-            Date end = Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
-
-            return !deadline.before(start) && deadline.before(end); 
-            // Note: using '< end' because 'end' is actually start of next day
+            return ( !deadlineDate.isBefore(startDate) && !deadlineDate.isAfter(endDate) );
         } catch (Exception e) {
             return false;
         }
     }
+
 
     public boolean isGoogleTokenValid(GoogleToken googleToken) {
         return googleToken != null && googleToken.getAccessToken() != null && !googleToken.getAccessToken().isEmpty();
@@ -422,5 +441,13 @@ public class CalendarService {
         }
         return frontendUrl + teamId;
     }
+
+    private String toDateOnly(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return null;
+        }
+        return dateTime.toLocalDate().toString(); // format: yyyy-MM-dd
+    }
+
     
 }
