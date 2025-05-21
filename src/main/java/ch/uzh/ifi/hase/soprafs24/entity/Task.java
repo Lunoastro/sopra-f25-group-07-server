@@ -207,7 +207,7 @@ public class Task implements Serializable {
     }
 
     public String getCreatorName() {
-        return name;
+        return creatorName;
     }
 
     public void setCreatorName(String creatorName) {
@@ -222,7 +222,7 @@ public class Task implements Serializable {
     }
 
     public String getAssigneeName() {
-        return name;
+        return assigneeName;
     }
 
     public void setAssigneeName(String assigneeName) {
