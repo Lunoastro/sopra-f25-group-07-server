@@ -452,9 +452,14 @@ class TaskControllerTest {
 
         String token = "token123";
 
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+        when(userRepository.findByToken(anyString())).thenReturn(mockUser);
+
         // Mock the service layer to simulate the task update behavior
         given(taskService.getTaskById(1L)).willReturn(existingTask);
-        given(taskService.updateTask(Mockito.any(), Mockito.any())).willReturn(existingTask);
+        given(taskService.updateTask(Mockito.any(), Mockito.any(), Mockito.eq(mockUser.getId()))).willReturn(existingTask);
 
         MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -469,6 +474,10 @@ class TaskControllerTest {
 
     @Test
     void PUT_failedUpdateTask_invalidTaskId_taskNotFound() throws Exception {
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+        when(userRepository.findByToken(anyString())).thenReturn(mockUser);
 
         String authorizationHeader = "Bearer token123";
         TaskPutDTO taskPutDTO = new TaskPutDTO();
@@ -480,7 +489,7 @@ class TaskControllerTest {
 
         when(taskService.getTaskById(1L)).thenReturn(null);
         doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"))
-            .when(taskService).updateTask(any(), any());
+            .when(taskService).updateTask(any(), any(), Mockito.eq(mockUser.getId()));
 
         mockMvc.perform(MockMvcRequestBuilders.put("/tasks/1")
                 .header("Authorization", authorizationHeader)
@@ -489,14 +498,18 @@ class TaskControllerTest {
                 .andExpect(status().isNotFound());
 
 
-        verify(taskService, times(1)).updateTask(any(), any());
+        verify(taskService, times(1)).updateTask(any(), any(), Mockito.eq(mockUser.getId()));
     }
 
 
 
     @Test
     void DELETE_deleteTask_validInput_taskDeleted() throws Exception {
-        doNothing().when(taskService).deleteTask(1L); 
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+        when(userRepository.findByToken(anyString())).thenReturn(mockUser);
+        doNothing().when(taskService).deleteTask(1L, mockUser.getId()); 
         doNothing().when(teamService).validateTeamPaused(anyString());
         doNothing().when(taskService).validateCreator(anyString(), eq(1L));
 
@@ -506,14 +519,18 @@ class TaskControllerTest {
         mockMvc.perform(deleteRequest)
             .andExpect(status().isNoContent());
 
-        verify(taskService, times(1)).deleteTask(1L);
+        verify(taskService, times(1)).deleteTask(1L, mockUser.getId());
     }
 
     @Test
     void DELETE_failedDeleteTask_invalidTaskId_taskNotFound() throws Exception {
+        User mockUser = new User();
+        mockUser.setId(5L);
+        mockUser.setTeamId(10L);
+        when(userRepository.findByToken(anyString())).thenReturn(mockUser);
         doNothing().when(teamService).validateTeamPaused(anyString());
         doNothing().when(taskService).validateCreator(anyString(), eq(1L));
-        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task with ID 1 does not exist")).when(taskService).deleteTask(1L);
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Task with ID 1 does not exist")).when(taskService).deleteTask(1L, mockUser.getId());
 
         MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}", 1L)
             .header("Authorization", "Bearer dummy-token");
@@ -521,7 +538,7 @@ class TaskControllerTest {
         mockMvc.perform(deleteRequest)
             .andExpect(status().isNotFound());
 
-        verify(taskService, times(1)).deleteTask(1L);
+        verify(taskService, times(1)).deleteTask(1L, mockUser.getId());
     }   
     
     @Test
@@ -896,7 +913,7 @@ class TaskControllerTest {
         when(userRepository.findByToken(token)).thenReturn(mockUser);
         when(taskService.checkTaskType(existingTask)).thenReturn("additional");
         doNothing().when(userService).addExperiencePoints(userId, existingTask.getValue());
-        doNothing().when(taskService).deleteTask(taskId);
+        doNothing().when(taskService).deleteTask(taskId, userId);
         
         // Perform the DELETE request
         MockHttpServletRequestBuilder deleteRequest = delete("/tasks/{taskId}/finish", taskId)
@@ -914,7 +931,7 @@ class TaskControllerTest {
         verify(userRepository).findByToken(token);
         verify(taskService).checkTaskType(existingTask);
         verify(userService).addExperiencePoints(userId, existingTask.getValue());
-        verify(taskService).deleteTask(taskId);
+        verify(taskService).deleteTask(taskId, userId);
         verify(taskService, never()).saveTask(any(Task.class)); // Should not save for additional tasks
     }
 
@@ -970,7 +987,7 @@ class TaskControllerTest {
         verify(taskService).calculateDeadline(existingTask);
         verify(taskService).unassignTask(existingTask);
         verify(taskService).saveTask(existingTask);
-        verify(taskService, never()).deleteTask(taskId); // Should not delete recurring tasks
+        verify(taskService, never()).deleteTask(taskId,userId); // Should not delete recurring tasks
     }
 
     @Test

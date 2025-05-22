@@ -174,7 +174,7 @@ public class TeamService {
         if (task.getIsAssignedTo() != null) {
             taskService.unassignTask(task);
         }
-        taskService.deleteTask(task.getId());
+        taskService.deleteTask(task.getId(),userId);
     }
 
 
