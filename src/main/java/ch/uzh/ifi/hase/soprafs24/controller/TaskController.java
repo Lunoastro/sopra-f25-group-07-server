@@ -66,7 +66,6 @@ public class TaskController {
         return taskGetDTOs;
     }
 
-    
     @PostMapping("/tasks/autodistribute")
     public List<TaskGetDTO> autodistribute(@RequestHeader("Authorization") String authorizationHeader) {
         // Extract the token from the Bearer header
@@ -82,8 +81,6 @@ public class TaskController {
         }
         return taskGetDTOs;
     }
-
-    
 
     @GetMapping("/tasks")
     @ResponseStatus(HttpStatus.OK)
@@ -265,6 +262,11 @@ public class TaskController {
         if (task.getIsAssignedTo() == null || !task.getIsAssignedTo().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only finish tasks that you have claimed");
         }
+
+        if (!taskService.isTaskVisibleOrFinishable(task)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task on cooldown. The task cannot be finished now");
+        }
+
         userService.addExperiencePoints(userId, task.getValue());
         
         List<TaskGetDTO> updatedTasks = new ArrayList<>();
@@ -285,7 +287,6 @@ public class TaskController {
         
         updatedTasks.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
     }
-    
     return updatedTasks;
 }
     

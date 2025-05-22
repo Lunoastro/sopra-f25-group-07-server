@@ -205,21 +205,29 @@ public class TaskService {
     }
 
     public List<Task> getFilteredTasks(Boolean isActive, String type) {
-        // If both filters are null, return all tasks
         List<Task> allTasks = getAllTasks();
-        // Filter by activeStatus (if active or inactive)
-        if (isActive != null) {
-            allTasks = allTasks.stream()
-                           .filter(task -> isActive.equals(task.getActiveStatus())) // True = active Tasks, False = inactive Tasks
-                        .collect(Collectors.toList());
-        }
-        // Filter by type (recurring)
+
+        // Filter by type (e.g., "recurring" or "additional")
         if (type != null) {
             allTasks = allTasks.stream()
-                            .filter(task -> checkTaskType(task).equalsIgnoreCase(type)) // Check if frequency is null -> additional task
-                            .collect(Collectors.toList());
+                .filter(task -> checkTaskType(task).equalsIgnoreCase(type))
+                .collect(Collectors.toList());
+        }
+
+        // Filter by visibility if isActive is specified
+        if (isActive != null) {
+            allTasks = allTasks.stream()
+                .filter(task -> isActive.equals(isTaskVisibleOrFinishable(task)))
+                .collect(Collectors.toList());
         }
         return allTasks;
+    }
+
+    public List<Task> onlyVisibleTasks(List<Task> unfiltered) {
+        // Filter out tasks that are not visible or finishable
+        return unfiltered.stream()
+            .filter(this::isTaskVisibleOrFinishable)
+            .collect(Collectors.toList());
     }
 
     public List<Task> luckyDrawTasks(Long userTeamId) {
@@ -603,6 +611,24 @@ public class TaskService {
         Date newDeadline = calendar.getTime();
         task.setDeadline(newDeadline);
     }
+
+    public boolean isTaskVisibleOrFinishable(Task task) {
+        Date deadline = task.getDeadline();
+        int daysVisible = task.getDaysVisible(); // or task.getReminder() if you're using that field
+
+        // Calculate "visible from" date: deadline - daysVisible
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(deadline);
+        calendar.add(Calendar.DATE, -daysVisible);
+        Date visibleFrom = calendar.getTime();
+
+        // Get today's date
+        Date today = new Date();
+
+        // Check if today is on or after visibleFrom date
+        return !today.before(visibleFrom);
+    }
+
 
     public void calculateDeadlineOnExpire(Task task) {
         // calculate dnew_eadline = old_deadline  + frequency -> recurring task
