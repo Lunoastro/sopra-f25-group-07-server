@@ -30,6 +30,7 @@ import ch.uzh.ifi.hase.soprafs24.service.CalendarService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.Optional;
+import java.util.Calendar;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -317,17 +318,19 @@ class TaskServiceTest {
     }
 
     @Test
-    void validatePostDto_pastDeadline_throwsIllegalArgumentException() {
+    void validatePostDto_pastDeadline_throwsResponseStatusException() {
         // given
         TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
         invalidTaskPostDTO.setName("Valid Task");
         invalidTaskPostDTO.setValue(10);
-        invalidTaskPostDTO.setDeadline(new Date(System.currentTimeMillis() - 3600 * 1000)); // Past deadline
-
+        // Set deadline to yesterday
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR, -1); // yesterday
+        invalidTaskPostDTO.setDeadline(cal.getTime());
         // when & then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> taskService.validatePostDto(invalidTaskPostDTO));
-        assertEquals("Invalid or past deadline provided.", exception.getMessage());
+        assertEquals("400 BAD_REQUEST \"Invalid or past deadline provided.\"", exception.getMessage());    
     }
 
     @Test
@@ -340,6 +343,7 @@ class TaskServiceTest {
         existingTask.setColor(ColorID.C1);
         existingTask.setActiveStatus(true);
         existingTask.setCreationDate(new Date());
+        existingTask.setStartDate(new Date(System.currentTimeMillis() + 1000 * 60 * 60)); // Must not be null
 
         Task updatedTask = new Task();
         updatedTask.setName("New Task");
@@ -734,20 +738,28 @@ class TaskServiceTest {
     @Test
     void getFilteredTasks_activeFilter_returnsActiveTasks() {
         // given
+        Date futureDeadline = new Date(System.currentTimeMillis() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
+        
         Task task1 = new Task();
         task1.setId(1L);
         task1.setName("Active Task 1");
         task1.setActiveStatus(true);
+        task1.setDaysVisible(3);
+        task1.setDeadline(futureDeadline);
 
         Task task2 = new Task();
         task2.setId(2L);
         task2.setName("Active Task 2");
         task2.setActiveStatus(true);
+        task2.setDaysVisible(3);
+        task2.setDeadline(futureDeadline);
 
         Task task3 = new Task();
         task3.setId(3L);
         task3.setName("Inactive Task");
         task3.setActiveStatus(false);
+        task3.setDaysVisible(1);
+        task3.setDeadline(futureDeadline);
 
         List<Task> allTasks = List.of(task1, task2, task3);
 
@@ -796,29 +808,39 @@ class TaskServiceTest {
     @Test
     void getFilteredTasks_bothFilters_returnsActiveRecurringTasks() {
         // given
+        Date futureDeadline = new Date(System.currentTimeMillis() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
+    
         Task task1 = new Task();
         task1.setId(1L);
         task1.setName("Active Regular Task");
         task1.setActiveStatus(true);
         task1.setFrequency(null); // Not recurring
+        task1.setDaysVisible(2);
+        task1.setDeadline(futureDeadline);
 
         Task task2 = new Task();
         task2.setId(2L);
         task2.setName("Active Recurring Task");
         task2.setActiveStatus(true);
         task2.setFrequency(7); // Recurring
+        task2.setDaysVisible(3);
+        task2.setDeadline(futureDeadline);
 
         Task task3 = new Task();
         task3.setId(3L);
         task3.setName("Inactive Recurring Task");
         task3.setActiveStatus(false);
         task3.setFrequency(14); // Recurring
+        task3.setDaysVisible(1);
+        task3.setDeadline(futureDeadline);
 
         Task task4 = new Task();
         task4.setId(4L);
         task4.setName("Inactive Regular Task");
         task4.setActiveStatus(false);
         task4.setFrequency(null); // Not recurring
+        task4.setDaysVisible(2);
+        task4.setDeadline(futureDeadline);
 
         List<Task> allTasks = List.of(task1, task2, task3, task4);
 

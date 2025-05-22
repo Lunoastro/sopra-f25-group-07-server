@@ -6,6 +6,7 @@ import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 
 
@@ -66,9 +67,19 @@ public class TaskService {
         if (dto.getDeadline() == null) { //short type check (recurring or additional task)
             validateRecurringPostDto(dto); //recurring dto checks
         } else {
-            if (dto.getDeadline().before(new Date())) {
-                throw new IllegalArgumentException("Invalid or past deadline provided.");
-            }
+            Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(dto);
+            checkAdditionalDeadline(task);
+        }
+    }
+
+    private void checkAdditionalDeadline(Task task) {
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MILLISECOND, 0);
+        if (task.getDeadline().before(today.getTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or past deadline provided.");
         }
     }
 
@@ -95,9 +106,7 @@ public class TaskService {
             checkDaysVisible(task); // check if daysVisible is valid (daysVisible >= half of frequency)
         } else {
             if (taskPutDTO.getDeadline() != null) { //validate additional task
-                if (taskPutDTO.getDeadline().before(new Date())) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deadline must be in the future");
-                }
+                checkAdditionalDeadline(taskPutDTO);
                 task.setDeadline(taskPutDTO.getDeadline());
                 calculateDaysVisible(task);
             }
@@ -640,9 +649,13 @@ public class TaskService {
     }
 
     public void calculateDaysVisible(Task task) {
-        long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
+        long millisDiff = task.getDeadline().getTime() - task.getStartDate().getTime();
         double diffInDays = (double) millisDiff / (1000 * 60 * 60 * 24);
         int daysDiff = (int) Math.ceil(diffInDays);
+        // Special case; creationDate and deadline are the same
+        if (daysDiff == 0) {
+            daysDiff = 1;
+        }
         task.setDaysVisible(daysDiff);
     }
     
