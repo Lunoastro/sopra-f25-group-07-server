@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs24.entity;
 
 import javax.persistence.*;
+
 import java.io.Serializable;
 import ch.uzh.ifi.hase.soprafs24.constant.ColorID;
 import ch.uzh.ifi.hase.soprafs24.listener.TaskEntityListener;
@@ -85,6 +86,9 @@ public class Task implements Serializable {
 
     @Column(nullable = true)
     private Boolean luckyDraw;
+
+    @Column(nullable = true)
+    private Long lockedByUser;
 
     // Getters and Setters
     public Long getId() {
@@ -249,5 +253,12 @@ public class Task implements Serializable {
     }
     public void setTeamId(Long teamId) {
         this.teamId = teamId;
+    }
+
+    public Long getLockedByUser() {
+        return lockedByUser;
+    }
+    public void setLockedByUser(Long lockedByUserId) {
+        this.lockedByUser = lockedByUserId;
     }
 }

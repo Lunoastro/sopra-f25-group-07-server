@@ -581,6 +581,10 @@ class TaskServiceTest {
     @Test
     void deleteTask_success() {
         // given
+        User testingUser = new User();
+        testingUser.setId(42L);
+        testingUser.setUsername("testingUser");
+        testingUser.setColor(ColorID.C1);
         Long taskId = 1L;
         Task mockTask = new Task();
         mockTask.setId(taskId);
@@ -592,7 +596,7 @@ class TaskServiceTest {
         Mockito.doNothing().when(calendarService).syncSingleTask(mockTask, mockTask.getcreatorId());
 
         // when
-        taskService.deleteTask(taskId);
+        taskService.deleteTask(taskId, 42L);
 
         // then
         Mockito.verify(taskRepository).deleteById(taskId);

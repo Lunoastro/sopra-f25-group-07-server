@@ -27,4 +27,5 @@ public class TaskGetDTO {
     private Boolean luckyDraw;
     private String creatorName;
     private String assigneeName;
+    private Long lockedByUser;
 }
