@@ -43,15 +43,6 @@ public class SocketHandler extends TextWebSocketHandler {
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
-    
-    public List<WebSocketSession> getSessionsForTesting() {
-        return sessions;
-    }
-
-    public Map<Long, WebSocketSession> getPendingSessionsMapForTesting() {
-        return pendingSessionsMap;
-    }
-
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         sessions.add(session);
@@ -63,9 +54,9 @@ public class SocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
 
-        if (Boolean.TRUE.equals(authenticated)) { // More robust check for true
-            log.info("Received regular message from an authenticated session.");
-            // Potentially handle other message types here if your protocol defines them
+        if (Boolean.TRUE.equals(authenticated)) {
+            log.info("Received regular message from an authenticated session {}.", session.getId());
+
         } else {
             tryAuthenticate(session, message);
         }
@@ -73,11 +64,11 @@ public class SocketHandler extends TextWebSocketHandler {
 
     private void tryAuthenticate(WebSocketSession session, TextMessage message) throws IOException {
         String payload = message.getPayload();
-        log.debug("Attempting to authenticate a session.");
+        log.debug("Attempting to authenticate session {}.", session.getId());
         try {
             JsonNode jsonNode = objectMapper.readTree(payload);
-            if (jsonNode.has("type") && "auth".equalsIgnoreCase(jsonNode.get("type").asText())) { // Check type first
-                if (jsonNode.has("token")) { // Then check for token
+            if (jsonNode.has("type") && "auth".equalsIgnoreCase(jsonNode.get("type").asText())) {
+                if (jsonNode.has("token")) {
                     String rawToken = jsonNode.get("token").asText();
                     String tokenToValidate = null;
 
@@ -85,27 +76,32 @@ public class SocketHandler extends TextWebSocketHandler {
                         if (rawToken.toLowerCase().startsWith("bearer ")) {
                             tokenToValidate = rawToken.substring(7);
                         } else {
-                            log.warn("Auth message received without 'Bearer ' prefix for session {}. Assuming raw token.", session.getId());
-                            tokenToValidate = rawToken; 
+                            log.warn(
+                                    "Auth message received without 'Bearer ' prefix for session {}. Assuming raw token.",
+                                    session.getId());
+                            tokenToValidate = rawToken;
                         }
                     }
-
 
                     if (tokenToValidate != null && !tokenToValidate.isEmpty()) {
                         if (userService.validateToken(tokenToValidate)) {
                             User user = userService.getUserByToken(tokenToValidate);
                             if (user != null) {
                                 session.getAttributes().put("userId", user.getId());
+                                session.getAttributes().put("authenticated", true);
+
                                 if (user.getTeamId() != null) {
                                     Team userTeam = teamRepository.findTeamById(user.getTeamId());
                                     if (userTeam != null) {
                                         session.getAttributes().put("teamId", userTeam.getId());
-                                        log.info("WebSocket session {} authenticated for user: {}, userId: {}, teamId: {}",
+                                        log.info(
+                                                "WebSocket session {} authenticated for user: {}, userId: {}, teamId: {}",
                                                 session.getId(), user.getUsername(), user.getId(), userTeam.getId());
                                     } else {
                                         log.warn(
-                                                "WebSocket session {} authenticated for user: {}, userId: {}. User has teamId {} but team entity not found.",
+                                                "WebSocket session {} authenticated for user: {}, userId: {}. User has teamId {} but team entity not found. Moving to pending.",
                                                 session.getId(), user.getUsername(), user.getId(), user.getTeamId());
+                                        pendingSessionsMap.put(user.getId(), session);
                                     }
                                 } else {
                                     pendingSessionsMap.put(user.getId(), session);
@@ -113,7 +109,6 @@ public class SocketHandler extends TextWebSocketHandler {
                                             "WebSocket session {} authenticated for user: {}, userId: {}. User is not in any team. Session stored pending team assignment.",
                                             session.getId(), user.getUsername(), user.getId());
                                 }
-                                session.getAttributes().put("authenticated", true);
                                 session.sendMessage(new TextMessage(
                                         "{\"type\":\"auth_success\",\"message\":\"Authentication successful\"}"));
                             } else {
@@ -131,7 +126,7 @@ public class SocketHandler extends TextWebSocketHandler {
                                     "{\"type\":\"auth_failure\",\"message\":\"Invalid token or user offline\"}"));
                             session.close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token or user offline"));
                         }
-                    } else { // Token value was null or empty after processing rawToken
+                    } else {
                         log.warn(
                                 "WebSocket authentication failed for session {}: Token was effectively missing or empty after processing.",
                                 session.getId());
@@ -139,13 +134,16 @@ public class SocketHandler extends TextWebSocketHandler {
                                 new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token missing or empty\"}"));
                         session.close(CloseStatus.POLICY_VIOLATION.withReason("Token missing or empty"));
                     }
-                } else { // "token" field is missing in auth message
-                    log.warn("WebSocket authentication failed for session {}: 'token' field missing in auth message.", session.getId());
-                    session.sendMessage(new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token field missing\"}"));
+                } else {
+                    log.warn("WebSocket authentication failed for session {}: 'token' field missing in auth message.",
+                            session.getId());
+                    session.sendMessage(
+                            new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token field missing\"}"));
                     session.close(CloseStatus.POLICY_VIOLATION.withReason("Token field missing"));
                 }
-            } else { // Not an "auth" type message or "type" field missing
-                log.warn("Received non-authentication message or malformed auth type from unauthenticated session {}.", session.getId());
+            } else {
+                log.warn("Received non-authentication message or malformed auth type from unauthenticated session {}.",
+                        session.getId());
                 session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required as first message"));
             }
         } catch (JsonProcessingException e) {
@@ -157,7 +155,7 @@ public class SocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.error("Error during WebSocket authentication for session {}: {}", session.getId(), e.getMessage(), e);
             try {
-                if (session.isOpen()) { // Check if session is still open before sending
+                if (session.isOpen()) {
                     session.sendMessage(
                             new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Authentication error\"}"));
                     session.close(CloseStatus.SERVER_ERROR.withReason("Authentication error"));
@@ -171,31 +169,38 @@ public class SocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        sessions.remove(session);
-        // Also remove from pendingSessionsMap if the user ID was stored
+        boolean removedFromSessions = sessions.remove(session);
         Long userId = (Long) session.getAttributes().get("userId");
+        boolean removedFromPending = false;
         if (userId != null) {
-            pendingSessionsMap.remove(userId, session); // Remove only if this specific session was mapped
+
+            removedFromPending = pendingSessionsMap.remove(userId, session);
         }
-        log.info("Plain WebSocket connection closed: {} with status: {} - {} - Authenticated: {}",
-                session.getId(), status.getCode(), status.getReason(), session.getAttributes().get("authenticated"));
+        log.info(
+                "Plain WebSocket connection closed: {} with status: {} - {} - Authenticated: {}. Removed from sessions: {}, Removed from pending: {}",
+                session.getId(), status.getCode(), status.getReason(), session.getAttributes().get("authenticated"),
+                removedFromSessions, removedFromPending);
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
         log.error("Plain WebSocket transport error for session {}: {}", session.getId(), exception.getMessage(),
                 exception);
+        boolean removedFromSessions = sessions.remove(session);
+        Long userId = (Long) session.getAttributes().get("userId");
+        boolean removedFromPending = false;
+        if (userId != null) {
+            removedFromPending = pendingSessionsMap.remove(userId, session);
+        }
+        log.debug("Session {} removed due to transport error. From sessions: {}, From pending: {}", session.getId(),
+                removedFromSessions, removedFromPending);
+
         if (session.isOpen()) {
             try {
-                session.close(CloseStatus.SERVER_ERROR);
+                session.close(CloseStatus.SERVER_ERROR.withReason("Transport error"));
             } catch (IOException e) {
                 log.error("Error closing session {} after transport error: {}", session.getId(), e.getMessage());
             }
-        }
-        sessions.remove(session);
-        Long userId = (Long) session.getAttributes().get("userId");
-        if (userId != null) {
-            pendingSessionsMap.remove(userId, session);
         }
     }
 
@@ -203,18 +208,124 @@ public class SocketHandler extends TextWebSocketHandler {
         WebSocketSession session = pendingSessionsMap.get(userId);
         if (session != null && session.isOpen()) {
             session.getAttributes().put("teamId", teamId);
-            pendingSessionsMap.remove(userId);
+            pendingSessionsMap.remove(userId, session);
             log.info("WebSocket session {} re-associated with teamId: {} for userId: {}", session.getId(), teamId,
                     userId);
             try {
                 session.sendMessage(
-                        new TextMessage("{\"type\":\"team_association_complete\",\"teamId\":" + teamId + "}"));
+                        new TextMessage(objectMapper
+                                .writeValueAsString(Map.of("type", "team_association_complete", "teamId", teamId))));
             } catch (IOException e) {
                 log.error("Failed to send team association_complete message to session {}: {}", session.getId(),
                         e.getMessage());
             }
         } else {
-            log.info("No pending WebSocket session found for userId {} or session is not open.", userId);
+            log.info(
+                    "No pending WebSocket session found for userId {} or session is not open to associate with team {}.",
+                    userId, teamId);
+        }
+    }
+
+    /**
+     * Moves an active WebSocket session for a given userId to the pending state.
+     * This is typically called when a user leaves a team.
+     * 
+     * @param userId The ID of the user whose session should be moved.
+     */
+    public void moveSessionToPending(Long userId) {
+        if (userId == null) {
+            log.warn("moveSessionToPending called with null userId. Skipping.");
+            return;
+        }
+
+        WebSocketSession sessionToPend = null;
+
+        for (WebSocketSession session : this.sessions) {
+            Long sessionUserId = (Long) session.getAttributes().get("userId");
+            if (userId.equals(sessionUserId)) {
+                sessionToPend = session;
+                break;
+            }
+        }
+
+        if (sessionToPend != null && sessionToPend.isOpen()) {
+            Object oldTeamId = sessionToPend.getAttributes().remove("teamId");
+
+            if (sessionToPend.getAttributes().get("authenticated") == null) {
+                sessionToPend.getAttributes().put("authenticated", true);
+            }
+
+            pendingSessionsMap.put(userId, sessionToPend);
+
+            if (oldTeamId != null) {
+                log.info("User {} left team {}. Their WebSocket session {} ({}) moved to pending.", userId, oldTeamId,
+                        sessionToPend.getId(), sessionToPend.getRemoteAddress());
+            } else {
+                log.info("User {} now has no team. Their WebSocket session {} ({}) moved/confirmed to pending.", userId,
+                        sessionToPend.getId(), sessionToPend.getRemoteAddress());
+            }
+            try {
+                sessionToPend.sendMessage(new TextMessage(objectMapper.writeValueAsString(
+                        Map.of("type", "session_pending", "message", "Your session is now pending team assignment."))));
+            } catch (IOException e) {
+                log.error("Failed to send session_pending message to session {} for user {}: {}", sessionToPend.getId(),
+                        userId, e.getMessage());
+            }
+        } else {
+            if (sessionToPend == null) {
+                log.info("No active WebSocket session found for userId {} to move to pending.", userId);
+            } else {
+                log.info("WebSocket session {} for userId {} found but is not open. Cannot move to pending.",
+                        sessionToPend.getId(), userId);
+
+                this.sessions.remove(sessionToPend);
+                this.pendingSessionsMap.remove(userId, sessionToPend);
+            }
+        }
+    }
+
+    /**
+     * Closes the WebSocket session for a specific user, if one exists.
+     * 
+     * @param userId The ID of the user whose session should be closed.
+     * @param reason The reason for closing the session.
+     */
+    public void closeSessionForUser(Long userId, String reason) {
+        if (userId == null) {
+            log.warn("closeSessionForUser called with null userId. Skipping.");
+            return;
+        }
+
+        WebSocketSession sessionToClose = null;
+        for (WebSocketSession session : this.sessions) {
+            Long sessionUserId = (Long) session.getAttributes().get("userId");
+            if (userId.equals(sessionUserId)) {
+                sessionToClose = session;
+                break;
+            }
+        }
+
+        if (sessionToClose != null) {
+            if (sessionToClose.isOpen()) {
+                log.info("Closing WebSocket session {} for user {} due to: {}", sessionToClose.getId(), userId, reason);
+                try {
+                    sessionToClose.close(CloseStatus.NORMAL.withReason(reason));
+
+                } catch (IOException e) {
+                    log.error("Error closing WebSocket session {} for user {}: {}. Forcing removal.",
+                            sessionToClose.getId(), userId, e.getMessage());
+
+                    this.sessions.remove(sessionToClose);
+                    this.pendingSessionsMap.remove(userId, sessionToClose);
+                }
+            } else {
+                log.info("Session {} for user {} was already closed. Ensuring it's removed from tracking.",
+                        sessionToClose.getId(), userId);
+                this.sessions.remove(sessionToClose);
+                this.pendingSessionsMap.remove(userId, sessionToClose);
+            }
+        } else {
+            log.info("No active WebSocket session found for user {} to close.", userId);
         }
     }
 
@@ -224,7 +335,7 @@ public class SocketHandler extends TextWebSocketHandler {
             return;
         }
         List<WebSocketSession> authenticatedSessions = new CopyOnWriteArrayList<>();
-        for (WebSocketSession session : this.sessions) { 
+        for (WebSocketSession session : this.sessions) {
             Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
             if (session.isOpen() && Boolean.TRUE.equals(authenticated)) {
                 authenticatedSessions.add(session);
@@ -237,72 +348,86 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 
-    /**
-     * Broadcasts a message to all authenticated WebSocket sessions associated with a specific team.
-     *
-     * @param teamId      The ID of the team to which the message should be sent.
-     * @param dataPayload The data payload to be sent as a message.
-     */
-public void broadcastMessageToTeam(Long teamId, Object dataPayload) {
-    if (teamId == null || dataPayload == null) {
-        log.warn("Attempted to broadcast to team with null teamId or payload. Skipping. TeamId: {}", teamId);
-        return;
-    }
-    List<WebSocketSession> teamSessionsToSend = new ArrayList<>();
-    List<WebSocketSession> sessionsToRemove = new ArrayList<>();
-
-    for (WebSocketSession session : this.sessions) {
-        if (!session.isOpen()) {
-            sessionsToRemove.add(session); // Mark for removal
-            continue;
+    public void broadcastMessageToTeam(Long teamId, Object dataPayload) {
+        if (teamId == null || dataPayload == null) {
+            log.warn("Attempted to broadcast to team with null teamId or payload. Skipping. TeamId: {}", teamId);
+            return;
         }
-        Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
-        if (Boolean.TRUE.equals(authenticated)) {
-            Long sessionTeamId = (Long) session.getAttributes().get("teamId");
-            if (teamId.equals(sessionTeamId)) {
-                teamSessionsToSend.add(session);
+        List<WebSocketSession> teamSessionsToSend = new ArrayList<>();
+        List<WebSocketSession> sessionsToRemove = new ArrayList<>();
+
+        for (WebSocketSession session : this.sessions) {
+            if (!session.isOpen()) {
+                sessionsToRemove.add(session);
+                Long sessionUserId = (Long) session.getAttributes().get("userId");
+                if (sessionUserId != null) {
+                    pendingSessionsMap.remove(sessionUserId, session);
+                }
+                continue;
+            }
+            Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
+            if (Boolean.TRUE.equals(authenticated)) {
+                Long sessionTeamId = (Long) session.getAttributes().get("teamId");
+                if (teamId.equals(sessionTeamId)) {
+                    teamSessionsToSend.add(session);
+                }
             }
         }
-    }
-    if (!sessionsToRemove.isEmpty()) {
-        this.sessions.removeAll(sessionsToRemove);
-        for(WebSocketSession removedSession : sessionsToRemove) {
-            log.debug("Removed closed session {} during team broadcast filtering.", removedSession.getId());
+        if (!sessionsToRemove.isEmpty()) {
+            this.sessions.removeAll(sessionsToRemove);
+            log.debug("Removed {} closed sessions during team broadcast filtering.", sessionsToRemove.size());
+        }
+
+        if (!teamSessionsToSend.isEmpty()) {
+            log.info("Broadcasting message to {} authenticated members of teamId {}. Payload type: {}",
+                    teamSessionsToSend.size(),
+                    teamId, dataPayload.getClass().getSimpleName());
+            sendMessageToSessions(teamSessionsToSend, dataPayload);
+        } else {
+            log.info("No active and authenticated WebSocket sessions found for teamId {} to send message.", teamId);
         }
     }
-
-    if (!teamSessionsToSend.isEmpty()) {
-        log.info("Broadcasting message to {} authenticated members of teamId {}. Payload: {}", teamSessionsToSend.size(),
-                teamId, dataPayload.getClass().getSimpleName());
-        sendMessageToSessions(teamSessionsToSend, dataPayload);
-    } else {
-        log.info("No active and authenticated WebSocket sessions found for teamId {} to send message.", teamId);
-    }
-}
 
     private void sendMessageToSessions(List<WebSocketSession> targetSessions, Object dataPayload) {
         try {
             String messageJson = objectMapper.writeValueAsString(dataPayload);
             TextMessage textMessage = new TextMessage(messageJson);
             int sentCount = sendMessagesToOpenSessions(targetSessions, textMessage);
-            logSentMessageInfo(sentCount, messageJson);
+
+            if (sentCount > 0) {
+                log.info("Sent message to {} session(s). Message starts with: {}", sentCount,
+                        messageJson.substring(0, Math.min(messageJson.length(), 100)));
+            } else {
+                log.info("No open sessions in the target list to send message: {}",
+                        messageJson.substring(0, Math.min(messageJson.length(), 100)));
+            }
         } catch (IOException e) {
-            log.error("Failed to serialize data payload for WebSocket broadcast: {}", dataPayload, e);
+            log.error("Failed to serialize data payload for WebSocket broadcast: {}",
+                    dataPayload.getClass().getSimpleName(), e);
         }
     }
 
     private int sendMessagesToOpenSessions(List<WebSocketSession> targetSessions, TextMessage textMessage) {
         int sentCount = 0;
-        
-        for (WebSocketSession session : new ArrayList<>(targetSessions)) { // Iterate over a copy for safety if original list can change
+        List<WebSocketSession> sessionsToRemove = new ArrayList<>();
+
+        for (WebSocketSession session : targetSessions) {
             if (session.isOpen()) {
                 if (sendMessageToSession(session, textMessage)) {
                     sentCount++;
                 }
             } else {
-                // Session was found to be closed before attempting send.
-                // It might have been closed by another thread or event.
-                removeClosedSession(session); // Ensure it's removed from the main `sessions` list
+                sessionsToRemove.add(session);
+            }
+        }
+        if (!sessionsToRemove.isEmpty()) {
+            this.sessions.removeAll(sessionsToRemove);
+            for (WebSocketSession removedSession : sessionsToRemove) {
+                Long userId = (Long) removedSession.getAttributes().get("userId");
+                if (userId != null) {
+                    this.pendingSessionsMap.remove(userId, removedSession);
+                }
+                log.debug("Removed closed session {} during batch send.", removedSession.getId());
             }
         }
         return sentCount;
@@ -310,31 +435,38 @@ public void broadcastMessageToTeam(Long teamId, Object dataPayload) {
 
     private boolean sendMessageToSession(WebSocketSession session, TextMessage textMessage) {
         try {
-            synchronized (this) {
-                session.sendMessage(textMessage);
-            }
+
+            session.sendMessage(textMessage);
+
             return true;
         } catch (IOException e) {
             log.error("Failed to send message to session {}: {}", session.getId(), e.getMessage());
+            removeClosedSession(session);
         } catch (IllegalStateException e) {
-            log.error("Illegal state for session {} (likely already closing): {}", session.getId(), e.getMessage());
-            removeClosedSession(session); // Remove from the main 'sessions' list
+            log.error("Illegal state for session {} (likely closing/closed): {}", session.getId(), e.getMessage());
+            removeClosedSession(session);
         }
         return false;
     }
 
     private void removeClosedSession(WebSocketSession session) {
-        // This method assumes `this.sessions` is the main list of active sessions.
-        boolean removed = this.sessions.remove(session);
-        if (removed) {
-            log.debug("Removed closed session {} from active list.", session.getId());
+        boolean removedMain = this.sessions.remove(session);
+        Long userId = (Long) session.getAttributes().get("userId");
+        boolean removedPending = false;
+        if (userId != null) {
+            removedPending = this.pendingSessionsMap.remove(userId, session);
+        }
+        if (removedMain || removedPending) {
+            log.debug("Removed closed session {} from active tracking (main: {}, pending: {}).", session.getId(),
+                    removedMain, removedPending);
         }
     }
 
-    private void logSentMessageInfo(int sentCount, String messageJson) {
-        if (sentCount > 0) {
-            log.info("Sent message to {} session(s): Message starts with: {}", sentCount,
-                    messageJson.substring(0, Math.min(messageJson.length(), 100)));
-        }
+    public List<WebSocketSession> getSessionsForTesting() {
+        return sessions;
+    }
+
+    public Map<Long, WebSocketSession> getPendingSessionsMapForTesting() {
+        return pendingSessionsMap;
     }
 }

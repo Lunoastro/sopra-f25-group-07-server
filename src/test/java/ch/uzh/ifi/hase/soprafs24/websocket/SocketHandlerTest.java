@@ -61,23 +61,32 @@ class SocketHandlerTest {
         when(mockSession1.getAttributes()).thenReturn(attributes1);
         when(mockSession1.getId()).thenReturn("s1");
         when(mockSession1.isOpen()).thenReturn(true);
-        // Ensure sendMessage doesn't throw NPE if called on a mock without specific stubbing for it
-        try { doNothing().when(mockSession1).sendMessage(any(TextMessage.class)); } catch (IOException e) { fail("Setup failed"); }
 
+        try {
+            doNothing().when(mockSession1).sendMessage(any(TextMessage.class));
+        } catch (IOException e) {
+            fail("Setup failed");
+        }
 
         attributes2 = new HashMap<>();
         when(mockSession2.getAttributes()).thenReturn(attributes2);
         when(mockSession2.getId()).thenReturn("s2");
         when(mockSession2.isOpen()).thenReturn(true);
-        try { doNothing().when(mockSession2).sendMessage(any(TextMessage.class)); } catch (IOException e) { fail("Setup failed"); }
-
+        try {
+            doNothing().when(mockSession2).sendMessage(any(TextMessage.class));
+        } catch (IOException e) {
+            fail("Setup failed");
+        }
 
         attributes3 = new HashMap<>();
         when(mockSession3.getAttributes()).thenReturn(attributes3);
         when(mockSession3.getId()).thenReturn("s3");
         when(mockSession3.isOpen()).thenReturn(true);
-        try { doNothing().when(mockSession3).sendMessage(any(TextMessage.class)); } catch (IOException e) { fail("Setup failed"); }
-
+        try {
+            doNothing().when(mockSession3).sendMessage(any(TextMessage.class));
+        } catch (IOException e) {
+            fail("Setup failed");
+        }
 
         socketHandler.getSessionsForTesting().clear();
         socketHandler.getPendingSessionsMapForTesting().clear();
@@ -85,16 +94,15 @@ class SocketHandlerTest {
 
     private TextMessage createAuthMessage(String token, boolean useBearer) {
         String tokenValue = (token == null) ? null : (useBearer ? "Bearer " + token : token);
-        if (tokenValue == null) { // Simulate token field present but value is null
+        if (tokenValue == null) {
             return new TextMessage("{\"type\":\"auth\",\"token\":null}");
         }
         return new TextMessage(String.format("{\"type\":\"auth\",\"token\":\"%s\"}", tokenValue));
     }
-    
+
     private TextMessage createAuthMessageMissingTokenField() {
         return new TextMessage("{\"type\":\"auth\"}");
     }
-
 
     @Test
     void afterConnectionEstablished_addsSession() throws Exception {
@@ -105,8 +113,12 @@ class SocketHandlerTest {
     @Test
     void tryAuthenticate_validTokenWithBearer_userHasTeam_success() throws Exception {
         String token = "valid-token-team";
-        User user = new User(); user.setId(1L); user.setUsername("user1"); user.setTeamId(10L);
-        Team team = new Team(); team.setId(10L);
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("user1");
+        user.setTeamId(10L);
+        Team team = new Team();
+        team.setId(10L);
 
         when(mockUserService.validateToken(token)).thenReturn(true);
         when(mockUserService.getUserByToken(token)).thenReturn(user);
@@ -124,16 +136,18 @@ class SocketHandlerTest {
 
     @Test
     void tryAuthenticate_validTokenNoBearer_userNoTeam_successAndPending() throws Exception {
-        String token = "valid-token-no-team-no-bearer"; // Differentiated token for clarity
-        User user = new User(); user.setId(2L); user.setUsername("user2"); user.setTeamId(null);
+        String token = "valid-token-no-team-no-bearer";
+        User user = new User();
+        user.setId(2L);
+        user.setUsername("user2");
+        user.setTeamId(null);
 
         when(mockUserService.validateToken(token)).thenReturn(true);
         when(mockUserService.getUserByToken(token)).thenReturn(user);
         socketHandler.getSessionsForTesting().add(mockSession1);
 
-        // Pass the raw token directly, simulating no "Bearer " prefix
-        socketHandler.handleTextMessage(mockSession1, new TextMessage("{\"type\":\"auth\",\"token\":\"" + token + "\"}"));
-
+        socketHandler.handleTextMessage(mockSession1,
+                new TextMessage("{\"type\":\"auth\",\"token\":\"" + token + "\"}"));
 
         assertEquals(true, attributes1.get("authenticated"));
         assertEquals(2L, attributes1.get("userId"));
@@ -143,56 +157,55 @@ class SocketHandlerTest {
         verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("auth_success")));
     }
 
-
     @Test
     void tryAuthenticate_invalidToken_sendsFailureAndCloses() throws Exception {
         String token = "invalid-token";
-        // Corrected: mock validateToken for the actual token string extracted ("invalid-token"), not "Bearer invalid-token"
+
         when(mockUserService.validateToken(token)).thenReturn(false);
         socketHandler.getSessionsForTesting().add(mockSession1);
 
         socketHandler.handleTextMessage(mockSession1, createAuthMessage(token, true));
 
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid token or user offline")));
+        verify(mockSession1).sendMessage(
+                argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid token or user offline")));
         verify(mockSession1).close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token or user offline"));
     }
 
     @Test
     void tryAuthenticate_emptyTokenValueInMessage_sendsFailureAndCloses() throws Exception {
         socketHandler.getSessionsForTesting().add(mockSession1);
-        // Scenario: "token":""
+
         socketHandler.handleTextMessage(mockSession1, new TextMessage("{\"type\":\"auth\",\"token\":\"\"}"));
 
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Token missing or empty")));
+        verify(mockSession1)
+                .sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Token missing or empty")));
         verify(mockSession1).close(CloseStatus.POLICY_VIOLATION.withReason("Token missing or empty"));
     }
 
     @Test
     void tryAuthenticate_nullTokenValueInMessage_sendsCorrectFailureAndCloses() throws Exception {
         socketHandler.getSessionsForTesting().add(mockSession1);
-        
-        // Simulate rawToken becoming "null" (string) from json.asText() when token value is null
-        String rawTokenValueThatBecomesValidateArg = "null"; 
+
+        String rawTokenValueThatBecomesValidateArg = "null";
         when(mockUserService.validateToken(rawTokenValueThatBecomesValidateArg)).thenReturn(false);
 
         socketHandler.handleTextMessage(mockSession1, new TextMessage("{\"type\":\"auth\",\"token\":null}"));
 
-        // Verify the "Invalid token or user offline" path is taken
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid token or user offline")));
+        verify(mockSession1).sendMessage(
+                argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid token or user offline")));
         verify(mockSession1).close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token or user offline"));
     }
-
 
     @Test
     void tryAuthenticate_missingTokenFieldInMessage_sendsFailureAndCloses() throws Exception {
         socketHandler.getSessionsForTesting().add(mockSession1);
-        // Scenario: "token" field is completely missing
+
         socketHandler.handleTextMessage(mockSession1, createAuthMessageMissingTokenField());
 
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Token field missing")));
+        verify(mockSession1)
+                .sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Token field missing")));
         verify(mockSession1).close(CloseStatus.POLICY_VIOLATION.withReason("Token field missing"));
     }
-
 
     @Test
     void tryAuthenticate_userServiceReturnsNullUserAfterValidateTrue_sendsInconsistencyAndCloses() throws Exception {
@@ -203,14 +216,18 @@ class SocketHandlerTest {
 
         socketHandler.handleTextMessage(mockSession1, createAuthMessage(token, true));
 
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Authentication inconsistency")));
+        verify(mockSession1)
+                .sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Authentication inconsistency")));
         verify(mockSession1).close(CloseStatus.SERVER_ERROR.withReason("Authentication inconsistency"));
     }
 
     @Test
     void tryAuthenticate_userHasTeamId_teamNotFoundInRepo_authenticatesLogsWarning() throws Exception {
         String token = "user-with-ghost-team";
-        User user = new User(); user.setId(3L); user.setUsername("user3"); user.setTeamId(20L);
+        User user = new User();
+        user.setId(3L);
+        user.setUsername("user3");
+        user.setTeamId(20L);
 
         when(mockUserService.validateToken(token)).thenReturn(true);
         when(mockUserService.getUserByToken(token)).thenReturn(user);
@@ -230,7 +247,8 @@ class SocketHandlerTest {
         socketHandler.getSessionsForTesting().add(mockSession1);
         socketHandler.handleTextMessage(mockSession1, new TextMessage("{\"type\":\"not_auth\",\"content\":\"stuff\"}"));
 
-        verify(mockSession1, never()).sendMessage(any(TextMessage.class)); // As per current SocketHandler, no message sent
+        verify(mockSession1, never()).sendMessage(any(TextMessage.class));
+
         verify(mockSession1).close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required as first message"));
     }
 
@@ -239,7 +257,8 @@ class SocketHandlerTest {
         socketHandler.getSessionsForTesting().add(mockSession1);
         socketHandler.handleTextMessage(mockSession1, new TextMessage("not-json"));
 
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid auth message format")));
+        verify(mockSession1)
+                .sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid auth message format")));
         verify(mockSession1).close(CloseStatus.BAD_DATA.withReason("Invalid auth message format"));
     }
 
@@ -251,25 +270,24 @@ class SocketHandlerTest {
 
         socketHandler.handleTextMessage(mockSession1, createAuthMessage(token, true));
 
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Authentication error")));
+        verify(mockSession1)
+                .sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Authentication error")));
         verify(mockSession1).close(CloseStatus.SERVER_ERROR.withReason("Authentication error"));
     }
-    
+
     @Test
     void tryAuthenticate_genericExceptionDuringAuth_sessionNotOpen_logsError() throws Exception {
         String token = "exception-token-session-closed";
         when(mockUserService.validateToken(token)).thenThrow(new RuntimeException("Unexpected DB error"));
-        when(mockSession1.isOpen()).thenReturn(false); // Session is already closed
+        when(mockSession1.isOpen()).thenReturn(false);
         socketHandler.getSessionsForTesting().add(mockSession1);
-    
+
         socketHandler.handleTextMessage(mockSession1, createAuthMessage(token, true));
-    
-        // sendMessage and close should not be called on an already closed session
+
         verify(mockSession1, never()).sendMessage(any(TextMessage.class));
         verify(mockSession1, never()).close(any(CloseStatus.class));
-        // Verify logging of "Error during WebSocket authentication"
-    }
 
+    }
 
     @Test
     void handleTextMessage_alreadyAuthenticated_logsMessage() throws Exception {
@@ -294,20 +312,19 @@ class SocketHandlerTest {
         assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
         assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
     }
-    
+
     @Test
     void afterConnectionClosed_userIdNotPresentInAttributes_removesSessionOnly() throws Exception {
-        // No userId in attributes
+
         socketHandler.getSessionsForTesting().add(mockSession1);
         assertTrue(socketHandler.getSessionsForTesting().contains(mockSession1));
-    
+
         socketHandler.afterConnectionClosed(mockSession1, CloseStatus.NORMAL);
-    
+
         assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
-        // No interaction with pendingSessionsMap if userId is null
+
         assertTrue(socketHandler.getPendingSessionsMapForTesting().isEmpty());
     }
-
 
     @Test
     void handleTransportError_closesAndRemovesSessionAndFromPendingMap() throws Exception {
@@ -318,22 +335,21 @@ class SocketHandlerTest {
 
         socketHandler.handleTransportError(mockSession1, new IOException("Network issue"));
 
-        verify(mockSession1).close(CloseStatus.SERVER_ERROR);
+        verify(mockSession1).close(CloseStatus.SERVER_ERROR.withReason("Transport error"));
         assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
         assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
     }
-    
+
     @Test
     void handleTransportError_sessionNotOpen_removesSession() throws Exception {
-        when(mockSession1.isOpen()).thenReturn(false); // Session already closed
+        when(mockSession1.isOpen()).thenReturn(false);
         socketHandler.getSessionsForTesting().add(mockSession1);
-    
+
         socketHandler.handleTransportError(mockSession1, new IOException("Network issue on already closed session"));
-    
-        verify(mockSession1, never()).close(any(CloseStatus.class)); // Should not try to close again
+
+        verify(mockSession1, never()).close(any(CloseStatus.class));
         assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
     }
-
 
     @Test
     void associateSessionWithTeam_validUserAndTeam_updatesSessionAndNotifies() throws Exception {
@@ -346,7 +362,9 @@ class SocketHandlerTest {
 
         assertEquals(teamId, attributes1.get("teamId"));
         assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
-        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("team_association_complete") && ((TextMessage) msg).getPayload().contains("\"teamId\":" + teamId)));
+        verify(mockSession1)
+                .sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("team_association_complete")
+                        && ((TextMessage) msg).getPayload().contains("\"teamId\":" + teamId)));
     }
 
     @Test
@@ -361,23 +379,22 @@ class SocketHandlerTest {
         verify(mockSession1, never()).sendMessage(any());
         assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
     }
-    
+
     @Test
     void associateSessionWithTeam_ioExceptionOnSend_logsError() throws Exception {
         Long userId = 1L;
         Long teamId = 10L;
         socketHandler.getPendingSessionsMapForTesting().put(userId, mockSession1);
         socketHandler.getSessionsForTesting().add(mockSession1);
-    
+
         doThrow(new IOException("Failed to send message")).when(mockSession1).sendMessage(any(TextMessage.class));
-    
+
         socketHandler.associateSessionWithTeam(userId, teamId);
-    
+
         assertEquals(teamId, attributes1.get("teamId"));
         assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
-        
-    }
 
+    }
 
     @Test
     void broadcastMessageToAll_sendsToAllOpenAuthenticatedSessions() throws Exception {
@@ -398,7 +415,7 @@ class SocketHandlerTest {
         verify(mockSession2).sendMessage(eq(new TextMessage(expectedJson)));
         verify(mockSession3, never()).sendMessage(any());
     }
-    
+
     @Test
     void broadcastMessageToAll_noAuthenticatedSessions_logsInfo() throws Exception {
         attributes1.put("authenticated", false);
@@ -420,7 +437,6 @@ class SocketHandlerTest {
         verify(mockSession1, never()).sendMessage(any());
     }
 
-
     @Test
     void broadcastMessageToTeam_sendsToCorrectTeamMembersOnly() throws Exception {
         Long teamId1 = 10L;
@@ -428,9 +444,12 @@ class SocketHandlerTest {
         Map<String, Object> payload = Map.of("data", "team 10 message");
         String expectedJson = objectMapper.writeValueAsString(payload);
 
-        attributes1.put("authenticated", true); attributes1.put("teamId", teamId1);
-        attributes2.put("authenticated", true); attributes2.put("teamId", teamId2);
-        attributes3.put("authenticated", true); attributes3.put("teamId", teamId1);
+        attributes1.put("authenticated", true);
+        attributes1.put("teamId", teamId1);
+        attributes2.put("authenticated", true);
+        attributes2.put("teamId", teamId2);
+        attributes3.put("authenticated", true);
+        attributes3.put("teamId", teamId1);
 
         socketHandler.getSessionsForTesting().add(mockSession1);
         socketHandler.getSessionsForTesting().add(mockSession2);
@@ -449,34 +468,36 @@ class SocketHandlerTest {
         Map<String, Object> payload = Map.of("data", "team 77 message");
         String expectedJson = objectMapper.writeValueAsString(payload);
 
-        attributes1.put("authenticated", true); attributes1.put("teamId", targetTeamId); // s1 is open
-        attributes2.put("authenticated", true); attributes2.put("teamId", targetTeamId); // s2 is initially open for attribute setting
-        attributes3.put("authenticated", true); attributes3.put("teamId", targetTeamId); // s3 is open
-
+        attributes1.put("authenticated", true);
+        attributes1.put("teamId", targetTeamId);
+        attributes2.put("authenticated", true);
+        attributes2.put("teamId", targetTeamId);
+        attributes3.put("authenticated", true);
+        attributes3.put("teamId", targetTeamId);
 
         socketHandler.getSessionsForTesting().add(mockSession1);
         socketHandler.getSessionsForTesting().add(mockSession2);
         socketHandler.getSessionsForTesting().add(mockSession3);
 
-        // Make session2 closed AFTER it's added to the list and attributes set
         when(mockSession2.isOpen()).thenReturn(false);
-
 
         socketHandler.broadcastMessageToTeam(targetTeamId, payload);
 
         verify(mockSession1).sendMessage(eq(new TextMessage(expectedJson)));
-        verify(mockSession2, never()).sendMessage(any()); // Should not attempt to send to closed session
+        verify(mockSession2, never()).sendMessage(any());
         verify(mockSession3).sendMessage(eq(new TextMessage(expectedJson)));
 
         assertTrue(socketHandler.getSessionsForTesting().contains(mockSession1));
-        assertFalse(socketHandler.getSessionsForTesting().contains(mockSession2), "Closed session should have been removed by sendMessagesToOpenSessions's else branch");
+        assertFalse(socketHandler.getSessionsForTesting().contains(mockSession2),
+                "Closed session should have been removed by sendMessagesToOpenSessions's else branch");
         assertTrue(socketHandler.getSessionsForTesting().contains(mockSession3));
     }
-    
+
     @Test
     void broadcastMessageToTeam_nullTeamIdOrPayload_logsWarningAndSkips() throws Exception {
         socketHandler.getSessionsForTesting().add(mockSession1);
-        attributes1.put("authenticated", true); attributes1.put("teamId", 10L);
+        attributes1.put("authenticated", true);
+        attributes1.put("teamId", 10L);
 
         socketHandler.broadcastMessageToTeam(null, Map.of("data", "test"));
         verify(mockSession1, never()).sendMessage(any());
@@ -488,7 +509,8 @@ class SocketHandlerTest {
     @Test
     void broadcastMessageToTeam_noMatchingSessions_logsInfo() throws Exception {
         Long targetTeamId = 100L;
-        attributes1.put("authenticated", true); attributes1.put("teamId", 10L);
+        attributes1.put("authenticated", true);
+        attributes1.put("teamId", 10L);
         socketHandler.getSessionsForTesting().add(mockSession1);
         Map<String, Object> payload = Map.of("data", "message");
 
@@ -502,18 +524,23 @@ class SocketHandlerTest {
         when(mockSession1.isOpen()).thenReturn(true);
         doThrow(new IOException("Simulated send error")).when(mockSession1).sendMessage(any(TextMessage.class));
         attributes1.put("authenticated", true);
+
+        attributes1.put("userId", 1L);
         socketHandler.getSessionsForTesting().add(mockSession1);
 
         Map<String, Object> payload = Map.of("data", "test");
-        socketHandler.broadcastMessageToAll(payload); // Will call sendMessageToSession
 
-        assertTrue(socketHandler.getSessionsForTesting().contains(mockSession1)); // Not removed by IOException alone
+        socketHandler.broadcastMessageToAll(payload);
+
+        assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1),
+                "Session should be removed by removeClosedSession after IOException");
     }
 
     @Test
     void sendMessageToSession_illegalStateException_logsErrorRemovesSessionReturnsFalse() throws Exception {
         when(mockSession1.isOpen()).thenReturn(true);
-        doThrow(new IllegalStateException("Simulated session closing")).when(mockSession1).sendMessage(any(TextMessage.class));
+        doThrow(new IllegalStateException("Simulated session closing")).when(mockSession1)
+                .sendMessage(any(TextMessage.class));
         attributes1.put("authenticated", true);
         socketHandler.getSessionsForTesting().add(mockSession1);
 
