@@ -50,7 +50,8 @@ public class TaskService {
         this.calendarService = calendarService;
     }
 
-    /** Copilot generated this documentation
+    /**
+     * Copilot generated this documentation
      * Locks a task for a specific user.
      *
      * @param taskId The ID of the task to lock.
@@ -80,7 +81,8 @@ public class TaskService {
         return savedTask;
     }
 
-    /** Copilot generated this documentation 
+    /**
+     * Copilot generated this documentation
      * Unlocks a task, allowing any authorized user to unlock it if they were the
      * one who locked it.
      *
@@ -100,21 +102,16 @@ public class TaskService {
 
         if (task.getLockedByUser() == null) {
             log.warn("Task {} is not locked. User {} cannot unlock it.", taskId, userId);
-            // Depending on desired behavior, you might allow this or throw an error.
-            // For now, let's consider it a bad request if trying to unlock an already
-            // unlocked task.
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task is not currently locked.");
         }
 
         if (!task.getLockedByUser().equals(userId)) {
             log.warn("Task {} is locked by user {}. User {} cannot unlock it.", taskId, task.getLockedByUser(), userId);
-            // Add logic here if you want to allow admins or other roles to override locks
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not the user who locked this task.");
         }
 
         task.setLockedByUser(null);
         Task savedTask = taskRepository.save(task);
-        // The TaskEntityListener will be triggered by the save operation.
         log.info("Task {} unlocked by user {}", taskId, userId);
         return savedTask;
     }
@@ -525,10 +522,10 @@ public class TaskService {
         taskRepository.saveAll(userTasks);
     }
 
-    public void deleteTask(Long taskId) {
+    public void deleteTask(Long taskId, Long userId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
-        checkLockedByUser(task);
+        checkLockedByUser(task,userId);
         checkIsPaused(task);
         verifyLuckyDraw(task);
         task.setActiveStatus(false);
@@ -540,8 +537,8 @@ public class TaskService {
         log.info("Task with id: {} deleted successfully", taskId);
     }
 
-    public Task updateTask(Task task, Task taskPutDTO) {
-        checkLockedByUser(task);
+    public Task updateTask(Task task, Task taskPutDTO, Long userToken) {
+        checkLockedByUser(task, userToken);
         checkIsPaused(task);
         validateToBeEditedFields(task, taskPutDTO);
         calendarService.syncSingleTask(task, task.getcreatorId());
@@ -679,9 +676,10 @@ public class TaskService {
         }
     }
 
-    public void checkLockedByUser(Task task) {
-        if (task.getLockedByUser() != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task is locked by user: " + task.getLockedByUser());
+    public void checkLockedByUser(Task task, Long currentUserId) {
+        if (task.getLockedByUser() != null && !task.getLockedByUser().equals(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Task is locked by another user: " + task.getLockedByUser());
         }
     }
 

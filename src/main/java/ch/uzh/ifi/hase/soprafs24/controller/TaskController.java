@@ -154,7 +154,8 @@ public class TaskController {
         Task existingTask = taskService.getTaskById(taskId);
         // convert putDTO to entity
         Task task = DTOMapper.INSTANCE.convertTaskPutDTOtoEntity(taskPutDTO);
-        Task updatedTask = taskService.updateTask(existingTask, task);
+        Long userId = userrepository.findByToken(userToken).getId();
+        Task updatedTask = taskService.updateTask(existingTask, task,userId);
         // Convert the updated entity back to a DTO for the response
         return DTOMapper.INSTANCE.convertEntityToTaskGetDTO(updatedTask);
     }
@@ -185,8 +186,7 @@ public class TaskController {
         // check if task is in the same team as the user
         taskService.validateTaskInTeam(userToken, taskId);
         // Unclaims the task for the user and assigns the user to the correct field
-        Long userId = userrepository.findByToken(userToken).getId();
-        taskService.quitTask(taskId, userId);
+        taskService.quitTask(taskId,userrepository.findByToken(userToken).getId());
     }
 
 
@@ -274,7 +274,7 @@ public class TaskController {
 
         String taskType = taskService.checkTaskType(task);
         if (additionalTask.equals(taskType)) {
-            taskService.deleteTask(taskId);
+            taskService.deleteTask(taskId,userId);
         } else {
         task.setStartDate(task.getDeadline());
         
@@ -301,7 +301,7 @@ public class TaskController {
         // Checks if user is the creator of the task and if task exists
         taskService.validateRecurringEdit(userToken, taskId);
         // Delete the task using the service
-        taskService.deleteTask(taskId);
+        taskService.deleteTask(taskId,userrepository.findByToken(userToken).getId());
     }
 
     private String validateAuthorizationHeader(String authorizationHeader) {
