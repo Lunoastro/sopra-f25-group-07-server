@@ -6,6 +6,7 @@ import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 
 import org.slf4j.Logger;
@@ -128,9 +129,19 @@ public class TaskService {
         if (dto.getDeadline() == null) { // short type check (recurring or additional task)
             validateRecurringPostDto(dto); // recurring dto checks
         } else {
-            if (dto.getDeadline().before(new Date())) {
-                throw new IllegalArgumentException("Invalid or past deadline provided.");
-            }
+            Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(dto);
+            checkAdditionalDeadline(task);
+        }
+    }
+
+    private void checkAdditionalDeadline(Task task) {
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MILLISECOND, 0);
+        if (task.getDeadline().before(today.getTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or past deadline provided.");
         }
     }
 
@@ -163,10 +174,8 @@ public class TaskService {
             validateRecurringPutDto(task, taskPutDTO); // validate recurring fields
             checkDaysVisible(task); // check if daysVisible is valid (daysVisible >= half of frequency)
         } else {
-            if (taskPutDTO.getDeadline() != null) { // validate additional task
-                if (taskPutDTO.getDeadline().before(new Date())) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deadline must be in the future");
-                }
+            if (taskPutDTO.getDeadline() != null) { //validate additional task
+                checkAdditionalDeadline(taskPutDTO);
                 task.setDeadline(taskPutDTO.getDeadline());
                 calculateDaysVisible(task);
             }
@@ -207,7 +216,7 @@ public class TaskService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Frequency must be greater than 0");
             }
             task.setFrequency(taskPutDTO.getFrequency());
-            calculateDeadline(task);
+            calculateDeadlineOnEdit(task);
         }
         int half = getHalfFrequency(task);
         if (taskPutDTO.getDaysVisible() != null) {
@@ -222,7 +231,7 @@ public class TaskService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be in the future");
             }
             task.setStartDate(taskPutDTO.getStartDate());
-            calculateDeadline(task);
+            calculateDeadlineOnEdit(task);
         }
     }
 
@@ -276,23 +285,29 @@ public class TaskService {
     }
 
     public List<Task> getFilteredTasks(Boolean isActive, String type) {
-        // If both filters are null, return all tasks
         List<Task> allTasks = getAllTasks();
-        // Filter by activeStatus (if active or inactive)
-        if (isActive != null) {
-            allTasks = allTasks.stream()
-                    .filter(task -> isActive.equals(task.getActiveStatus())) // True = active Tasks, False = inactive
-                                                                             // Tasks
-                    .collect(Collectors.toList());
-        }
-        // Filter by type (recurring)
+
+        // Filter by type (e.g., "recurring" or "additional")
         if (type != null) {
             allTasks = allTasks.stream()
-                    .filter(task -> checkTaskType(task).equalsIgnoreCase(type)) // Check if frequency is null ->
-                                                                                // additional task
-                    .collect(Collectors.toList());
+                .filter(task -> checkTaskType(task).equalsIgnoreCase(type))
+                .collect(Collectors.toList());
+        }
+
+        // Filter by visibility if isActive is specified
+        if (isActive != null) {
+            allTasks = allTasks.stream()
+                .filter(task -> isActive.equals(isTaskVisibleOrFinishable(task)))
+                .collect(Collectors.toList());
         }
         return allTasks;
+    }
+
+    public List<Task> onlyVisibleTasks(List<Task> unfiltered) {
+        // Filter out tasks that are not visible or finishable
+        return unfiltered.stream()
+            .filter(this::isTaskVisibleOrFinishable)
+            .collect(Collectors.toList());
     }
 
     public List<Task> luckyDrawTasks(Long userTeamId) {
@@ -660,10 +675,64 @@ public class TaskService {
         task.setDeadline(deadline);
     }
 
+    public void calculateDeadlineOnEdit(Task task) {
+        // calculate deadline = max(currentDate, startDate) + frequency -> recurring task
+        Calendar calendar = Calendar.getInstance();
+        Date currentDate = new Date();
+        Date baseDate = task.getStartDate().after(currentDate) ? task.getStartDate() : currentDate;
+
+        calendar.setTime(baseDate);
+        calendar.add(Calendar.DATE, task.getFrequency());
+        Date newDeadline = calendar.getTime();
+        task.setDeadline(newDeadline);
+    }
+
+    public void calculateDeadlineOnFinish(Task task) {
+        Date today = new Date();
+        task.setStartDate(today);
+        // calculate deadline = currentDate  + frequency -> recurring task
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(new Date());
+        calendar.add(Calendar.DATE, task.getFrequency());
+        Date newDeadline = calendar.getTime();
+        task.setDeadline(newDeadline);
+    }
+
+    public boolean isTaskVisibleOrFinishable(Task task) {
+        Date deadline = task.getDeadline();
+        int daysVisible = task.getDaysVisible(); // or task.getReminder() if you're using that field
+
+        // Calculate "visible from" date: deadline - daysVisible
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(deadline);
+        calendar.add(Calendar.DATE, -daysVisible);
+        Date visibleFrom = calendar.getTime();
+
+        // Get today's date
+        Date today = new Date();
+
+        // Check if today is on or after visibleFrom date
+        return !today.before(visibleFrom);
+    }
+
+
+    public void calculateDeadlineOnExpire(Task task) {
+        // calculate dnew_eadline = old_deadline  + frequency -> recurring task
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(task.getDeadline());
+        calendar.add(Calendar.DATE, task.getFrequency());
+        Date newDeadline = calendar.getTime();
+        task.setDeadline(newDeadline);
+    }
+
     public void calculateDaysVisible(Task task) {
-        long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
+        long millisDiff = task.getDeadline().getTime() - task.getStartDate().getTime();
         double diffInDays = (double) millisDiff / (1000 * 60 * 60 * 24);
         int daysDiff = (int) Math.ceil(diffInDays);
+        // Special case; creationDate and deadline are the same
+        if (daysDiff == 0) {
+            daysDiff = 1;
+        }
         task.setDaysVisible(daysDiff);
     }
 

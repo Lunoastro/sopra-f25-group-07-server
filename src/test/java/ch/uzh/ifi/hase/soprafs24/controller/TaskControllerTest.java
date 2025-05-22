@@ -903,6 +903,11 @@ class TaskControllerTest {
         existingTask.setName("Additional Task");
         existingTask.setIsAssignedTo(userId); // Assigned to the current user
         existingTask.setValue(150);
+
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DATE, 2); // Deadline 2 days from now
+        existingTask.setDeadline(cal.getTime());
+        existingTask.setDaysVisible(3); 
         
         User mockUser = new User();
         mockUser.setId(userId);
@@ -912,6 +917,7 @@ class TaskControllerTest {
         when(taskService.getTaskById(taskId)).thenReturn(existingTask);
         when(userRepository.findByToken(token)).thenReturn(mockUser);
         when(taskService.checkTaskType(existingTask)).thenReturn("additional");
+        when(taskService.isTaskVisibleOrFinishable(existingTask)).thenReturn(true);
         doNothing().when(userService).addExperiencePoints(userId, existingTask.getValue());
         doNothing().when(taskService).deleteTask(taskId, userId);
         
@@ -962,9 +968,10 @@ class TaskControllerTest {
         doNothing().when(taskService).validateTaskInTeam(token, taskId);
         when(taskService.getTaskById(taskId)).thenReturn(existingTask);
         when(userRepository.findByToken(token)).thenReturn(mockUser);
+        when(taskService.isTaskVisibleOrFinishable(existingTask)).thenReturn(true);
         when(taskService.checkTaskType(existingTask)).thenReturn("recurring");
         doNothing().when(userService).addExperiencePoints(userId, existingTask.getValue());
-        doNothing().when(taskService).calculateDeadline(existingTask);
+        doNothing().when(taskService).calculateDeadlineOnFinish(existingTask);
         doNothing().when(taskService).unassignTask(existingTask);
         doNothing().when(taskService).saveTask(existingTask);
         
@@ -984,7 +991,7 @@ class TaskControllerTest {
         verify(userRepository).findByToken(token);
         verify(taskService).checkTaskType(existingTask);
         verify(userService).addExperiencePoints(userId, existingTask.getValue());
-        verify(taskService).calculateDeadline(existingTask);
+        verify(taskService).calculateDeadlineOnFinish(existingTask);
         verify(taskService).unassignTask(existingTask);
         verify(taskService).saveTask(existingTask);
         verify(taskService, never()).deleteTask(taskId,userId); // Should not delete recurring tasks

@@ -170,6 +170,7 @@ public class TeamService {
     // Delete all tasks the user has created
     List<Task> createdTasks = taskService.getTasksCreatedByUser(userId);
     for (Task task : createdTasks) {
+        task.setLuckyDraw(false);
         // If the task is assigned to someone else, unassign it first
         if (task.getIsAssignedTo() != null) {
             taskService.unassignTask(task);
