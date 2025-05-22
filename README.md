@@ -35,8 +35,9 @@ Documentation on Google Calendar API can be found [here](https://developers.goog
 * Download credentials.json and place it in your project (e.g., src/main/resources/) for local use.
 
 * Set an environment variable pointing to it:
+```
 export GOOGLE_APPLICATION_CREDENTIALS=src/main/resources/credentials.json
-
+```
 
 * For deployment, use GitHub secrets to store credentials and configure the callback URI in production.
 
