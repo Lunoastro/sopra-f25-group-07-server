@@ -45,6 +45,21 @@ public class SocketHandler extends TextWebSocketHandler {
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
+    private void closeExistingSessionForUser(Long userId) {
+    if (userId == null) return;
+    for (WebSocketSession session : new ArrayList<>(sessions)) {
+        Long sessionUserId = (Long) session.getAttributes().get("userId");
+        if (userId.equals(sessionUserId) && session.isOpen()) {
+            try {
+                log.info("Closing previous WebSocket session {} for user {} due to new login.", session.getId(), userId);
+                session.close(CloseStatus.NORMAL.withReason("New login from another device or tab"));
+            } catch (IOException e) {
+                log.warn("Failed to close previous session for user {}: {}", userId, e.getMessage());
+            }
+        }
+    }
+}
+
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -133,6 +148,7 @@ protected void handleTextMessage(WebSocketSession session, TextMessage message) 
                         if (userService.validateToken(tokenToValidate)) {
                             User user = userService.getUserByToken(tokenToValidate);
                             if (user != null) {
+                                closeExistingSessionForUser(user.getId());
                                 session.getAttributes().put("userId", user.getId());
                                 session.getAttributes().put("authenticated", true);
 
