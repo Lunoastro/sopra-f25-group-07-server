@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.websocket;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +35,9 @@ class SocketHandlerTest {
 
     @Mock
     private UserService mockUserService;
+
+    @Mock
+    private TaskRepository mockTaskRepository;
 
     @Mock
     private TeamRepository mockTeamRepository;
@@ -123,6 +128,7 @@ class SocketHandlerTest {
         when(mockUserService.validateToken(token)).thenReturn(true);
         when(mockUserService.getUserByToken(token)).thenReturn(user);
         when(mockTeamRepository.findTeamById(10L)).thenReturn(team);
+        when(mockTaskRepository.findAll()).thenReturn(Collections.emptyList());
         socketHandler.getSessionsForTesting().add(mockSession1);
 
         socketHandler.handleTextMessage(mockSession1, createAuthMessage(token, true));

@@ -1,10 +1,14 @@
 package ch.uzh.ifi.hase.soprafs24.websocket;
 
+import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
+import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +26,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.ArrayList;
 
@@ -34,32 +39,34 @@ public class SocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final UserService userService;
     private final TeamRepository teamRepository;
+    private final TaskRepository taskRepository;
     private final TaskService taskService;
-
     @Autowired
-    public SocketHandler(UserService userService, TeamRepository teamRepository, TaskService taskService) {
+    public SocketHandler(UserService userService, TeamRepository teamRepository, TaskRepository taskRepository, TaskService taskService) {
         this.userService = userService;
         this.teamRepository = teamRepository;
+        this.taskRepository = taskRepository;
         this.taskService = taskService;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     private void closeExistingSessionForUser(Long userId) {
-    if (userId == null) return;
-    for (WebSocketSession session : new ArrayList<>(sessions)) {
-        Long sessionUserId = (Long) session.getAttributes().get("userId");
-        if (userId.equals(sessionUserId) && session.isOpen()) {
-            try {
-                log.info("Closing previous WebSocket session {} for user {} due to new login.", session.getId(), userId);
-                session.close(CloseStatus.NORMAL.withReason("New login from another device or tab"));
-            } catch (IOException e) {
-                log.warn("Failed to close previous session for user {}: {}", userId, e.getMessage());
+        if (userId == null)
+            return;
+        for (WebSocketSession session : new ArrayList<>(sessions)) {
+            Long sessionUserId = (Long) session.getAttributes().get("userId");
+            if (userId.equals(sessionUserId) && session.isOpen()) {
+                try {
+                    log.info("Closing previous WebSocket session {} for user {} due to new login.", session.getId(),
+                            userId);
+                    session.close(CloseStatus.NORMAL.withReason("New login from another device or tab"));
+                } catch (IOException e) {
+                    log.warn("Failed to close previous session for user {}: {}", userId, e.getMessage());
+                }
             }
         }
     }
-}
-
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -69,59 +76,59 @@ public class SocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-    Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
 
-    if (Boolean.TRUE.equals(authenticated)) {
-        
-        String payload = message.getPayload();
-        JsonNode jsonNode = objectMapper.readTree(payload);
-        String messageType = jsonNode.has("type") ? jsonNode.get("type").asText() : null;
-        Long userId = (Long) session.getAttributes().get("userId"); 
+        if (Boolean.TRUE.equals(authenticated)) {
 
-        if ("LOCK".equalsIgnoreCase(messageType)) {
-            if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
-                String taskIdStr = jsonNode.get("payload").get("taskId").asText();
-                try {
-                    Long taskId = Long.parseLong(taskIdStr);
-                    
-                    taskService.lockTask(taskId, userId);
-                    
-                    log.info("User {} requested to lock task {}", userId, taskId);
-                } catch (NumberFormatException e) {
-                    log.warn("Invalid taskId format received for LOCK: {}", taskIdStr);
-                    
-                } catch (Exception e) {
-                    log.error("Error processing LOCK for user {}: {}", userId, e.getMessage());
-                    
+            String payload = message.getPayload();
+            JsonNode jsonNode = objectMapper.readTree(payload);
+            String messageType = jsonNode.has("type") ? jsonNode.get("type").asText() : null;
+            Long userId = (Long) session.getAttributes().get("userId");
+
+            if ("LOCK".equalsIgnoreCase(messageType)) {
+                if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
+                    String taskIdStr = jsonNode.get("payload").get("taskId").asText();
+                    try {
+                        Long taskId = Long.parseLong(taskIdStr);
+
+                        taskService.lockTask(taskId, userId);
+
+                        log.info("User {} requested to lock task {}", userId, taskId);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid taskId format received for LOCK: {}", taskIdStr);
+
+                    } catch (Exception e) {
+                        log.error("Error processing LOCK for user {}: {}", userId, e.getMessage());
+
+                    }
                 }
-            }
-        } else if ("UNLOCK".equalsIgnoreCase(messageType)) {
-            if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
-                String taskIdStr = jsonNode.get("payload").get("taskId").asText();
-                 try {
-                    Long taskId = Long.parseLong(taskIdStr);
-                    
-                    taskService.unlockTask(taskId, userId);
-                    
-                    log.info("User {} requested to unlock task {}", userId, taskId);
-                } catch (NumberFormatException e) {
-                    log.warn("Invalid taskId format received for UNLOCK: {}", taskIdStr);
-                    
-                } catch (Exception e) {
-                    log.error("Error processing UNLOCK for user {}: {}", userId, e.getMessage());
-                    
+            } else if ("UNLOCK".equalsIgnoreCase(messageType)) {
+                if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
+                    String taskIdStr = jsonNode.get("payload").get("taskId").asText();
+                    try {
+                        Long taskId = Long.parseLong(taskIdStr);
+
+                        taskService.unlockTask(taskId, userId);
+
+                        log.info("User {} requested to unlock task {}", userId, taskId);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid taskId format received for UNLOCK: {}", taskIdStr);
+
+                    } catch (Exception e) {
+                        log.error("Error processing UNLOCK for user {}: {}", userId, e.getMessage());
+
+                    }
                 }
+            } else {
+
+                log.info("Received message of type '{}' from authenticated session {}.", messageType, session.getId());
             }
+
         } else {
-            
-            log.info("Received message of type '{}' from authenticated session {}.", messageType, session.getId());
+            tryAuthenticate(session, message);
         }
-
-    } else {
-        tryAuthenticate(session, message);
     }
-}
 
     private void tryAuthenticate(WebSocketSession session, TextMessage message) throws IOException {
         String payload = message.getPayload();
@@ -153,6 +160,16 @@ protected void handleTextMessage(WebSocketSession session, TextMessage message) 
                                 session.getAttributes().put("authenticated", true);
 
                                 if (user.getTeamId() != null) {
+                                    List<Task> tasks = taskRepository.findAll().stream()
+                                    .filter(t -> user.getId().equals(t.getTeamId()))
+                                    .toList();
+                                    List<TaskGetDTO> taskDTOs = tasks.stream()
+                                            .map(DTOMapper.INSTANCE::convertEntityToTaskGetDTO)
+                                            .collect(Collectors.toList());
+                                    Map<String, Object> initialMsg = Map.of(
+                                            "type", "TASKS",
+                                            "payload", taskDTOs);
+                                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(initialMsg)));
                                     Team userTeam = teamRepository.findTeamById(user.getTeamId());
                                     if (userTeam != null) {
                                         session.getAttributes().put("teamId", userTeam.getId());
