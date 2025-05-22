@@ -58,51 +58,48 @@ protected void handleTextMessage(WebSocketSession session, TextMessage message) 
     Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
 
     if (Boolean.TRUE.equals(authenticated)) {
-        // Existing logic for authenticated users
-        // log.info("Received regular message from an authenticated session {}.", session.getId());
-
-        // --> Add new logic here to parse message for LOCK_TASK/UNLOCK_TASK <--
+        
         String payload = message.getPayload();
         JsonNode jsonNode = objectMapper.readTree(payload);
         String messageType = jsonNode.has("type") ? jsonNode.get("type").asText() : null;
-        Long userId = (Long) session.getAttributes().get("userId"); // Get userId from session
+        Long userId = (Long) session.getAttributes().get("userId"); 
 
-        if ("LOCK_TASK".equalsIgnoreCase(messageType)) {
+        if ("LOCK".equalsIgnoreCase(messageType)) {
             if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
                 String taskIdStr = jsonNode.get("payload").get("taskId").asText();
                 try {
                     Long taskId = Long.parseLong(taskIdStr);
-                    // Call your TaskService method
+                    
                     taskService.lockTask(taskId, userId);
-                    // No direct message send needed here, TaskEntityListener will handle it
+                    
                     log.info("User {} requested to lock task {}", userId, taskId);
                 } catch (NumberFormatException e) {
-                    log.warn("Invalid taskId format received for LOCK_TASK: {}", taskIdStr);
-                    // Optionally send an error message back to this specific session
+                    log.warn("Invalid taskId format received for LOCK: {}", taskIdStr);
+                    
                 } catch (Exception e) {
-                    log.error("Error processing LOCK_TASK for user {}: {}", userId, e.getMessage());
-                    // Optionally send an error message back
+                    log.error("Error processing LOCK for user {}: {}", userId, e.getMessage());
+                    
                 }
             }
-        } else if ("UNLOCK_TASK".equalsIgnoreCase(messageType)) {
+        } else if ("UNLOCK".equalsIgnoreCase(messageType)) {
             if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
                 String taskIdStr = jsonNode.get("payload").get("taskId").asText();
                  try {
                     Long taskId = Long.parseLong(taskIdStr);
-                    // Call your TaskService method
+                    
                     taskService.unlockTask(taskId, userId);
-                    // No direct message send needed here, TaskEntityListener will handle it
+                    
                     log.info("User {} requested to unlock task {}", userId, taskId);
                 } catch (NumberFormatException e) {
-                    log.warn("Invalid taskId format received for UNLOCK_TASK: {}", taskIdStr);
-                    // Optionally send an error message back
+                    log.warn("Invalid taskId format received for UNLOCK: {}", taskIdStr);
+                    
                 } catch (Exception e) {
-                    log.error("Error processing UNLOCK_TASK for user {}: {}", userId, e.getMessage());
-                    // Optionally send an error message back
+                    log.error("Error processing UNLOCK for user {}: {}", userId, e.getMessage());
+                    
                 }
             }
         } else {
-            // Handle other existing message types or log as an unrecognised message
+            
             log.info("Received message of type '{}' from authenticated session {}.", messageType, session.getId());
         }
 
