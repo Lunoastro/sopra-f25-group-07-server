@@ -4,6 +4,7 @@ import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,17 +32,19 @@ public class SocketHandler extends TextWebSocketHandler {
     private final List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final Map<Long, WebSocketSession> pendingSessionsMap = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
-
     private final UserService userService;
     private final TeamRepository teamRepository;
+    private final TaskService taskService;
 
     @Autowired
-    public SocketHandler(UserService userService, TeamRepository teamRepository) {
+    public SocketHandler(UserService userService, TeamRepository teamRepository, TaskService taskService) {
         this.userService = userService;
         this.teamRepository = teamRepository;
+        this.taskService = taskService;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
     }
+
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -51,16 +54,62 @@ public class SocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
+protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    Boolean authenticated = (Boolean) session.getAttributes().get("authenticated");
 
-        if (Boolean.TRUE.equals(authenticated)) {
-            log.info("Received regular message from an authenticated session {}.", session.getId());
+    if (Boolean.TRUE.equals(authenticated)) {
+        // Existing logic for authenticated users
+        // log.info("Received regular message from an authenticated session {}.", session.getId());
 
+        // --> Add new logic here to parse message for LOCK_TASK/UNLOCK_TASK <--
+        String payload = message.getPayload();
+        JsonNode jsonNode = objectMapper.readTree(payload);
+        String messageType = jsonNode.has("type") ? jsonNode.get("type").asText() : null;
+        Long userId = (Long) session.getAttributes().get("userId"); // Get userId from session
+
+        if ("LOCK_TASK".equalsIgnoreCase(messageType)) {
+            if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
+                String taskIdStr = jsonNode.get("payload").get("taskId").asText();
+                try {
+                    Long taskId = Long.parseLong(taskIdStr);
+                    // Call your TaskService method
+                    taskService.lockTask(taskId, userId);
+                    // No direct message send needed here, TaskEntityListener will handle it
+                    log.info("User {} requested to lock task {}", userId, taskId);
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid taskId format received for LOCK_TASK: {}", taskIdStr);
+                    // Optionally send an error message back to this specific session
+                } catch (Exception e) {
+                    log.error("Error processing LOCK_TASK for user {}: {}", userId, e.getMessage());
+                    // Optionally send an error message back
+                }
+            }
+        } else if ("UNLOCK_TASK".equalsIgnoreCase(messageType)) {
+            if (jsonNode.has("payload") && jsonNode.get("payload").has("taskId")) {
+                String taskIdStr = jsonNode.get("payload").get("taskId").asText();
+                 try {
+                    Long taskId = Long.parseLong(taskIdStr);
+                    // Call your TaskService method
+                    taskService.unlockTask(taskId, userId);
+                    // No direct message send needed here, TaskEntityListener will handle it
+                    log.info("User {} requested to unlock task {}", userId, taskId);
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid taskId format received for UNLOCK_TASK: {}", taskIdStr);
+                    // Optionally send an error message back
+                } catch (Exception e) {
+                    log.error("Error processing UNLOCK_TASK for user {}: {}", userId, e.getMessage());
+                    // Optionally send an error message back
+                }
+            }
         } else {
-            tryAuthenticate(session, message);
+            // Handle other existing message types or log as an unrecognised message
+            log.info("Received message of type '{}' from authenticated session {}.", messageType, session.getId());
         }
+
+    } else {
+        tryAuthenticate(session, message);
     }
+}
 
     private void tryAuthenticate(WebSocketSession session, TextMessage message) throws IOException {
         String payload = message.getPayload();
