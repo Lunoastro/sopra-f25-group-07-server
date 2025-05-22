@@ -230,7 +230,7 @@ public class TaskController {
             task.setDeadline(calendar.getTime());
         } else {
             // For recurring tasks: use existing logic to calculate the next deadline
-            taskService.calculateDeadline(task);
+            taskService.calculateDeadlineOnExpire(task);
         }
 
         // Lucky draw effect is removed
@@ -276,9 +276,8 @@ public class TaskController {
         if (additionalTask.equals(taskType)) {
             taskService.deleteTask(taskId);
         } else {
-        task.setStartDate(task.getDeadline());
         
-        taskService.calculateDeadline(task);
+        taskService.calculateDeadlineOnFinish(task);
         
         taskService.unassignTask(task);
         

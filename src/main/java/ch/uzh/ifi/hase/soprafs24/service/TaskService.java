@@ -138,7 +138,7 @@ public class TaskService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Frequency must be greater than 0");
             }
             task.setFrequency(taskPutDTO.getFrequency());
-            calculateDeadline(task);
+            calculateDeadlineOnEdit(task);
         }
         int half = getHalfFrequency(task);
         if (taskPutDTO.getDaysVisible() != null) {
@@ -152,7 +152,7 @@ public class TaskService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be in the future");
             }
             task.setStartDate(taskPutDTO.getStartDate());
-            calculateDeadline(task);
+            calculateDeadlineOnEdit(task);
         }
     }
 
@@ -579,6 +579,38 @@ public class TaskService {
         calendar.add(Calendar.DATE, task.getFrequency());
         Date deadline = calendar.getTime();
         task.setDeadline(deadline);
+    }
+
+    public void calculateDeadlineOnEdit(Task task) {
+        // calculate deadline = max(currentDate, startDate) + frequency -> recurring task
+        Calendar calendar = Calendar.getInstance();
+        Date currentDate = new Date();
+        Date baseDate = task.getStartDate().after(currentDate) ? task.getStartDate() : currentDate;
+
+        calendar.setTime(baseDate);
+        calendar.add(Calendar.DATE, task.getFrequency());
+        Date newDeadline = calendar.getTime();
+        task.setDeadline(newDeadline);
+    }
+
+    public void calculateDeadlineOnFinish(Task task) {
+        Date today = new Date();
+        task.setStartDate(today);
+        // calculate deadline = currentDate  + frequency -> recurring task
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(new Date());
+        calendar.add(Calendar.DATE, task.getFrequency());
+        Date newDeadline = calendar.getTime();
+        task.setDeadline(newDeadline);
+    }
+
+    public void calculateDeadlineOnExpire(Task task) {
+        // calculate dnew_eadline = old_deadline  + frequency -> recurring task
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(task.getDeadline());
+        calendar.add(Calendar.DATE, task.getFrequency());
+        Date newDeadline = calendar.getTime();
+        task.setDeadline(newDeadline);
     }
 
     public void calculateDaysVisible(Task task) {
