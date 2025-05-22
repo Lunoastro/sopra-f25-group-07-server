@@ -6,21 +6,62 @@ TASK AWAY is a chore management app designed for shared living spaces. It helps 
 
 ## Technologies
 
-The back-end of the application is built with Java 17 using the Spring Boot framework. For data persistence, we use PostgreSQL hosted on Supabase. The server is deployed on Google Cloud, while the client is hosted on Vercel. Communication between the server and client is managed through both REST APIs and WebSockets.
+The back end of the application is built with Java using the Spring Boot framework. PostgreSQL, hosted on Supabase, is used for data persistence. The server is deployed on Google Cloud (App Engine), while the client is hosted on Vercel. We integrate the Google Calendar API as an external service. Communication between the server and client is handled via both REST APIs and WebSockets.
 
 ## High-level components
 
-All REST calls are handled by the [controller classes](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller), which delegate the corresponding logic to the service layer. The core functionality for creating and joining teams is implemented in the [TeamService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TeamService), while all logic related to task creation and distribution resides in the [TaskService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TaskService). Integration with external Google Calendar API is managed through the [CalendarService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/CalendarService) and [CalendarController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarController), which handle all related communication.
+All REST calls are handled by the [controller classes](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller), which delegate the corresponding logic to the service layer. The core functionality for creating and joining teams is implemented in the [TeamService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TeamService), while all logic related to task creation and distribution resides in the [TaskService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TaskService). All user-related business logic is encapsulated in the [UserService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/UserService). Integration with external Google Calendar API is managed through the [CalendarService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/CalendarService) and [CalendarController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarController), which handle all related communication.
 
 ## Launch & Deployment
 
+### Google Calendar API
+
+#### Google Calendar Integration:
+
+Our application uses the Google Calendar API to let users view and sync events with their personal calendars. Integration is optional — users can still use the task calendar without linking their Google account.
+
+Documentation on Google Calendar API can be found [here](https://developers.google.com/calendar).
+
+#### Setup
+
+* Enable API & Create Credentials
+* Go to the Google Cloud API Library
+* Enable the Google Calendar API for your project.
+* Create OAuth 2.0 credentials (type: Web Application) and set your redirect URI (e.g., localhost:8080/api/calendar/callback) for local and deployed URL.
+* A setup guide can be found [here](https://developers.google.com/workspace/guides/create-credentials)
+
+#### Download & Configure Credentials
+
+* Download credentials.json and place it in your project (e.g., src/main/resources/) for local use.
+
+* Set an environment variable pointing to it:
+export GOOGLE_APPLICATION_CREDENTIALS=src/main/resources/credentials.json
+
+
+* For deployment, use GitHub secrets to store credentials and configure the callback URI in production.
+
+#### Add Dependencies in build.gradle with:
+
+```
+implementation 'com.google.api-client:google-api-client:2.0.0'
+```
+```
+implementation 'com.google.oauth-client:google-oauth-client-jetty:1.34.1'
+```
+```
+implementation 'com.google.apis:google-api-services-calendar:v3-rev20230807-2.0.0''
+```
+
+#### OAuth Flow
+The user is redirected to Google’s consent screen. After authorization, the access tokens are handled in [CalendarService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/CalendarService) for fetching and adding events to the Google Calendar.
 
 ### Build
 
 ```
 ./gradlew build
 ```
-In case of problems or tests not running during the build process, you can run the following command:
+
+To resolve build issues or missing tests, run the following command:
 
 ```bash
 ./gradlew clean build
@@ -31,9 +72,9 @@ In case of problems or tests not running during the build process, you can run t
 ```
 ./gradlew bootRunDev
 ```
-Use bootRunDev to run the application locally with an in-memory H2 database. This mode is ideal for development and testing, as no changes are written to the actual PostgreSQL database.
+Use bootRunDev to run the application locally with an in-memory H2 database. This mode is ideal for development and testing, as no changes are written to the PostgreSQL database.
 
-### Run with persitant DB
+### Run with persistent DB
 
 ```
 ./gradlew bootRun
@@ -63,7 +104,7 @@ If you want to avoid running all tests with every change, use the following comm
 ```
 #### API Endpoint Testing with Postman
 
-We recommend using [Postman](https://www.getpostman.com) to test your API Endpoints.
+We recommend using [Postman](https://www.getpostman.com) to test the API Endpoints. Most endpoints can be tested this way; however, due to OAuth flow requirements, endpoints in the [CalendarController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarController) cannot be fully tested via Postman. In the [CalendarAuthController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarAuthController), only the GET /calendar/auth-url endpoint can be tested to generate the Google authorization URL. Subsequent steps in the OAuth process must be performed through the browser and cannot be completed directly within Postman.
 
 
 ## Roadmap
