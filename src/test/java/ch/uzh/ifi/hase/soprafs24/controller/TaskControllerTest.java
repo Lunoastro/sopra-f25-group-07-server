@@ -811,8 +811,8 @@ class TaskControllerTest {
         // you can also mock more involved logic if needed
 
         mockMvc.perform(get("/tasks/expire")
-                .header("X-Appengine-Cron", "true"))
-            .andExpect(status().isNoContent()); // or .isOk() if you return 200 in future
+                .header("X-CRON-AUTH", "mySecureCronToken987"))
+              .andExpect(status().isNoContent());
     }
 
     @Test
