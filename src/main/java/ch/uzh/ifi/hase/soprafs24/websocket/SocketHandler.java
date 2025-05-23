@@ -140,114 +140,150 @@ public class SocketHandler extends TextWebSocketHandler {
             tryAuthenticate(session, message);
         }
     }
-
-    // ...existing code...
     private void tryAuthenticate(WebSocketSession session, TextMessage message) throws IOException {
         String payload = message.getPayload();
         log.debug("Attempting to authenticate session {}.", session.getId());
         try {
             JsonNode jsonNode = objectMapper.readTree(payload);
-            if (jsonNode.has("type") && "auth".equalsIgnoreCase(jsonNode.get("type").asText())) {
-                if (jsonNode.has("token")) {
-                    String rawToken = jsonNode.get("token").asText();
-                    String tokenToValidate = null;
-
-                    if (rawToken != null && !rawToken.isEmpty()) {
-                        if (rawToken.toLowerCase().startsWith("bearer ")) {
-                            tokenToValidate = rawToken.substring(7);
-                        } else {
-                            log.warn(
-                                    "Auth message received without 'Bearer ' prefix for session {}. Assuming raw token.",
-                                    session.getId());
-                            tokenToValidate = rawToken;
-                        }
-                    }
-
-                    if (tokenToValidate != null && !tokenToValidate.isEmpty()) {
-                        if (userService.validateToken(tokenToValidate)) {
-                            User user = userService.getUserByToken(tokenToValidate);
-                            if (user != null) {
-                                closeExistingSessionForUser(user.getId());
-                                session.getAttributes().put("userId", user.getId());
-                                session.getAttributes().put("authenticated", true);
-
-                                if (user.getTeamId() != null) {
-                                    Team userTeam = teamRepository.findTeamById(user.getTeamId());
-                                    if (userTeam != null) {
-                                        session.getAttributes().put("teamId", userTeam.getId());
-                                        log.info(
-                                                "WebSocket session {} authenticated for user: {}, userId: {}, teamId: {}",
-                                                session.getId(), user.getUsername(), user.getId(), userTeam.getId());
-                                         sendCurrentTasksForTeam(session, user.getTeamId());
-                                        log.info("Sent TASKS message to session {} for userId {}.",
-                                                session.getId(), user.getId());
-                                    } else {
-                                        log.warn(
-                                                "WebSocket session {} authenticated for user: {}, userId: {}. User has teamId {} but team entity not found. Moving to pending.",
-                                                session.getId(), user.getUsername(), user.getId(), user.getTeamId());
-                                        pendingSessionsMap.put(user.getId(), session);
-                                    }
-                                } else {
-                                    pendingSessionsMap.put(user.getId(), session);
-                                    log.info(
-                                            "WebSocket session {} authenticated for user: {}, userId: {}. User is not in any team. Session stored pending team assignment.",
-                                            session.getId(), user.getUsername(), user.getId());
-                                }
-                                session.sendMessage(new TextMessage(
-                                        "{\"type\":\"auth_success\",\"message\":\"Authentication successful\"}"));
-                            } else {
-                                log.error(
-                                        "WebSocket authentication inconsistency for session {}: validateToken passed but getUserByToken failed for token: {}",
-                                        session.getId(), tokenToValidate);
-                                session.sendMessage(new TextMessage(
-                                        "{\"type\":\"auth_failure\",\"message\":\"Authentication inconsistency\"}"));
-                                session.close(CloseStatus.SERVER_ERROR.withReason("Authentication inconsistency"));
-                            }
-                        } else {
-                            log.warn("WebSocket authentication failed for session {}: Invalid or offline user token.",
-                                    session.getId());
-                            session.sendMessage(new TextMessage(
-                                    "{\"type\":\"auth_failure\",\"message\":\"Invalid token or user offline\"}"));
-                            session.close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token or user offline"));
-                        }
-                    } else {
-                        log.warn(
-                                "WebSocket authentication failed for session {}: Token was effectively missing or empty after processing.",
-                                session.getId());
-                        session.sendMessage(
-                                new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token missing or empty\"}"));
-                        session.close(CloseStatus.POLICY_VIOLATION.withReason("Token missing or empty"));
-                    }
-                } else {
-                    log.warn("WebSocket authentication failed for session {}: 'token' field missing in auth message.",
-                            session.getId());
-                    session.sendMessage(
-                            new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token field missing\"}"));
-                    session.close(CloseStatus.POLICY_VIOLATION.withReason("Token field missing"));
-                }
-            } else {
-                log.warn("Received non-authentication message or malformed auth type from unauthenticated session {}.",
-                        session.getId());
-                session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required as first message"));
+            if (!isAuthType(jsonNode)) {
+                handleNonAuthMessage(session);
+                return;
             }
+            if (!jsonNode.has("token")) {
+                handleMissingToken(session);
+                return;
+            }
+            String tokenToValidate = extractToken(jsonNode, session);
+            if (tokenToValidate == null || tokenToValidate.isEmpty()) {
+                handleEmptyToken(session);
+                return;
+            }
+            if (!userService.validateToken(tokenToValidate)) {
+                handleInvalidToken(session);
+                return;
+            }
+            User user = userService.getUserByToken(tokenToValidate);
+            if (user == null) {
+                handleAuthInconsistency(session, tokenToValidate);
+                return;
+            }
+            handleSuccessfulAuthentication(session, user);
         } catch (JsonProcessingException e) {
-            log.warn("Failed to parse auth message from session {}. Payload: {}. Error: {}", session.getId(), payload,
-                    e.getMessage());
-            session.sendMessage(
-                    new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Invalid auth message format\"}"));
-            session.close(CloseStatus.BAD_DATA.withReason("Invalid auth message format"));
+            handleJsonProcessingException(session, payload, e);
         } catch (Exception e) {
-            log.error("Error during WebSocket authentication for session {}: {}", session.getId(), e.getMessage(), e);
-            try {
-                if (session.isOpen()) {
-                    session.sendMessage(
-                            new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Authentication error\"}"));
-                    session.close(CloseStatus.SERVER_ERROR.withReason("Authentication error"));
-                }
-            } catch (IOException ex) {
-                log.error("Failed to send error message or close session {} during auth error handling: {}",
-                        session.getId(), ex.getMessage());
+            handleGenericAuthException(session, e);
+        }
+    }
+
+    private boolean isAuthType(JsonNode jsonNode) {
+        return jsonNode.has("type") && "auth".equalsIgnoreCase(jsonNode.get("type").asText());
+    }
+
+    private void handleNonAuthMessage(WebSocketSession session) throws IOException {
+        log.warn("Received non-authentication message or malformed auth type from unauthenticated session {}.",
+                session.getId());
+        session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required as first message"));
+    }
+
+    private void handleMissingToken(WebSocketSession session) throws IOException {
+        log.warn("WebSocket authentication failed for session {}: 'token' field missing in auth message.",
+                session.getId());
+        session.sendMessage(
+                new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token field missing\"}"));
+        session.close(CloseStatus.POLICY_VIOLATION.withReason("Token field missing"));
+    }
+
+    private String extractToken(JsonNode jsonNode, WebSocketSession session) {
+        String rawToken = jsonNode.get("token").asText();
+        if (rawToken == null || rawToken.isEmpty()) {
+            return null;
+        }
+        if (rawToken.toLowerCase().startsWith("bearer ")) {
+            return rawToken.substring(7);
+        } else {
+            log.warn(
+                    "Auth message received without 'Bearer ' prefix for session {}. Assuming raw token.",
+                    session.getId());
+            return rawToken;
+        }
+    }
+
+    private void handleEmptyToken(WebSocketSession session) throws IOException {
+        log.warn(
+                "WebSocket authentication failed for session {}: Token was effectively missing or empty after processing.",
+                session.getId());
+        session.sendMessage(
+                new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Token missing or empty\"}"));
+        session.close(CloseStatus.POLICY_VIOLATION.withReason("Token missing or empty"));
+    }
+
+    private void handleInvalidToken(WebSocketSession session) throws IOException {
+        log.warn("WebSocket authentication failed for session {}: Invalid or offline user token.",
+                session.getId());
+        session.sendMessage(new TextMessage(
+                "{\"type\":\"auth_failure\",\"message\":\"Invalid token or user offline\"}"));
+        session.close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token or user offline"));
+    }
+
+    private void handleAuthInconsistency(WebSocketSession session, String tokenToValidate) throws IOException {
+        log.error(
+                "WebSocket authentication inconsistency for session {}: validateToken passed but getUserByToken failed for token: {}",
+                session.getId(), tokenToValidate);
+        session.sendMessage(new TextMessage(
+                "{\"type\":\"auth_failure\",\"message\":\"Authentication inconsistency\"}"));
+        session.close(CloseStatus.SERVER_ERROR.withReason("Authentication inconsistency"));
+    }
+
+    private void handleSuccessfulAuthentication(WebSocketSession session, User user) throws IOException {
+        closeExistingSessionForUser(user.getId());
+        session.getAttributes().put("userId", user.getId());
+        session.getAttributes().put("authenticated", true);
+
+        if (user.getTeamId() != null) {
+            Team userTeam = teamRepository.findTeamById(user.getTeamId());
+            if (userTeam != null) {
+                session.getAttributes().put("teamId", userTeam.getId());
+                log.info(
+                        "WebSocket session {} authenticated for user: {}, userId: {}, teamId: {}",
+                        session.getId(), user.getUsername(), user.getId(), userTeam.getId());
+                sendCurrentTasksForTeam(session, user.getTeamId());
+                log.info("Sent TASKS message to session {} for userId {}.",
+                        session.getId(), user.getId());
+            } else {
+                log.warn(
+                        "WebSocket session {} authenticated for user: {}, userId: {}. User has teamId {} but team entity not found. Moving to pending.",
+                        session.getId(), user.getUsername(), user.getId(), user.getTeamId());
+                pendingSessionsMap.put(user.getId(), session);
             }
+        } else {
+            pendingSessionsMap.put(user.getId(), session);
+            log.info(
+                    "WebSocket session {} authenticated for user: {}, userId: {}. User is not in any team. Session stored pending team assignment.",
+                    session.getId(), user.getUsername(), user.getId());
+        }
+        session.sendMessage(new TextMessage(
+                "{\"type\":\"auth_success\",\"message\":\"Authentication successful\"}"));
+    }
+
+    private void handleJsonProcessingException(WebSocketSession session, String payload, JsonProcessingException e) throws IOException {
+        log.warn("Failed to parse auth message from session {}. Payload: {}. Error: {}", session.getId(), payload,
+                e.getMessage());
+        session.sendMessage(
+                new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Invalid auth message format\"}"));
+        session.close(CloseStatus.BAD_DATA.withReason("Invalid auth message format"));
+    }
+
+    private void handleGenericAuthException(WebSocketSession session, Exception e) {
+        log.error("Error during WebSocket authentication for session {}: {}", session.getId(), e.getMessage(), e);
+        try {
+            if (session.isOpen()) {
+                session.sendMessage(
+                        new TextMessage("{\"type\":\"auth_failure\",\"message\":\"Authentication error\"}"));
+                session.close(CloseStatus.SERVER_ERROR.withReason("Authentication error"));
+            }
+        } catch (IOException ex) {
+            log.error("Failed to send error message or close session {} during auth error handling: {}",
+                    session.getId(), ex.getMessage());
         }
     }
 
