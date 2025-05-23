@@ -693,7 +693,7 @@ public class TaskService {
         // calculate deadline = startDate + frequency days -> recurring task
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(task.getStartDate());
-        calendar.add(Calendar.DATE, task.getFrequency());
+        calendar.add(Calendar.DATE, task.getFrequency() - 1);
         Date deadline = calendar.getTime();
         task.setDeadline(deadline);
     }
@@ -706,7 +706,7 @@ public class TaskService {
         Date baseDate = task.getStartDate().after(currentDate) ? task.getStartDate() : currentDate;
 
         calendar.setTime(baseDate);
-        calendar.add(Calendar.DATE, task.getFrequency());
+        calendar.add(Calendar.DATE, task.getFrequency()-1);
         Date newDeadline = calendar.getTime();
         task.setDeadline(newDeadline);
     }
@@ -741,7 +741,7 @@ public class TaskService {
         // Calculate "visible from" date: deadline - daysVisible
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(deadline);
-        calendar.add(Calendar.DATE, -daysVisible);
+        calendar.add(Calendar.DATE, -daysVisible + 1);
         Date visibleFrom = calendar.getTime();
 
         // Check if today is on or after visibleFrom date
