@@ -711,4 +711,134 @@ class SocketHandlerTest {
 
         assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
     }
+
+    @Test
+    void handleTextMessage_authenticated_LOCK_callsTaskServiceLockTask() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 123L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String lockMessage = "{\"type\":\"LOCK\",\"payload\":{\"taskId\":\"456\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(lockMessage));
+
+        verify(mockTaskService).lockTask(456L, 123L);
+        // Should not close or send error
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_LOCK_invalidTaskId_logsWarning() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 123L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String lockMessage = "{\"type\":\"LOCK\",\"payload\":{\"taskId\":\"notANumber\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(lockMessage));
+
+        verify(mockTaskService, never()).lockTask(anyLong(), anyLong());
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_LOCK_taskServiceThrowsException_logsError() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 123L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        doThrow(new RuntimeException("fail")).when(mockTaskService).lockTask(anyLong(), anyLong());
+
+        String lockMessage = "{\"type\":\"LOCK\",\"payload\":{\"taskId\":\"456\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(lockMessage));
+
+        verify(mockTaskService).lockTask(456L, 123L);
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_UNLOCK_callsTaskServiceUnlockTask() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 321L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String unlockMessage = "{\"type\":\"UNLOCK\",\"payload\":{\"taskId\":\"789\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(unlockMessage));
+
+        verify(mockTaskService).unlockTask(789L, 321L);
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_UNLOCK_invalidTaskId_logsWarning() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 321L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String unlockMessage = "{\"type\":\"UNLOCK\",\"payload\":{\"taskId\":\"badId\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(unlockMessage));
+
+        verify(mockTaskService, never()).unlockTask(anyLong(), anyLong());
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_UNLOCK_taskServiceThrowsException_logsError() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 321L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        doThrow(new RuntimeException("fail")).when(mockTaskService).unlockTask(anyLong(), anyLong());
+
+        String unlockMessage = "{\"type\":\"UNLOCK\",\"payload\":{\"taskId\":\"789\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(unlockMessage));
+
+        verify(mockTaskService).unlockTask(789L, 321L);
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_otherType_logsInfo() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 1L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String otherMessage = "{\"type\":\"SOMETHING_ELSE\",\"payload\":{\"foo\":\"bar\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(otherMessage));
+
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_typeMissing_logsInfo() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 1L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String noTypeMessage = "{\"payload\":{\"foo\":\"bar\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(noTypeMessage));
+
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_notAuthenticated_delegatesToTryAuthenticate() throws Exception {
+        // Already covered by many tests above, but check delegation
+        attributes1.put("authenticated", false);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String authMessage = "{\"type\":\"auth\",\"token\":\"token123\"}";
+        when(mockUserService.validateToken("token123")).thenReturn(false);
+
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(authMessage));
+
+        verify(mockUserService).validateToken("token123");
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid token")));
+    }
 }
