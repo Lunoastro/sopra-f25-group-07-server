@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs24.websocket;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 
@@ -21,6 +22,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -560,4 +562,64 @@ class SocketHandlerTest {
 
         assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
     }
+
+    @Test
+    void sendCurrentTasksForTeam_sendsTasksForGivenTeam() throws Exception {
+        // Arrange
+        Long teamId = 42L;
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(teamId);
+        Task taskOther = new Task();
+        taskOther.setId(3L);
+        taskOther.setTeamId(99L);
+
+        when(mockTaskService.getAllTasks()).thenReturn(List.of(task1, task2, taskOther));
+
+        // Act
+        socketHandler.sendCurrentTasksForTeam(mockSession1, teamId);
+
+        // Assert
+        verify(mockSession1).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            // Check for new DatabaseChangeEventDTO structure
+            return payload.contains("\"entityType\":\"TASKS\"")
+                    && payload.contains("\"id\":1")
+                    && payload.contains("\"id\":2")
+                    && !payload.contains("\"id\":3")
+                    && payload.contains("\"payload\":[");
+        }));
+    }
+
+    @Test
+    void sendCurrentTasksForTeam_noTasksForTeam_sendsEmptyList() throws Exception {
+        Long teamId = 123L;
+        when(mockTaskService.getAllTasks()).thenReturn(List.of());
+
+        socketHandler.sendCurrentTasksForTeam(mockSession1, teamId);
+
+        verify(mockSession1).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            // Check for new DatabaseChangeEventDTO structure with empty payload
+            return payload.contains("\"entityType\":\"TASKS\"")
+                    && payload.contains("\"payload\":[]");
+        }));
+    }
+
+    @Test
+    void sendCurrentTasksForTeam_sendMessageThrowsIOException_logsError() throws Exception {
+        Long teamId = 55L;
+        Task task = new Task();
+        task.setId(1L);
+        task.setTeamId(teamId);
+
+        when(mockTaskService.getAllTasks()).thenReturn(List.of(task));
+        doThrow(new IOException("fail")).when(mockSession1).sendMessage(any(TextMessage.class));
+
+        assertThrows(IOException.class, () -> socketHandler.sendCurrentTasksForTeam(mockSession1, teamId));
+    }
+
 }

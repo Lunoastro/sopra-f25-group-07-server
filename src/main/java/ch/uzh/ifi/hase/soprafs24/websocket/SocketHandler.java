@@ -67,7 +67,7 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void sendCurrentTasksForTeam(WebSocketSession session, Long teamId) throws IOException {
+    void sendCurrentTasksForTeam(WebSocketSession session, Long teamId) throws IOException {
         List<Task> teamTasks = taskService.getAllTasks().stream()
                 .filter(t -> teamId.equals(t.getTeamId()))
                 .toList();
@@ -77,6 +77,7 @@ public class SocketHandler extends TextWebSocketHandler {
         DatabaseChangeEventDTO<List<TaskGetDTO>> event = new DatabaseChangeEventDTO<>("TASKS", taskDTOs);
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(event)));
     }
+
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
