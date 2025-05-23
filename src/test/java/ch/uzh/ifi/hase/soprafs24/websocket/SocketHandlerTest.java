@@ -622,4 +622,93 @@ class SocketHandlerTest {
         assertThrows(IOException.class, () -> socketHandler.sendCurrentTasksForTeam(mockSession1, teamId));
     }
 
+    @Test
+    void moveSessionToPending_movesAuthenticatedSessionWithTeamToPendingAndSendsMessage() throws Exception {
+        Long userId = 42L;
+        Long teamId = 99L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        attributes1.put("teamId", teamId);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        assertEquals(mockSession1, socketHandler.getPendingSessionsMapForTesting().get(userId));
+        assertNull(attributes1.get("teamId"));
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("session_pending")));
+    }
+
+    @Test
+    void moveSessionToPending_movesSessionWithoutTeamToPendingAndSendsMessage() throws Exception {
+        Long userId = 77L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        assertEquals(mockSession1, socketHandler.getPendingSessionsMapForTesting().get(userId));
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("session_pending")));
+    }
+
+    @Test
+    void moveSessionToPending_sessionNotOpen_removesSessionAndPending() throws Exception {
+        Long userId = 55L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        when(mockSession1.isOpen()).thenReturn(false);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+        socketHandler.getPendingSessionsMapForTesting().put(userId, mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
+        assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void moveSessionToPending_noSessionForUser_logsInfoAndDoesNothing() {
+        Long userId = 12345L;
+        // No session added for this userId
+        socketHandler.moveSessionToPending(userId);
+
+        assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+    }
+
+    @Test
+    void moveSessionToPending_nullUserId_logsWarningAndDoesNothing() {
+        socketHandler.moveSessionToPending(null);
+        // Should not throw or add anything
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().isEmpty());
+    }
+
+    @Test
+    void moveSessionToPending_authenticatedAttributeMissing_setsAuthenticatedTrue() throws Exception {
+        Long userId = 88L;
+        attributes1.put("userId", userId);
+        // No "authenticated" attribute
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue((Boolean) attributes1.get("authenticated"));
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("session_pending")));
+    }
+
+    @Test
+    void moveSessionToPending_sendMessageThrowsIOException_logsError() throws Exception {
+        Long userId = 66L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+        doThrow(new IOException("fail")).when(mockSession1).sendMessage(any(TextMessage.class));
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+    }
 }
