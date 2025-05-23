@@ -285,6 +285,8 @@ public class TaskController {
         taskService.calculateDeadlineOnFinish(task);
         
         taskService.unassignTask(task);
+
+        taskService.finishedTaskDate(task);
         
         taskService.saveTask(task);
         
