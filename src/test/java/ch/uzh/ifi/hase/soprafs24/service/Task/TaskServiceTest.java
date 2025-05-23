@@ -36,7 +36,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -2050,6 +2049,174 @@ class TaskServiceTest {
         assertEquals("Task not found with ID: " + taskId, exception.getReason());
         verify(taskRepository).findById(taskId);
         verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void checkLockedByUser_taskNotLocked_doesNotThrow() {
+        Task task = new Task();
+        task.setId(1L);
+        task.setLockedByUser(null);
+
+        assertDoesNotThrow(() -> taskService.checkLockedByUser(task, 42L));
+    }
+
+    @Test
+    void checkLockedByUser_taskLockedByCurrentUser_doesNotThrow() {
+        Task task = new Task();
+        task.setId(1L);
+        task.setLockedByUser(42L);
+
+        assertDoesNotThrow(() -> taskService.checkLockedByUser(task, 42L));
+    }
+
+    @Test
+    void checkLockedByUser_taskLockedByAnotherUser_throwsBadRequest() {
+        Task task = new Task();
+        task.setId(1L);
+        task.setLockedByUser(99L);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.checkLockedByUser(task, 42L));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertTrue(exception.getReason().contains("Task is locked by another user"));
+    }
+
+    @Test
+    void unpauseAllTasksInTeam_updatesAllTasksAndSaves() {
+        // given
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setName("Task 1");
+        task1.setPaused(true);
+        task1.setDeadline(new Date(System.currentTimeMillis() + 1000000));
+        task1.setPausedDate(new Date(System.currentTimeMillis() - 1000000));
+        task1.setCreationDate(new Date(System.currentTimeMillis() - 2000000)); 
+
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setName("Task 2");
+        task2.setPaused(true);
+        task2.setDeadline(new Date(System.currentTimeMillis() + 2000000));
+        task2.setPausedDate(new Date(System.currentTimeMillis() - 2000000));
+        task2.setCreationDate(new Date(System.currentTimeMillis() - 3000000)); 
+
+        List<Task> tasks = Arrays.asList(task1, task2);
+
+        when(taskRepository.findAll()).thenReturn(tasks);
+        when(taskRepository.saveAll(Mockito.anyList())).thenReturn(tasks);
+
+        // when
+        taskService.unpauseAllTasksInTeam();
+
+        // then
+        assertFalse(task1.isPaused());
+        assertFalse(task2.isPaused());
+        assertNotNull(task1.getUnpausedDate());
+        assertNotNull(task2.getUnpausedDate());
+        verify(taskRepository, times(1)).saveAll(tasks);
+    }
+
+    @Test
+    void unpauseAllTasksInTeam_handlesEmptyTaskList() {
+        // given
+        when(taskRepository.findAll()).thenReturn(List.of());
+        when(taskRepository.saveAll(Mockito.anyList())).thenReturn(List.of());
+
+        // when
+        taskService.unpauseAllTasksInTeam();
+
+        // then
+        verify(taskRepository, times(1)).saveAll(List.of());
+    }
+
+    @Test
+    void updateTask_successfulUpdate_returnsUpdatedTask() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Old Task");
+        existingTask.setcreatorId(42L);
+        existingTask.setActiveStatus(true);
+        existingTask.setPaused(false);
+
+        Task updateDTO = new Task();
+        updateDTO.setName("Updated Task");
+
+        Long userId = 42L;
+
+        // when
+        Mockito.doNothing().when(calendarService).syncSingleTask(existingTask, existingTask.getcreatorId());
+        Mockito.when(taskRepository.save(existingTask)).thenReturn(existingTask);
+
+        Task updatedTask = taskService.updateTask(existingTask, updateDTO, userId);
+
+        // then
+        assertEquals("Updated Task", updatedTask.getName());
+        Mockito.verify(calendarService).syncSingleTask(existingTask, existingTask.getcreatorId());
+        Mockito.verify(taskRepository).save(existingTask);
+        Mockito.verify(taskRepository).flush();
+    }
+
+    @Test
+    void updateTask_lockedByAnotherUser_throwsBadRequest() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Old Task");
+        existingTask.setcreatorId(42L);
+        existingTask.setLockedByUser(99L); // locked by someone else
+
+        Task updateDTO = new Task();
+        updateDTO.setName("Updated Task");
+
+        Long userId = 42L;
+
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.updateTask(existingTask, updateDTO, userId));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertTrue(exception.getReason().contains("Task is locked by another user"));
+    }
+
+    @Test
+    void updateTask_pausedTask_throwsForbidden() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Old Task");
+        existingTask.setcreatorId(42L);
+        existingTask.setPaused(true);
+
+        Task updateDTO = new Task();
+        updateDTO.setName("Updated Task");
+
+        Long userId = 42L;
+
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.updateTask(existingTask, updateDTO, userId));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Task is paused", exception.getReason());
+    }
+
+    @Test
+    void updateTask_invalidFields_throwsException() {
+        // given
+        Task existingTask = new Task();
+        existingTask.setId(1L);
+        existingTask.setName("Old Task");
+        existingTask.setcreatorId(42L);
+
+        Task updateDTO = new Task();
+        updateDTO.setName(""); // invalid name
+
+        Long userId = 42L;
+
+        // then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.updateTask(existingTask, updateDTO, userId));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("Task name cannot be empty", exception.getReason());
     }
 
 }
