@@ -1900,4 +1900,76 @@ class TaskServiceTest {
         assertNull(task1.getLockedByUser());
         assertEquals(99L, task2.getLockedByUser());
     }
+
+    @Test
+    void unlockTask_success_whenLockedByUser() {
+        // given
+        Long taskId = 1L;
+        Long userId = 42L;
+        Task lockedTask = new Task();
+        lockedTask.setId(taskId);
+        lockedTask.setLockedByUser(userId);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(lockedTask));
+        when(taskRepository.save(any(Task.class))).thenAnswer(i -> i.getArgument(0));
+
+        // when
+        Task result = taskService.unlockTask(taskId, userId);
+
+        // then
+        assertNull(result.getLockedByUser());
+        verify(taskRepository).findById(taskId);
+        verify(taskRepository).save(lockedTask);
+    }
+
+    @Test
+    void unlockTask_throwsNotFound_whenTaskDoesNotExist() {
+        // given
+        Long taskId = 99L;
+        Long userId = 42L;
+        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.unlockTask(taskId, userId));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        assertTrue(exception.getReason().contains("Task not found"));
+    }
+
+    @Test
+    void unlockTask_throwsBadRequest_whenTaskNotLocked() {
+        // given
+        Long taskId = 1L;
+        Long userId = 42L;
+        Task unlockedTask = new Task();
+        unlockedTask.setId(taskId);
+        unlockedTask.setLockedByUser(null);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(unlockedTask));
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.unlockTask(taskId, userId));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("Task is not currently locked.", exception.getReason());
+    }
+
+    @Test
+    void unlockTask_throwsForbidden_whenLockedByAnotherUser() {
+        // given
+        Long taskId = 1L;
+        Long userId = 42L;
+        Long anotherUserId = 99L;
+        Task lockedTask = new Task();
+        lockedTask.setId(taskId);
+        lockedTask.setLockedByUser(anotherUserId);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(lockedTask));
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.unlockTask(taskId, userId));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("You are not the user who locked this task.", exception.getReason());
+    }
 }
