@@ -84,8 +84,6 @@ public class CalendarService {
         String json = System.getenv("GOOGLE_CALENDAR_CREDENTIALS");
         GoogleClientSecrets clientSecrets;
 
-        logger.warn("GOOGLE_CALENDAR_CREDENTIALS are: {}", json);
-
         if (json == null || json.isEmpty()) {
             logger.warn("GOOGLE_CALENDAR_CREDENTIALS environment variable is not set. Using local_credentials.json as fallback.");
 
@@ -136,14 +134,12 @@ public class CalendarService {
 
         // Default for local development only
         redirectUri = "http://localhost:8080/Callback";
-        logger.info("Using default redirect URI: {}", redirectUri);
         return redirectUri;
     }
 
     public List<Map<String, Object>> getUserGoogleCalendarEvents(String startDate, String endDate, Long userId) throws IOException {
         try {
             Calendar calendar = getCalendarServiceForUser(userId);
-            logger.warn("Fetching Google Calendar events for user: {}, CALENDAR: {}", userId, calendar);
 
             DateTime start = buildStartDateTime(startDate);
             DateTime end = buildExclusiveEndDateTime(endDate);
@@ -314,8 +310,6 @@ public class CalendarService {
     public String generateAuthUrl(Long userId) throws CalendarAuthorizationException {
         try {
             GoogleAuthorizationCodeFlow flow = getFlow();
-            logger.warn("This is the AUTH-URL DURING SUCCESS: {}", flow);
-            logger.warn("This is the REDIRECT_URI DURING SUCCESS: {}",getRedirectUri());
             return flow.newAuthorizationUrl()
                     .setRedirectUri(getRedirectUri())
                     .setState(userId.toString())
@@ -323,8 +317,6 @@ public class CalendarService {
                     .set("prompt", "consent")
                     .build();
         } catch (Exception e) {
-            logger.warn("This is the AUTH-URL WHILE IT FAILED: {}", System.getenv("GOOGLE_CALENDAR_CREDENTIALS"));
-            logger.warn("This is the REDIRECT_URI WHILE IT FAILED: {}", redirectUri);
             logger.error("Failed to generate authorization URL for user {}: {}", userId, e.getMessage(), e);
             throw new CalendarAuthorizationException("Failed to generate authorization URL for user: " + userId, e);
         }
@@ -364,7 +356,6 @@ public class CalendarService {
 
         googleTokenRepository.save(googleToken);
 
-        logger.info("Saved token for user {}: accessToken={}, expiresIn={}, googleToken={}", userId, tokenResponse.getAccessToken(), tokenResponse.getExpiresInSeconds(), googleToken);
         logger.info("Google OAuth token saved for user: {}", userId);
     }
 

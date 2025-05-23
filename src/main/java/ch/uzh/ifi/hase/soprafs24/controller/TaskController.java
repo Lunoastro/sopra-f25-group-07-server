@@ -18,13 +18,9 @@ import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @RestController
 public class TaskController {
-
-  private static final Logger logger = LoggerFactory.getLogger(TaskController.class);
 
   private final TaskService taskService;
   private final UserRepository userrepository;
@@ -105,7 +101,6 @@ public class TaskController {
             taskGetDTOs.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
             }
         }
-        logger.warn("Received FILTERED TASKS: {}", taskGetDTOs);
         return taskGetDTOs;
     }
 

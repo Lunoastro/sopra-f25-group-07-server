@@ -77,17 +77,8 @@ public class CalendarController {
         // Check if user has a linked Google token
         requireSyncedGoogleAccount(userId);
 
-        // Optionally validate the Google token here if you want to check expiration or validity before calling calendar service
-        GoogleToken googleToken = googleTokenRepository.findGoogleTokenById(userId);
-        
-        logger.info("Received startDate: {}", startDate);
-        logger.info("Received endDate: {}", endDate);
-        logger.info("Received userId: {}", userId);
-        logger.info("Received googleToken: {}", googleToken);
-        
-        List<Map<String, Object>> fetchedTasks = calendarService.getUserGoogleCalendarEvents(startDate, endDate, userId);
-        logger.warn("All fetched tasks: {}", fetchedTasks);
-        return fetchedTasks;
+        // Optionally validate the Google token here if you want to check expiration or validity before calling calendar service        
+        return calendarService.getUserGoogleCalendarEvents(startDate, endDate, userId);
     }
 
     @GetMapping("/calendar/events/{id}")

@@ -18,8 +18,6 @@ import org.springframework.web.servlet.view.RedirectView;
 @RestController
 public class CalendarAuthController {
 
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CalendarAuthController.class);
-
     private final CalendarService calendarService;
     private final UserService userService;
 
@@ -58,8 +56,6 @@ public class CalendarAuthController {
 
     @GetMapping("/Callback")
     public RedirectView handleGoogleCallback(@RequestParam("code") String code, @RequestParam("state") String userIdStr) throws Exception {
-        logger.info("Received code: {}", code);
-        logger.info("Received state (userId): {}", userIdStr);
 
         Long userId;
         try {
