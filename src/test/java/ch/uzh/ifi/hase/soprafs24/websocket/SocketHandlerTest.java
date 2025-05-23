@@ -2,8 +2,12 @@ package ch.uzh.ifi.hase.soprafs24.websocket;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.entity.Task;
+import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
+
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +22,8 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +39,12 @@ class SocketHandlerTest {
 
     @Mock
     private UserService mockUserService;
+
+    @Mock
+    private TaskService mockTaskService;
+
+    @Mock
+    private TaskRepository mockTaskRepository;
 
     @Mock
     private TeamRepository mockTeamRepository;
@@ -87,7 +99,7 @@ class SocketHandlerTest {
         } catch (IOException e) {
             fail("Setup failed");
         }
-
+        socketHandler = new SocketHandler(mockUserService, mockTeamRepository, mockTaskService);
         socketHandler.getSessionsForTesting().clear();
         socketHandler.getPendingSessionsMapForTesting().clear();
     }
@@ -123,6 +135,7 @@ class SocketHandlerTest {
         when(mockUserService.validateToken(token)).thenReturn(true);
         when(mockUserService.getUserByToken(token)).thenReturn(user);
         when(mockTeamRepository.findTeamById(10L)).thenReturn(team);
+        when(mockTaskRepository.findAll()).thenReturn(Collections.emptyList());
         socketHandler.getSessionsForTesting().add(mockSession1);
 
         socketHandler.handleTextMessage(mockSession1, createAuthMessage(token, true));
@@ -548,5 +561,284 @@ class SocketHandlerTest {
         socketHandler.broadcastMessageToAll(payload);
 
         assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
+    }
+
+    @Test
+    void sendCurrentTasksForTeam_sendsTasksForGivenTeam() throws Exception {
+        // Arrange
+        Long teamId = 42L;
+        Task task1 = new Task();
+        task1.setId(1L);
+        task1.setTeamId(teamId);
+        Task task2 = new Task();
+        task2.setId(2L);
+        task2.setTeamId(teamId);
+        Task taskOther = new Task();
+        taskOther.setId(3L);
+        taskOther.setTeamId(99L);
+
+        when(mockTaskService.getAllTasks()).thenReturn(List.of(task1, task2, taskOther));
+
+        // Act
+        socketHandler.sendCurrentTasksForTeam(mockSession1, teamId);
+
+        // Assert
+        verify(mockSession1).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            // Check for new DatabaseChangeEventDTO structure
+            return payload.contains("\"entityType\":\"TASKS\"")
+                    && payload.contains("\"id\":1")
+                    && payload.contains("\"id\":2")
+                    && !payload.contains("\"id\":3")
+                    && payload.contains("\"payload\":[");
+        }));
+    }
+
+    @Test
+    void sendCurrentTasksForTeam_noTasksForTeam_sendsEmptyList() throws Exception {
+        Long teamId = 123L;
+        when(mockTaskService.getAllTasks()).thenReturn(List.of());
+
+        socketHandler.sendCurrentTasksForTeam(mockSession1, teamId);
+
+        verify(mockSession1).sendMessage(argThat(msg -> {
+            String payload = ((TextMessage) msg).getPayload();
+            // Check for new DatabaseChangeEventDTO structure with empty payload
+            return payload.contains("\"entityType\":\"TASKS\"")
+                    && payload.contains("\"payload\":[]");
+        }));
+    }
+
+    @Test
+    void sendCurrentTasksForTeam_sendMessageThrowsIOException_logsError() throws Exception {
+        Long teamId = 55L;
+        Task task = new Task();
+        task.setId(1L);
+        task.setTeamId(teamId);
+
+        when(mockTaskService.getAllTasks()).thenReturn(List.of(task));
+        doThrow(new IOException("fail")).when(mockSession1).sendMessage(any(TextMessage.class));
+
+        assertThrows(IOException.class, () -> socketHandler.sendCurrentTasksForTeam(mockSession1, teamId));
+    }
+
+    @Test
+    void moveSessionToPending_movesAuthenticatedSessionWithTeamToPendingAndSendsMessage() throws Exception {
+        Long userId = 42L;
+        Long teamId = 99L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        attributes1.put("teamId", teamId);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        assertEquals(mockSession1, socketHandler.getPendingSessionsMapForTesting().get(userId));
+        assertNull(attributes1.get("teamId"));
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("session_pending")));
+    }
+
+    @Test
+    void moveSessionToPending_movesSessionWithoutTeamToPendingAndSendsMessage() throws Exception {
+        Long userId = 77L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        assertEquals(mockSession1, socketHandler.getPendingSessionsMapForTesting().get(userId));
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("session_pending")));
+    }
+
+    @Test
+    void moveSessionToPending_sessionNotOpen_removesSessionAndPending() throws Exception {
+        Long userId = 55L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        when(mockSession1.isOpen()).thenReturn(false);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+        socketHandler.getPendingSessionsMapForTesting().put(userId, mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertFalse(socketHandler.getSessionsForTesting().contains(mockSession1));
+        assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void moveSessionToPending_noSessionForUser_logsInfoAndDoesNothing() {
+        Long userId = 12345L;
+        // No session added for this userId
+        socketHandler.moveSessionToPending(userId);
+
+        assertFalse(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+    }
+
+    @Test
+    void moveSessionToPending_nullUserId_logsWarningAndDoesNothing() {
+        socketHandler.moveSessionToPending(null);
+        // Should not throw or add anything
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().isEmpty());
+    }
+
+    @Test
+    void moveSessionToPending_authenticatedAttributeMissing_setsAuthenticatedTrue() throws Exception {
+        Long userId = 88L;
+        attributes1.put("userId", userId);
+        // No "authenticated" attribute
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue((Boolean) attributes1.get("authenticated"));
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("session_pending")));
+    }
+
+    @Test
+    void moveSessionToPending_sendMessageThrowsIOException_logsError() throws Exception {
+        Long userId = 66L;
+        attributes1.put("userId", userId);
+        attributes1.put("authenticated", true);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+        doThrow(new IOException("fail")).when(mockSession1).sendMessage(any(TextMessage.class));
+
+        socketHandler.moveSessionToPending(userId);
+
+        assertTrue(socketHandler.getPendingSessionsMapForTesting().containsKey(userId));
+    }
+
+    @Test
+    void handleTextMessage_authenticated_LOCK_callsTaskServiceLockTask() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 123L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String lockMessage = "{\"type\":\"LOCK\",\"payload\":{\"taskId\":\"456\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(lockMessage));
+
+        verify(mockTaskService).lockTask(456L, 123L);
+        // Should not close or send error
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_LOCK_invalidTaskId_logsWarning() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 123L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String lockMessage = "{\"type\":\"LOCK\",\"payload\":{\"taskId\":\"notANumber\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(lockMessage));
+
+        verify(mockTaskService, never()).lockTask(anyLong(), anyLong());
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_LOCK_taskServiceThrowsException_logsError() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 123L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        doThrow(new RuntimeException("fail")).when(mockTaskService).lockTask(anyLong(), anyLong());
+
+        String lockMessage = "{\"type\":\"LOCK\",\"payload\":{\"taskId\":\"456\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(lockMessage));
+
+        verify(mockTaskService).lockTask(456L, 123L);
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_UNLOCK_callsTaskServiceUnlockTask() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 321L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String unlockMessage = "{\"type\":\"UNLOCK\",\"payload\":{\"taskId\":\"789\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(unlockMessage));
+
+        verify(mockTaskService).unlockTask(789L, 321L);
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_UNLOCK_invalidTaskId_logsWarning() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 321L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String unlockMessage = "{\"type\":\"UNLOCK\",\"payload\":{\"taskId\":\"badId\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(unlockMessage));
+
+        verify(mockTaskService, never()).unlockTask(anyLong(), anyLong());
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_UNLOCK_taskServiceThrowsException_logsError() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 321L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        doThrow(new RuntimeException("fail")).when(mockTaskService).unlockTask(anyLong(), anyLong());
+
+        String unlockMessage = "{\"type\":\"UNLOCK\",\"payload\":{\"taskId\":\"789\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(unlockMessage));
+
+        verify(mockTaskService).unlockTask(789L, 321L);
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_otherType_logsInfo() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 1L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String otherMessage = "{\"type\":\"SOMETHING_ELSE\",\"payload\":{\"foo\":\"bar\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(otherMessage));
+
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_authenticated_typeMissing_logsInfo() throws Exception {
+        attributes1.put("authenticated", true);
+        attributes1.put("userId", 1L);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String noTypeMessage = "{\"payload\":{\"foo\":\"bar\"}}";
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(noTypeMessage));
+
+        verify(mockSession1, never()).close(any());
+        verify(mockSession1, never()).sendMessage(any());
+    }
+
+    @Test
+    void handleTextMessage_notAuthenticated_delegatesToTryAuthenticate() throws Exception {
+        // Already covered by many tests above, but check delegation
+        attributes1.put("authenticated", false);
+        socketHandler.getSessionsForTesting().add(mockSession1);
+
+        String authMessage = "{\"type\":\"auth\",\"token\":\"token123\"}";
+        when(mockUserService.validateToken("token123")).thenReturn(false);
+
+        socketHandler.handleTextMessage(mockSession1, new TextMessage(authMessage));
+
+        verify(mockUserService).validateToken("token123");
+        verify(mockSession1).sendMessage(argThat(msg -> ((TextMessage) msg).getPayload().contains("Invalid token")));
     }
 }

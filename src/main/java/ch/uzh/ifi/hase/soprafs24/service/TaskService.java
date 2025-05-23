@@ -181,7 +181,7 @@ public class TaskService {
             validateRecurringPutDto(task, taskPutDTO); // validate recurring fields
             checkDaysVisible(task); // check if daysVisible is valid (daysVisible >= half of frequency)
         } else {
-            if (taskPutDTO.getDeadline() != null) { //validate additional task
+            if (taskPutDTO.getDeadline() != null) { // validate additional task
                 checkAdditionalDeadline(taskPutDTO);
                 task.setDeadline(taskPutDTO.getDeadline());
                 calculateDaysVisible(task);
@@ -314,8 +314,8 @@ public class TaskService {
         // Filter by type (e.g., "recurring" or "additional")
         if (type != null) {
             allTasks = allTasks.stream()
-                .filter(task -> checkTaskType(task).equalsIgnoreCase(type))
-                .collect(Collectors.toList());
+                    .filter(task -> checkTaskType(task).equalsIgnoreCase(type))
+                    .collect(Collectors.toList());
         }
 
         // Filter by visibility if isActive is specified
@@ -562,7 +562,7 @@ public class TaskService {
     public void deleteTask(Long taskId, Long userId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
-        checkLockedByUser(task,userId);
+        checkLockedByUser(task, userId);
         checkIsPaused(task);
         verifyLuckyDraw(task);
         task.setActiveStatus(false);
@@ -698,7 +698,8 @@ public class TaskService {
     }
 
     public void calculateDeadlineOnEdit(Task task) {
-        // calculate deadline = max(currentDate, startDate) + frequency -> recurring task
+        // calculate deadline = max(currentDate, startDate) + frequency -> recurring
+        // task
         Calendar calendar = Calendar.getInstance();
         Date currentDate = new Date();
         Date baseDate = task.getStartDate().after(currentDate) ? task.getStartDate() : currentDate;
@@ -712,7 +713,7 @@ public class TaskService {
     public void calculateDeadlineOnFinish(Task task) {
         Date today = new Date();
         task.setStartDate(today);
-        // calculate deadline = currentDate  + frequency -> recurring task
+        // calculate deadline = currentDate + frequency -> recurring task
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(new Date());
         calendar.add(Calendar.DATE, task.getFrequency());
@@ -737,9 +738,8 @@ public class TaskService {
         return !today.before(visibleFrom);
     }
 
-
     public void calculateDeadlineOnExpire(Task task) {
-        // calculate dnew_eadline = old_deadline  + frequency -> recurring task
+        // calculate dnew_eadline = old_deadline + frequency -> recurring task
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(task.getDeadline());
         calendar.add(Calendar.DATE, task.getFrequency());
@@ -774,5 +774,15 @@ public class TaskService {
 
     public List<Task> getAllTasks() {
         return taskRepository.findAll();
+    }
+
+    public void unlockAllTasksForUser(Long userId) {
+        List<Task> lockedTasks = taskRepository.findAll().stream()
+                .filter(task -> userId.equals(task.getLockedByUser()))
+                .toList();
+        for (Task task : lockedTasks) {
+            task.setLockedByUser(null);
+            taskRepository.save(task);
+        }
     }
 }
