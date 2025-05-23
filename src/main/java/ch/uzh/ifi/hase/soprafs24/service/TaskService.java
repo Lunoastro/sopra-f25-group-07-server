@@ -712,13 +712,24 @@ public class TaskService {
 
     public void calculateDeadlineOnFinish(Task task) {
         Date today = new Date();
-        task.setStartDate(today);
-        // calculate deadline = currentDate + frequency -> recurring task
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(new Date());
-        calendar.add(Calendar.DATE, task.getFrequency());
-        Date newDeadline = calendar.getTime();
-        task.setDeadline(newDeadline);
+
+        if (task.getFrequency() == 1 && task.getDaysVisible() == 1) {
+            // Special case: shift startDate = today + 1 to prevent multiple completions today
+            calendar.setTime(today);
+            calendar.add(Calendar.DATE, 1);
+            Date startDate = calendar.getTime();
+            task.setStartDate(startDate);
+            // Deadline = startDate
+            task.setDeadline(task.getStartDate());
+        } else {
+            task.setStartDate(today);
+            // calculate deadline = currentDate + frequency -> recurring task
+            calendar.setTime(today);
+            calendar.add(Calendar.DATE, task.getFrequency());
+            Date newDeadline = calendar.getTime();
+            task.setDeadline(newDeadline);
+        }
     }
 
     public boolean isTaskVisibleOrFinishable(Task task) {
