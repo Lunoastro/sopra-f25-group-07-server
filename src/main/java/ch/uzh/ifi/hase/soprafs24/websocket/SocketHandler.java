@@ -1,14 +1,14 @@
 package ch.uzh.ifi.hase.soprafs24.websocket;
 
-import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.entity.Task;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.task.TaskGetDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.websocket.DatabaseChangeEventDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import ch.uzh.ifi.hase.soprafs24.service.TaskService;
-import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.ArrayList;
 
@@ -39,13 +38,13 @@ public class SocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final UserService userService;
     private final TeamRepository teamRepository;
-    private final TaskRepository taskRepository;
     private final TaskService taskService;
+
     @Autowired
-    public SocketHandler(UserService userService, TeamRepository teamRepository, TaskRepository taskRepository, TaskService taskService) {
+    public SocketHandler(UserService userService, TeamRepository teamRepository,
+            TaskService taskService) {
         this.userService = userService;
         this.teamRepository = teamRepository;
-        this.taskRepository = taskRepository;
         this.taskService = taskService;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
@@ -66,6 +65,17 @@ public class SocketHandler extends TextWebSocketHandler {
                 }
             }
         }
+    }
+
+    private void sendCurrentTasksForTeam(WebSocketSession session, Long teamId) throws IOException {
+        List<Task> teamTasks = taskService.getAllTasks().stream()
+                .filter(t -> teamId.equals(t.getTeamId()))
+                .toList();
+        List<TaskGetDTO> taskDTOs = teamTasks.stream()
+                .map(DTOMapper.INSTANCE::convertEntityToTaskGetDTO)
+                .toList();
+        DatabaseChangeEventDTO<List<TaskGetDTO>> event = new DatabaseChangeEventDTO<>("TASKS", taskDTOs);
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(event)));
     }
 
     @Override
@@ -130,6 +140,7 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 
+    // ...existing code...
     private void tryAuthenticate(WebSocketSession session, TextMessage message) throws IOException {
         String payload = message.getPayload();
         log.debug("Attempting to authenticate session {}.", session.getId());
@@ -160,22 +171,15 @@ public class SocketHandler extends TextWebSocketHandler {
                                 session.getAttributes().put("authenticated", true);
 
                                 if (user.getTeamId() != null) {
-                                    List<Task> tasks = taskRepository.findAll().stream()
-                                    .filter(t -> user.getId().equals(t.getTeamId()))
-                                    .toList();
-                                    List<TaskGetDTO> taskDTOs = tasks.stream()
-                                            .map(DTOMapper.INSTANCE::convertEntityToTaskGetDTO)
-                                            .collect(Collectors.toList());
-                                    Map<String, Object> initialMsg = Map.of(
-                                            "type", "TASKS",
-                                            "payload", taskDTOs);
-                                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(initialMsg)));
                                     Team userTeam = teamRepository.findTeamById(user.getTeamId());
                                     if (userTeam != null) {
                                         session.getAttributes().put("teamId", userTeam.getId());
                                         log.info(
                                                 "WebSocket session {} authenticated for user: {}, userId: {}, teamId: {}",
                                                 session.getId(), user.getUsername(), user.getId(), userTeam.getId());
+                                         sendCurrentTasksForTeam(session, user.getTeamId());
+                                        log.info("Sent TASKS message to session {} for userId {}.",
+                                                session.getId(), user.getId());
                                     } else {
                                         log.warn(
                                                 "WebSocket session {} authenticated for user: {}, userId: {}. User has teamId {} but team entity not found. Moving to pending.",
@@ -291,11 +295,16 @@ public class SocketHandler extends TextWebSocketHandler {
             log.info("WebSocket session {} re-associated with teamId: {} for userId: {}", session.getId(), teamId,
                     userId);
             try {
+
                 session.sendMessage(
                         new TextMessage(objectMapper
                                 .writeValueAsString(Map.of("type", "team_association_complete", "teamId", teamId))));
+                sendCurrentTasksForTeam(session, teamId);
+                log.info("Sent team_association_complete and TASKS message to session {} for userId {}.",
+                        session.getId(), userId);
             } catch (IOException e) {
-                log.error("Failed to send team association_complete message to session {}: {}", session.getId(),
+                log.error("Failed to send team association_complete or TASKS message to session {}: {}",
+                        session.getId(),
                         e.getMessage());
             }
         } else {

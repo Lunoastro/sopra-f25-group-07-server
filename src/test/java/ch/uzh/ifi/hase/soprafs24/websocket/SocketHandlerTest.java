@@ -4,7 +4,9 @@ import ch.uzh.ifi.hase.soprafs24.entity.Team;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.TaskRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.TeamRepository;
+
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
+import ch.uzh.ifi.hase.soprafs24.service.TaskService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,9 @@ class SocketHandlerTest {
 
     @Mock
     private UserService mockUserService;
+
+    @Mock
+    private TaskService mockTaskService;
 
     @Mock
     private TaskRepository mockTaskRepository;
@@ -92,7 +97,7 @@ class SocketHandlerTest {
         } catch (IOException e) {
             fail("Setup failed");
         }
-
+        socketHandler = new SocketHandler(mockUserService, mockTeamRepository, mockTaskService);
         socketHandler.getSessionsForTesting().clear();
         socketHandler.getPendingSessionsMapForTesting().clear();
     }
