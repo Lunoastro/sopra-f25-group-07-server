@@ -787,20 +787,20 @@ class TaskControllerTest {
     }
 
     @Test
-    void PUT_expireTasks_noCronHeader_returnsUnauthorized() throws Exception {
-        mockMvc.perform(put("/tasks/expire"))
+    void GET_expireTasks_noCronHeader_returnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/tasks/expire"))
             .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void PUT_expireTasks_invalidCronHeader_returnsUnauthorized() throws Exception {
-        mockMvc.perform(put("/tasks/expire")
+    void GET_expireTasks_invalidCronHeader_returnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/tasks/expire")
                 .header("X-Appengine-Cron", "false"))
             .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void PUT_expireTasks_validCronHeader_callsExpireLogic() throws Exception {
+    void GET_expireTasks_validCronHeader_callsExpireLogic() throws Exception {
         List<TaskGetDTO> expiredTasks = new ArrayList<>();
         TaskGetDTO expiredTask = new TaskGetDTO();
         expiredTask.setId(1L);
@@ -810,7 +810,7 @@ class TaskControllerTest {
         when(taskService.getAllTasks()).thenReturn(Collections.emptyList()); // or mocked expired ones
         // you can also mock more involved logic if needed
 
-        mockMvc.perform(put("/tasks/expire")
+        mockMvc.perform(get("/tasks/expire")
                 .header("X-Appengine-Cron", "true"))
             .andExpect(status().isNoContent()); // or .isOk() if you return 200 in future
     }
