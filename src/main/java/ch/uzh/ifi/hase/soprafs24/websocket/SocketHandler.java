@@ -300,6 +300,7 @@ public class SocketHandler extends TextWebSocketHandler {
                 "Plain WebSocket connection closed: {} with status: {} - {} - Authenticated: {}. Removed from sessions: {}, Removed from pending: {}",
                 session.getId(), status.getCode(), status.getReason(), session.getAttributes().get("authenticated"),
                 removedFromSessions, removedFromPending);
+                taskService.unlockAllTasksForUser(userId);
     }
 
     @Override
