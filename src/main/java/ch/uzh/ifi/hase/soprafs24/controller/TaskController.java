@@ -193,7 +193,7 @@ public class TaskController {
     }
 
 
-    @PutMapping("/tasks/expire")
+    @GetMapping("/tasks/expire")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public List<TaskGetDTO> expireTasks(@RequestHeader(value = "X-Appengine-Cron", required = false) String cronHeader) {
         if (!"true".equalsIgnoreCase(cronHeader)) {
