@@ -1972,4 +1972,84 @@ class TaskServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
         assertEquals("You are not the user who locked this task.", exception.getReason());
     }
+
+    @Test
+    void lockTask_success_whenNotLocked() {
+        // given
+        Long taskId = 1L;
+        Long userId = 42L;
+        Task task = new Task();
+        task.setId(taskId);
+        task.setLockedByUser(null);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(i -> i.getArgument(0));
+
+        // when
+        Task result = taskService.lockTask(taskId, userId);
+
+        // then
+        assertEquals(userId, result.getLockedByUser());
+        verify(taskRepository).findById(taskId);
+        verify(taskRepository).save(task);
+    }
+
+    @Test
+    void lockTask_success_whenAlreadyLockedBySameUser() {
+        // given
+        Long taskId = 1L;
+        Long userId = 42L;
+        Task task = new Task();
+        task.setId(taskId);
+        task.setLockedByUser(userId);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(i -> i.getArgument(0));
+
+        // when
+        Task result = taskService.lockTask(taskId, userId);
+
+        // then
+        assertEquals(userId, result.getLockedByUser());
+        verify(taskRepository).findById(taskId);
+        verify(taskRepository).save(task);
+    }
+
+    @Test
+    void lockTask_conflict_whenLockedByAnotherUser() {
+        // given
+        Long taskId = 1L;
+        Long userId = 42L;
+        Long anotherUserId = 99L;
+        Task task = new Task();
+        task.setId(taskId);
+        task.setLockedByUser(anotherUserId);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.lockTask(taskId, userId));
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals("Task is already locked by another user.", exception.getReason());
+        verify(taskRepository).findById(taskId);
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void lockTask_notFound_throwsNotFoundException() {
+        // given
+        Long taskId = 123L;
+        Long userId = 42L;
+        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+
+        // when & then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> taskService.lockTask(taskId, userId));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        assertEquals("Task not found with ID: " + taskId, exception.getReason());
+        verify(taskRepository).findById(taskId);
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
 }
