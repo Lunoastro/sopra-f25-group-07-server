@@ -1,6 +1,0 @@
-cron:
-- description: "Expire tasks daily"
-  url: /tasks/expire
-  schedule: every 24 hours
-  timezone: UTC
-  method: GET

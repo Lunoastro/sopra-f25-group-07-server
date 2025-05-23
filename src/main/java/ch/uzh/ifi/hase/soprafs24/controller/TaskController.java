@@ -195,9 +195,9 @@ public class TaskController {
 
     @GetMapping("/tasks/expire")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> expireTasks(@RequestHeader(value = "X-Appengine-Cron", required = false) String cronHeader) {
-        if (!"true".equalsIgnoreCase(cronHeader)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access denied. Cron job only.");
+    public List<TaskGetDTO> expireTasks(@RequestHeader(value = "X-CRON-AUTH", required = false) String authHeader) {
+        if (!"mySecureCronToken987".equals(authHeader)) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access denied. Cron job only.");
         }
 
         // Get all tasks in the system
