@@ -747,14 +747,14 @@ class TaskServiceTest {
         task1.setId(1L);
         task1.setName("Active Task 1");
         task1.setActiveStatus(true);
-        task1.setDaysVisible(3);
+        task1.setDaysVisible(4); // Changed from 3 to 4
         task1.setDeadline(futureDeadline);
 
         Task task2 = new Task();
         task2.setId(2L);
         task2.setName("Active Task 2");
         task2.setActiveStatus(true);
-        task2.setDaysVisible(3);
+        task2.setDaysVisible(4); // Changed from 3 to 4
         task2.setDeadline(futureDeadline);
 
         Task task3 = new Task();
@@ -826,7 +826,7 @@ class TaskServiceTest {
         task2.setName("Active Recurring Task");
         task2.setActiveStatus(true);
         task2.setFrequency(7); // Recurring
-        task2.setDaysVisible(3);
+        task2.setDaysVisible(4); // Changed from 3 to 4
         task2.setDeadline(futureDeadline);
 
         Task task3 = new Task();
@@ -2090,7 +2090,7 @@ class TaskServiceTest {
         task1.setPaused(true);
         task1.setDeadline(new Date(System.currentTimeMillis() + 1000000));
         task1.setPausedDate(new Date(System.currentTimeMillis() - 1000000));
-        task1.setCreationDate(new Date(System.currentTimeMillis() - 2000000)); 
+        task1.setCreationDate(new Date(System.currentTimeMillis() - 2000000));
 
         Task task2 = new Task();
         task2.setId(2L);
@@ -2098,7 +2098,7 @@ class TaskServiceTest {
         task2.setPaused(true);
         task2.setDeadline(new Date(System.currentTimeMillis() + 2000000));
         task2.setPausedDate(new Date(System.currentTimeMillis() - 2000000));
-        task2.setCreationDate(new Date(System.currentTimeMillis() - 3000000)); 
+        task2.setCreationDate(new Date(System.currentTimeMillis() - 3000000));
 
         List<Task> tasks = Arrays.asList(task1, task2);
 
