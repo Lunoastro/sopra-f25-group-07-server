@@ -909,7 +909,7 @@ class TaskServiceTest {
     }
 
     @Test
-    void validateRecurringPostDto_pastStartDate_throwsIllegalArgumentException() {
+    void validateRecurringPostDto_pastStartDate_throwsResponseStatusException() {
         // given
         TaskPostDTO invalidTaskPostDTO = new TaskPostDTO();
         invalidTaskPostDTO.setName("Invalid Recurring Task");
@@ -919,9 +919,9 @@ class TaskServiceTest {
         invalidTaskPostDTO.setDaysVisible(4);
 
         // when & then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> taskService.validatePostDto(invalidTaskPostDTO));
-        assertEquals("Invalid or past start date provided.", exception.getMessage());
+        assertEquals("Start date must be today or in the future", exception.getReason());
     }
 
     // Tests for validateRecurringPutDto(Task, Task)

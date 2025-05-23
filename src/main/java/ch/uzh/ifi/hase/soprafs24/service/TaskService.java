@@ -161,24 +161,8 @@ public class TaskService {
                     "Task frequency cannot be null or less than or equal to 0");
         }
         if (dto.getStartDate() != null) {
-            // Strip time from startDate
-            Calendar startCal = Calendar.getInstance();
-            startCal.setTime(dto.getStartDate());
-            startCal.set(Calendar.HOUR_OF_DAY, 0);
-            startCal.set(Calendar.MINUTE, 0);
-            startCal.set(Calendar.SECOND, 0);
-            startCal.set(Calendar.MILLISECOND, 0);
-
-            // Strip time from current date
-            Calendar todayCal = Calendar.getInstance();
-            todayCal.set(Calendar.HOUR_OF_DAY, 0);
-            todayCal.set(Calendar.MINUTE, 0);
-            todayCal.set(Calendar.SECOND, 0);
-            todayCal.set(Calendar.MILLISECOND, 0);
-
-            if (startCal.getTime().before(todayCal.getTime())) {
-                throw new IllegalArgumentException("Invalid or past start date provided.");
-            }
+            Task task = DTOMapper.INSTANCE.convertTaskPostDTOtoEntity(dto);
+            validateAndSetStartDate(task);
         }
         int half = dto.getFrequency() / 2;
         if (half == 0) { // SPECIAL CASE: if frequency is 1, we set half to 1 as daysVisible can never be
@@ -250,24 +234,28 @@ public class TaskService {
             task.setDaysVisible(taskPutDTO.getDaysVisible());
         }
         if (taskPutDTO.getStartDate() != null) {
-            Calendar startCal = Calendar.getInstance();
-            startCal.setTime(taskPutDTO.getStartDate());
-            startCal.set(Calendar.HOUR_OF_DAY, 0);
-            startCal.set(Calendar.MINUTE, 0);
-            startCal.set(Calendar.SECOND, 0);
-            startCal.set(Calendar.MILLISECOND, 0);
-
-            Calendar todayCal = Calendar.getInstance();
-            todayCal.set(Calendar.HOUR_OF_DAY, 0);
-            todayCal.set(Calendar.MINUTE, 0);
-            todayCal.set(Calendar.SECOND, 0);
-            todayCal.set(Calendar.MILLISECOND, 0);
-
-            if (startCal.getTime().before(todayCal.getTime())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be today or in the future");
-            }
+            validateAndSetStartDate(taskPutDTO);
             task.setStartDate(taskPutDTO.getStartDate());
             calculateDeadlineOnEdit(task);
+        }
+    }
+
+    private void validateAndSetStartDate(Task task) {
+        Calendar startCal = Calendar.getInstance();
+        startCal.setTime(task.getStartDate());
+        startCal.set(Calendar.HOUR_OF_DAY, 0);
+        startCal.set(Calendar.MINUTE, 0);
+        startCal.set(Calendar.SECOND, 0);
+        startCal.set(Calendar.MILLISECOND, 0);
+
+        Calendar todayCal = Calendar.getInstance();
+        todayCal.set(Calendar.HOUR_OF_DAY, 0);
+        todayCal.set(Calendar.MINUTE, 0);
+        todayCal.set(Calendar.SECOND, 0);
+        todayCal.set(Calendar.MILLISECOND, 0);
+
+        if (startCal.getTime().before(todayCal.getTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be today or in the future");
         }
     }
 
