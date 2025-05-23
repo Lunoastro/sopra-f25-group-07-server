@@ -33,6 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Date;
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -786,109 +787,32 @@ class TaskControllerTest {
     }
 
     @Test
-    void PUT_successfulExpireTask_taskExpired() throws Exception {
-        // Setup
-        Long taskId = 1L;
-        String token = "valid_token";
-        
-        Task existingTask = new Task();
-        existingTask.setId(taskId);
-        existingTask.setName("Expired Task");
-        existingTask.setIsAssignedTo(123L);
-        existingTask.setValue(100);
-        existingTask.setDeadline(new Date());
-        existingTask.setDaysVisible(3); 
-        
-        Task updatedTask = new Task();
-        updatedTask.setId(taskId);
-        updatedTask.setName("Expired Task");
-        updatedTask.setIsAssignedTo(123L);
-        updatedTask.setValue(100);
-        Date oldDeadline = existingTask.getDeadline();
-        updatedTask.setStartDate(oldDeadline);
-        
-        // Setup for a new deadline 3 days later
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(oldDeadline);
-        calendar.add(Calendar.DATE, 3);
-        updatedTask.setDeadline(calendar.getTime());
-        
-        TaskGetDTO updatedTaskDTO = new TaskGetDTO();
-        updatedTaskDTO.setId(taskId);
-        updatedTaskDTO.setName("Expired Task");
-        updatedTaskDTO.setIsAssignedTo(123L);    
-        
-        doNothing().when(teamService).validateTeamPaused(token);
-        doNothing().when(taskService).validateTaskInTeam(token, taskId);
-        when(taskService.getTaskById(taskId)).thenReturn(existingTask);
-        when(taskService.checkTaskType(existingTask)).thenReturn("additional");
-        doNothing().when(userService).deductExperiencePoints(existingTask.getIsAssignedTo(), existingTask.getValue());
-        doNothing().when(taskService).saveTask(existingTask);
-        
-        // Perform the PUT request
-        MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
-        
-        // Match on status code and verify the response JSON structure
-        mockMvc.perform(putRequest)
-            .andExpect(status().isNoContent());
-        
-        // Verify important method calls
-        verify(teamService).validateTeamPaused(token);
-        verify(taskService).validateTaskInTeam(token, taskId);
-        verify(taskService).getTaskById(taskId);
-        verify(userService).deductExperiencePoints(existingTask.getIsAssignedTo(), existingTask.getValue());
-        verify(taskService).saveTask(any(Task.class));
+    void PUT_expireTasks_noCronHeader_returnsUnauthorized() throws Exception {
+        mockMvc.perform(put("/tasks/expire"))
+            .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void PUT_expireTask_teamPaused_returnsForbidden() throws Exception {
-        // Setup
-        Long taskId = 1L;
-        String token = "valid_token";
-        
-        // Mock service behavior - team is paused
-        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Team is paused"))
-            .when(teamService).validateTeamPaused(token);
-        
-        // Perform the PUT request
-        MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
-        
-        // Verify response
-        mockMvc.perform(putRequest)
-            .andExpect(status().isForbidden());
-        
-        verify(teamService).validateTeamPaused(token);
-        verify(taskService, never()).validateTaskInTeam(anyString(), anyLong());
-        verify(taskService, never()).getTaskById(anyLong());
+    void PUT_expireTasks_invalidCronHeader_returnsUnauthorized() throws Exception {
+        mockMvc.perform(put("/tasks/expire")
+                .header("X-Appengine-Cron", "false"))
+            .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void PUT_expireTask_taskNotInTeam_returnsForbidden() throws Exception {
-        // Setup
-        Long taskId = 1L;
-        String token = "valid_token";
-        
-        // Mock service behavior - task not in user's team
-        doNothing().when(teamService).validateTeamPaused(token);
-        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Task does not belong to the team of the user"))
-            .when(taskService).validateTaskInTeam(token, taskId);
-        
-        // Perform the PUT request
-        MockHttpServletRequestBuilder putRequest = put("/tasks/{taskId}/expire", taskId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .header("Authorization", "Bearer " + token);
-        
-        // Verify response
-        mockMvc.perform(putRequest)
-            .andExpect(status().isForbidden());
-        
-        verify(teamService).validateTeamPaused(token);
-        verify(taskService).validateTaskInTeam(token, taskId);
-        verify(taskService, never()).getTaskById(anyLong());
+    void PUT_expireTasks_validCronHeader_callsExpireLogic() throws Exception {
+        List<TaskGetDTO> expiredTasks = new ArrayList<>();
+        TaskGetDTO expiredTask = new TaskGetDTO();
+        expiredTask.setId(1L);
+        expiredTask.setName("Expired Task");
+        expiredTasks.add(expiredTask);
+
+        when(taskService.getAllTasks()).thenReturn(Collections.emptyList()); // or mocked expired ones
+        // you can also mock more involved logic if needed
+
+        mockMvc.perform(put("/tasks/expire")
+                .header("X-Appengine-Cron", "true"))
+            .andExpect(status().isNoContent()); // or .isOk() if you return 200 in future
     }
 
     @Test

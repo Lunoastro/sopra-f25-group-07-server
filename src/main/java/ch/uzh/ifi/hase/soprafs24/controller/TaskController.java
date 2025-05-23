@@ -18,8 +18,13 @@ import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 public class TaskController {
+
+  private static final Logger logger = LoggerFactory.getLogger(TaskController.class);
 
   private final TaskService taskService;
   private final UserRepository userrepository;
@@ -100,6 +105,7 @@ public class TaskController {
             taskGetDTOs.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
             }
         }
+        logger.warn("Received FILTERED TASKS: {}", taskGetDTOs);
         return taskGetDTOs;
     }
 
@@ -187,63 +193,60 @@ public class TaskController {
     }
 
 
-    @PutMapping("/tasks/{taskId}/expire")
+    @PutMapping("/tasks/expire")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public List<TaskGetDTO> expireTasks(@PathVariable Long taskId, @RequestHeader("Authorization") String authorizationHeader) {
-        // Validate the user token
-        String userToken = validateAuthorizationHeader(authorizationHeader);
-        teamService.validateTeamPaused(userToken);
-        
-        // Check if task is in the same team as the user
-        taskService.validateTaskInTeam(userToken, taskId);
-        
-        // Get the task by ID
-        Task task = taskService.getTaskById(taskId);
-        
-        // Create list to hold updated tasks
-        List<TaskGetDTO> updatedTasks = new ArrayList<>();
-        
-        // Check if the task has been claimed by someone
-        if (task.getIsAssignedTo() != null) {
-            // Deduct experience points from one user based on the task value
-            userService.deductExperiencePoints(task.getIsAssignedTo(), task.getValue());
-        }
-        else {
-            // if the task is not claimed, every user loses some experience points
-            taskService.deductExperiencePointsFromAll(task.getTeamId(), task.getValue());
-        }
-        
-        // Record the old deadline (which was missed) as the new start date
-        Date oldDeadline = task.getDeadline();
-        task.setStartDate(oldDeadline);
-        
-        String taskType = taskService.checkTaskType(task);
-        if (additionalTask.equals(taskType)) {
-            // For additional tasks: directly use the known daysVisible to calculate new deadline
-            int daysVisible = task.getDaysVisible();
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(task.getStartDate());
-            calendar.add(Calendar.DATE, daysVisible);
-            task.setDeadline(calendar.getTime());
-        } else {
-            // For recurring tasks: use existing logic to calculate the next deadline
-            taskService.calculateDeadlineOnExpire(task);
+    public List<TaskGetDTO> expireTasks(@RequestHeader(value = "X-Appengine-Cron", required = false) String cronHeader) {
+        if (!"true".equalsIgnoreCase(cronHeader)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access denied. Cron job only.");
         }
 
-        // Lucky draw effect is removed
-        taskService.unLuckyDraw(task);
+        // Get all tasks in the system
+        List<Task> allTasks = taskService.getAllTasks();
 
-        // Unassign the task
-        taskService.unassignTask(task);
-        
-        // Save the updated task
-        taskService.saveTask(task);
-        
-        // Add the updated task to the response list
-        updatedTasks.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
-        
-        return updatedTasks;
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MILLISECOND, 0);
+        Date currentDate = today.getTime();
+
+        List<TaskGetDTO> expiredTasks = new ArrayList<>();
+
+        for (Task task : allTasks) {
+            if (!Boolean.TRUE.equals(task.getActiveStatus())) continue;
+
+            if (task.getDeadline().before(currentDate)) {
+                if (task.getIsAssignedTo() != null) {
+                    userService.deductExperiencePoints(task.getIsAssignedTo(), task.getValue());
+                } else {
+                    taskService.deductExperiencePointsFromAll(task.getTeamId(), task.getValue());
+                }
+
+                Date oldDeadline = task.getDeadline();
+                task.setStartDate(oldDeadline);
+
+                String taskType = taskService.checkTaskType(task);
+                if (additionalTask.equals(taskType)) {
+                    int daysVisible = task.getDaysVisible();
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.setTime(task.getStartDate());
+                    calendar.add(Calendar.DATE, daysVisible);
+                    task.setDeadline(calendar.getTime());
+                } else {
+                    taskService.calculateDeadlineOnExpire(task);
+                }
+
+                taskService.unLuckyDraw(task);
+                taskService.unassignTask(task);
+                taskService.saveTask(task);
+
+                expiredTasks.add(DTOMapper.INSTANCE.convertEntityToTaskGetDTO(task));
+            }
+        }
+
+        return expiredTasks;
     }
+
 
     @DeleteMapping("/tasks/{taskId}/finish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
