@@ -104,8 +104,6 @@ public class SocketHandler extends TextWebSocketHandler {
                         Long taskId = Long.parseLong(taskIdStr);
 
                         taskService.lockTask(taskId, userId);
-
-                        log.info("User {} requested to lock task {}", userId, taskId);
                     } catch (NumberFormatException e) {
                         log.warn("Invalid taskId format received for LOCK: {}", taskIdStr);
 
