@@ -135,34 +135,57 @@ public class TaskService {
     }
 
     private void checkAdditionalDeadline(Task task) {
-        Calendar today = Calendar.getInstance();
-        today.set(Calendar.HOUR_OF_DAY, 0);
-        today.set(Calendar.MINUTE, 0);
-        today.set(Calendar.SECOND, 0);
-        today.set(Calendar.MILLISECOND, 0);
-        if (task.getDeadline().before(today.getTime())) {
+        Calendar now = Calendar.getInstance();
+        now.set(Calendar.HOUR_OF_DAY, 0);
+        now.set(Calendar.MINUTE, 0);
+        now.set(Calendar.SECOND, 0);
+        now.set(Calendar.MILLISECOND, 0);
+
+        Calendar deadline = Calendar.getInstance();
+        deadline.setTime(task.getDeadline());
+        deadline.set(Calendar.HOUR_OF_DAY, 0);
+        deadline.set(Calendar.MINUTE, 0);
+        deadline.set(Calendar.SECOND, 0);
+        deadline.set(Calendar.MILLISECOND, 0);
+
+        if (deadline.before(now)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or past deadline provided.");
         }
     }
+
+
 
     private void validateRecurringPostDto(TaskPostDTO dto) {
         if (dto.getFrequency() == null || dto.getFrequency() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Task frequency cannot be null or less than or equal to 0");
         }
-        if (dto.getStartDate() != null && dto.getStartDate().before(new Date())) {
-            throw new IllegalArgumentException("Invalid or past start date provided.");
+        if (dto.getStartDate() != null) {
+            // Strip time from startDate
+            Calendar startCal = Calendar.getInstance();
+            startCal.setTime(dto.getStartDate());
+            startCal.set(Calendar.HOUR_OF_DAY, 0);
+            startCal.set(Calendar.MINUTE, 0);
+            startCal.set(Calendar.SECOND, 0);
+            startCal.set(Calendar.MILLISECOND, 0);
+
+            // Strip time from current date
+            Calendar todayCal = Calendar.getInstance();
+            todayCal.set(Calendar.HOUR_OF_DAY, 0);
+            todayCal.set(Calendar.MINUTE, 0);
+            todayCal.set(Calendar.SECOND, 0);
+            todayCal.set(Calendar.MILLISECOND, 0);
+
+            if (startCal.getTime().before(todayCal.getTime())) {
+                throw new IllegalArgumentException("Invalid or past start date provided.");
+            }
         }
         int half = dto.getFrequency() / 2;
         if (half == 0) { // SPECIAL CASE: if frequency is 1, we set half to 1 as daysVisible can never be
                          // 0
             half = 1;
         }
-        if (dto.getDaysVisible() != null && (dto.getDaysVisible() > half || dto.getDaysVisible() <= 0)) { // half also
-                                                                                                          // includes 0
-                                                                                                          // and
-                                                                                                          // negative
-                                                                                                          // values
+        if (dto.getDaysVisible() != null && (dto.getDaysVisible() > half || dto.getDaysVisible() <= 0)) { // half also includes 0 and negative values
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Task daysVisible cannot be null or greater than half of frequency (exception: if frequency = 1, daysVisible = 1)");
         }
@@ -227,8 +250,21 @@ public class TaskService {
             task.setDaysVisible(taskPutDTO.getDaysVisible());
         }
         if (taskPutDTO.getStartDate() != null) {
-            if (taskPutDTO.getStartDate().before(new Date())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be in the future");
+            Calendar startCal = Calendar.getInstance();
+            startCal.setTime(taskPutDTO.getStartDate());
+            startCal.set(Calendar.HOUR_OF_DAY, 0);
+            startCal.set(Calendar.MINUTE, 0);
+            startCal.set(Calendar.SECOND, 0);
+            startCal.set(Calendar.MILLISECOND, 0);
+
+            Calendar todayCal = Calendar.getInstance();
+            todayCal.set(Calendar.HOUR_OF_DAY, 0);
+            todayCal.set(Calendar.MINUTE, 0);
+            todayCal.set(Calendar.SECOND, 0);
+            todayCal.set(Calendar.MILLISECOND, 0);
+
+            if (startCal.getTime().before(todayCal.getTime())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date must be today or in the future");
             }
             task.setStartDate(taskPutDTO.getStartDate());
             calculateDeadlineOnEdit(task);
@@ -297,17 +333,11 @@ public class TaskService {
         // Filter by visibility if isActive is specified
         if (isActive != null) {
             allTasks = allTasks.stream()
-                .filter(task -> isActive.equals(isTaskVisibleOrFinishable(task)))
+                .filter(task -> isActive.equals(isTaskVisibleOrFinishable(task)) &&
+                                isActive.equals(task.getActiveStatus()))
                 .collect(Collectors.toList());
         }
         return allTasks;
-    }
-
-    public List<Task> onlyVisibleTasks(List<Task> unfiltered) {
-        // Filter out tasks that are not visible or finishable
-        return unfiltered.stream()
-            .filter(this::isTaskVisibleOrFinishable)
-            .collect(Collectors.toList());
     }
 
     public List<Task> luckyDrawTasks(Long userTeamId) {
@@ -408,6 +438,10 @@ public class TaskService {
         return taskRepository.findAll().stream()
                 .filter(task -> userId.equals(task.getcreatorId()))
                 .collect(Collectors.toList());
+    }
+
+    public List<Task> getTasksByTeamId(Long teamId) {
+        return taskRepository.findTaskByTeamId(teamId);
     }
 
     private void newDeadline(Task task) {
@@ -726,15 +760,13 @@ public class TaskService {
     }
 
     public void calculateDaysVisible(Task task) {
-        long millisDiff = task.getDeadline().getTime() - task.getStartDate().getTime();
+        long millisDiff = task.getDeadline().getTime() - task.getCreationDate().getTime();
         double diffInDays = (double) millisDiff / (1000 * 60 * 60 * 24);
-        int daysDiff = (int) Math.ceil(diffInDays);
-        // Special case; creationDate and deadline are the same
-        if (daysDiff == 0) {
-            daysDiff = 1;
-        }
-        task.setDaysVisible(daysDiff);
+        int daysVisible = Math.max(1, (int) Math.ceil(diffInDays));
+        task.setDaysVisible(daysVisible);
     }
+
+
 
     private void checkDaysVisible(Task task) {
         String taskType = checkTaskType(task);
@@ -752,7 +784,7 @@ public class TaskService {
         }
     }
 
-    private List<Task> getAllTasks() {
+    public List<Task> getAllTasks() {
         return taskRepository.findAll();
     }
 }

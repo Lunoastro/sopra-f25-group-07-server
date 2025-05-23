@@ -1009,7 +1009,7 @@ class TaskServiceTest {
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> taskService.validateToBeEditedFields(existingTask, updatedTask));
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
-        assertEquals("Start date must be in the future", exception.getReason());
+        assertEquals("Start date must be today or in the future", exception.getReason());
     }
 
     // Tests for validateTaskInTeam(String, Long)

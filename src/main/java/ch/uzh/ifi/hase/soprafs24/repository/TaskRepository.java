@@ -13,5 +13,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     Task findTaskByName(String name);
 
+    List<Task> findTaskByTeamId(Long id);
+
     List<Task> findTaskByIsAssignedTo(Long id); //user id goes in here
 }
