@@ -384,6 +384,7 @@ public class TaskService {
         for (Task task : unclaimedTasks) {
             User user = teamMembers.get(userIndex);
             task.setIsAssignedTo(user.getId());
+            task.setAssigneeName(user.getUsername());
             task.setColor(user.getColor());
 
             userRepository.save(user);
