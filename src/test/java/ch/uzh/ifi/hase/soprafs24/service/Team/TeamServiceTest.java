@@ -50,31 +50,30 @@ class TeamServiceTest {
 
     @BeforeEach
     void setup() {
-    MockitoAnnotations.openMocks(this);
+        MockitoAnnotations.openMocks(this);
 
-    testTeam = new Team();
-    testTeam.setId(1L);
-    testTeam.setName("Test Team");
-    testTeam.setCode("ABC123");
-    testTeam.setXp(0);
-    testTeam.setLevel(1);
+        testTeam = new Team();
+        testTeam.setId(1L);
+        testTeam.setName("Test Team");
+        testTeam.setCode("ABC123");
+        testTeam.setXp(0);
+        testTeam.setLevel(1);
 
-    List<Long> members = new ArrayList<>();
-    members.add(1L);
-    testTeam.setMembers(members);
+        List<Long> members = new ArrayList<>();
+        members.add(1L);
+        testTeam.setMembers(members);
 
-    testUser = new User();
-    testUser.setId(1L);
-    testUser.setName("Test User");
-    testUser.setUsername("testuser");
-    testUser.setPassword("password");
+        testUser = new User();
+        testUser.setId(1L);
+        testUser.setName("Test User");
+        testUser.setUsername("testuser");
+        testUser.setPassword("password");
 
-    Mockito.when(teamRepository.save(Mockito.any())).thenReturn(testTeam);
-    Mockito.when(teamRepository.findTeamById(Mockito.anyLong())).thenReturn(testTeam);
-    Mockito.when(userRepository.findById(Mockito.anyLong())).thenReturn(java.util.Optional.of(testUser));
-    Mockito.when(userService.getUserById(Mockito.anyLong())).thenReturn(testUser);
-}
-
+        Mockito.when(teamRepository.save(Mockito.any())).thenReturn(testTeam);
+        Mockito.when(teamRepository.findTeamById(Mockito.anyLong())).thenReturn(testTeam);
+        Mockito.when(userRepository.findById(Mockito.anyLong())).thenReturn(java.util.Optional.of(testUser));
+        Mockito.when(userService.getUserById(Mockito.anyLong())).thenReturn(testUser);
+    }
 
     @Test
     void createTeam_validInputs_success() {
@@ -118,7 +117,6 @@ class TeamServiceTest {
         Mockito.verify(teamRepository, Mockito.times(1)).findByCode(Mockito.anyString());
     }
 
-
     @Test
     void joinTeam_invalidCode_throwsException() {
         Mockito.when(teamRepository.findByCode(Mockito.anyString())).thenReturn(null);
@@ -140,7 +138,8 @@ class TeamServiceTest {
     void updateTeamName_invalidTeamId_throwsException() {
         Mockito.when(teamRepository.findTeamById(Mockito.anyLong())).thenReturn(null);
 
-        assertThrows(ResponseStatusException.class, () -> teamService.updateTeamName(999L, testUser.getId(), "New Team Name"));
+        assertThrows(ResponseStatusException.class,
+                () -> teamService.updateTeamName(999L, testUser.getId(), "New Team Name"));
     }
 
     @Test
@@ -148,7 +147,8 @@ class TeamServiceTest {
         Mockito.when(teamRepository.findTeamById(Mockito.anyLong())).thenReturn(testTeam);
         Mockito.when(userRepository.findById(Mockito.anyLong())).thenReturn(java.util.Optional.of(new User()));
 
-        assertThrows(ResponseStatusException.class, () -> teamService.updateTeamName(testTeam.getId(), 999L, "New Team Name"));
+        assertThrows(ResponseStatusException.class,
+                () -> teamService.updateTeamName(testTeam.getId(), 999L, "New Team Name"));
     }
 
     @Test
@@ -177,5 +177,55 @@ class TeamServiceTest {
         Mockito.when(teamRepository.findTeamById(Mockito.anyLong())).thenReturn(null);
 
         assertThrows(ResponseStatusException.class, () -> teamService.quitTeam(testUser.getId(), 999L));
+    }
+
+    @Test
+    void validateTeamPaused_teamNotPaused_noException() {
+        String userToken = "validToken";
+        testUser.setToken(userToken);
+        testUser.setTeamId(testTeam.getId());
+        testTeam.setIsPaused(false);
+
+        Mockito.when(userRepository.findByToken(userToken)).thenReturn(testUser);
+        Mockito.when(teamRepository.findTeamById(testTeam.getId())).thenReturn(testTeam);
+
+        assertDoesNotThrow(() -> teamService.validateTeamPaused(userToken));
+        Mockito.verify(taskService).validateUserToken(userToken);
+    }
+
+    @Test
+    void validateTeamPaused_teamPaused_throwsException() {
+        String userToken = "validToken";
+        testUser.setToken(userToken);
+        testUser.setTeamId(testTeam.getId());
+        testTeam.setIsPaused(true);
+
+        Mockito.when(userRepository.findByToken(userToken)).thenReturn(testUser);
+        Mockito.when(teamRepository.findTeamById(testTeam.getId())).thenReturn(testTeam);
+
+        assertThrows(ResponseStatusException.class, () -> teamService.validateTeamPaused(userToken));
+        Mockito.verify(taskService).validateUserToken(userToken);
+    }
+
+    @Test
+    void validateTeamPaused_invalidUserToken_throwsException() {
+        String userToken = "invalidToken";
+        Mockito.when(userRepository.findByToken(userToken)).thenReturn(null);
+
+        assertThrows(ResponseStatusException.class, () -> teamService.validateTeamPaused(userToken));
+        Mockito.verify(taskService).validateUserToken(userToken);
+    }
+
+    @Test
+    void validateTeamPaused_teamNotFound_throwsException() {
+        String userToken = "validToken";
+        testUser.setToken(userToken);
+        testUser.setTeamId(999L);
+
+        Mockito.when(userRepository.findByToken(userToken)).thenReturn(testUser);
+        Mockito.when(teamRepository.findTeamById(999L)).thenReturn(null);
+
+        assertThrows(ResponseStatusException.class, () -> teamService.validateTeamPaused(userToken));
+        Mockito.verify(taskService).validateUserToken(userToken);
     }
 }
