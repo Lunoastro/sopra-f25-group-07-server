@@ -90,6 +90,9 @@ public class Task implements Serializable {
     @Column(nullable = true)
     private Long lockedByUser;
 
+    @Column(nullable = true)
+    private Date lastFinish;
+
     // Getters and Setters
     public Long getId() {
         return id;
@@ -141,6 +144,14 @@ public class Task implements Serializable {
 
     public Date getUnpausedDate() {
         return unpausedDate;
+    }
+
+    public void setLastFinish(Date lastFinish) {
+        this.lastFinish = lastFinish;
+    }
+
+    public Date getLastFinish() {
+        return lastFinish;
     }
 
     public void setUnpausedDate(Date unpausedDate) {

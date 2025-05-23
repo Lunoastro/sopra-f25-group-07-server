@@ -693,7 +693,7 @@ public class TaskService {
         // calculate deadline = startDate + frequency days -> recurring task
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(task.getStartDate());
-        calendar.add(Calendar.DATE, task.getFrequency());
+        calendar.add(Calendar.DATE, task.getFrequency() - 1);
         Date deadline = calendar.getTime();
         task.setDeadline(deadline);
     }
@@ -706,37 +706,51 @@ public class TaskService {
         Date baseDate = task.getStartDate().after(currentDate) ? task.getStartDate() : currentDate;
 
         calendar.setTime(baseDate);
-        calendar.add(Calendar.DATE, task.getFrequency());
+        calendar.add(Calendar.DATE, task.getFrequency()-1);
         Date newDeadline = calendar.getTime();
         task.setDeadline(newDeadline);
     }
 
     public void calculateDeadlineOnFinish(Task task) {
         Date today = new Date();
-        task.setStartDate(today);
-        // calculate deadline = currentDate + frequency -> recurring task
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(new Date());
-        calendar.add(Calendar.DATE, task.getFrequency());
-        Date newDeadline = calendar.getTime();
-        task.setDeadline(newDeadline);
+
+        // Unified startDate calculation
+        calendar.setTime(today);
+        if (task.getFrequency() == 1 && task.getDaysVisible() == 1) {
+            calendar.add(Calendar.DATE, 1); // shift to tomorrow to prevent same-day repetition
+        }
+        Date startDate = calendar.getTime();
+        task.setStartDate(startDate);
+
+        // Unified deadline calculation
+        calendar.setTime(startDate);
+        calendar.add(Calendar.DATE, task.getFrequency() - 1);
+        Date deadline = calendar.getTime();
+        task.setDeadline(deadline);
     }
 
     public boolean isTaskVisibleOrFinishable(Task task) {
         Date deadline = task.getDeadline();
         int daysVisible = task.getDaysVisible(); // or task.getReminder() if you're using that field
-
+        // Get today's date
+        Date today = new Date();
+        if (task.getLastFinish() != null && today == task.getLastFinish()) {
+            return false;
+        }
         // Calculate "visible from" date: deadline - daysVisible
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(deadline);
-        calendar.add(Calendar.DATE, -daysVisible);
+        calendar.add(Calendar.DATE, -daysVisible + 1);
         Date visibleFrom = calendar.getTime();
-
-        // Get today's date
-        Date today = new Date();
 
         // Check if today is on or after visibleFrom date
         return !today.before(visibleFrom);
+    }
+
+    public void finishedTaskDate(Task task) {
+        Date today = new Date();
+        task.setLastFinish(today);
     }
 
     public void calculateDeadlineOnExpire(Task task) {
