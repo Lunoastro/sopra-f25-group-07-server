@@ -10,7 +10,7 @@ The back end of the application is built with Java using the Spring Boot framewo
 
 ## High-level components
 
-All REST calls are handled by the [controller classes](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller), which delegate the corresponding logic to the service layer. The core functionality for creating and joining teams is implemented in the [TeamService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TeamService), while all logic related to task creation and distribution resides in the [TaskService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TaskService). All user-related business logic is encapsulated in the [UserService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/UserService). Integration with external Google Calendar API is managed through the [CalendarService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/CalendarService) and [CalendarController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarController), which handle all related communication.
+All REST calls are handled by the [controller classes](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller), which delegate the corresponding logic to the service layer. The core functionality for creating and joining teams is implemented in the [TeamService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TeamService.java), while all logic related to task creation and distribution resides in the [TaskService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/TaskService.java). All user-related business logic is encapsulated in the [UserService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/UserService.java). Integration with external Google Calendar API is managed through the [CalendarService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/CalendarService.java) and [CalendarController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarController.java), which handle all related communication.
 
 ## Launch & Deployment
 
@@ -54,7 +54,7 @@ implementation 'com.google.apis:google-api-services-calendar:v3-rev20230807-2.0.
 ```
 
 #### OAuth Flow
-The user is redirected to Google’s consent screen. After authorization, the access tokens are handled in [CalendarService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/CalendarService) for fetching and adding events to the Google Calendar.
+The user is redirected to Google’s consent screen. After authorization, the access tokens are handled in [CalendarService](./src/main/java/ch/uzh/ifi/hase/soprafs24/service/CalendarService.java) for fetching and adding events to the Google Calendar.
 
 ### Build
 
@@ -105,7 +105,7 @@ If you want to avoid running all tests with every change, use the following comm
 ```
 #### API Endpoint Testing with Postman
 
-We recommend using [Postman](https://www.getpostman.com) to test the API Endpoints. Most endpoints can be tested this way; however, due to OAuth flow requirements, endpoints in the [CalendarController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarController) cannot be fully tested via Postman. In the [CalendarAuthController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarAuthController), only the GET /calendar/auth-url endpoint can be tested to generate the Google authorization URL. Subsequent steps in the OAuth process must be performed through the browser and cannot be completed directly within Postman.
+We recommend using [Postman](https://www.getpostman.com) to test the API Endpoints. Most endpoints can be tested this way; however, due to OAuth flow requirements, endpoints in the [CalendarController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarController.java) cannot be fully tested via Postman. In the [CalendarAuthController](./src/main/java/ch/uzh/ifi/hase/soprafs24/controller/CalendarAuthController.java), only the GET /calendar/auth-url endpoint can be tested to generate the Google authorization URL. Subsequent steps in the OAuth process must be performed through the browser and cannot be completed directly within Postman.
 
 
 ## Roadmap
